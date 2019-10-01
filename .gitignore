@@ -1,3 +1,4 @@
 .stack-work/
 prism.cabal
 *~
+stack.yaml.lock
