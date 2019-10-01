@@ -3,7 +3,7 @@
 
 module PrismDecoder where
 
-import Data.Bits((.&.), (.|.), shift)
+import Data.Bits((.&.), (.|.), shiftR, shiftL)
 
 import Prism
 
@@ -32,6 +32,7 @@ data Mem = MemBxSi Int |
 type FuncRegImm8 = Ctx -> Reg -> Imm8 -> Ctx
 type FuncMemImm8 = Ctx -> Mem -> Imm8 -> Ctx
 
+-- R/M -> Reg
 decodeReg8 :: Uint8 -> Reg
 decodeReg8 0 = AL
 decodeReg8 1 = CL
@@ -59,12 +60,12 @@ getDisp8 :: Uint8 -> Int
 getDisp8 lo = fromIntegral lo :: Int
 
 getDisp16 :: Uint8 -> Uint8 -> Int
-getDisp16 lo hi = (+) (fromIntegral lo :: Int) $ shift (fromIntegral hi :: Int) 8
+getDisp16 lo hi = (+) (fromIntegral lo :: Int) $ shiftL (fromIntegral hi :: Int) 8
 
 decodeN8Imm8 :: Ctx -> FuncRegImm8 -> FuncMemImm8 -> InstrBytes -> Ctx
 decodeN8Imm8 ctx freg fmem (b1, b2, b3, b4, b5, b6) = 
     let modrm = b2
-        mod = flip shift 8 $ modrm .&. 0xE0
+        mod = shiftR (modrm .&. 0xE0) 6
         rm = modrm .&. 0x07
         in
     case mod of
@@ -79,13 +80,13 @@ decodeN8Imm8 ctx freg fmem (b1, b2, b3, b4, b5, b6) =
                 mem = decodeMem rm disp8
                 in
             fmem ctx mem imm8
-        0x10 ->
+        0x02 ->
             let imm8 = b5 :: Imm8
                 disp16 = getDisp16 b3 b4
                 mem = decodeMem rm disp16
                 in
             fmem ctx mem imm8
-        0x11 ->
+        0x03 ->
             let imm8 = b3 :: Imm8
                 reg = decodeReg8 rm
                 in

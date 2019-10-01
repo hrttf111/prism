@@ -12,4 +12,4 @@ type Uint16 = Word16
 -- Note: Max size of instruction is 6 bytes
 type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
 
-data Ctx = Ctx
+data Ctx = Ctx String deriving (Show)
