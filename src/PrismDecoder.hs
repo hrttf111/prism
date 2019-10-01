@@ -67,27 +67,24 @@ decodeN8Imm8 ctx freg fmem (b1, b2, b3, b4, b5, b6) =
     let modrm = b2
         mod = shiftR (modrm .&. 0xE0) 6
         rm = modrm .&. 0x07
+        imm8 = b3 :: Imm8
         in
     case mod of
         0x00 ->
-            let imm8 = b3 :: Imm8
-                mem = decodeMem rm 0
+            let mem = decodeMem rm 0
                 in
             fmem ctx mem imm8
         0x01 -> 
-            let imm8 = b4 :: Imm8
-                disp8 = getDisp8 b3
+            let disp8 = getDisp8 b4
                 mem = decodeMem rm disp8
                 in
             fmem ctx mem imm8
         0x02 ->
-            let imm8 = b5 :: Imm8
-                disp16 = getDisp16 b3 b4
+            let disp16 = getDisp16 b4 b5 
                 mem = decodeMem rm disp16
                 in
             fmem ctx mem imm8
         0x03 ->
-            let imm8 = b3 :: Imm8
-                reg = decodeReg8 rm
+            let reg = decodeReg8 rm
                 in
             freg ctx reg imm8
