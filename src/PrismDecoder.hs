@@ -5,9 +5,13 @@ module PrismDecoder where
 
 import Data.Bits((.&.), (.|.), shiftR, shiftL)
 
+import Foreign.Ptr
+import Foreign.Storable (peekByteOff, pokeByteOff)
+
 import Prism
 
 type Imm8 = Uint8
+type Imm16 = Uint16
 
 data Reg = AL | AH | AX |
            BL | BH | BX |
@@ -29,8 +33,8 @@ data Mem = MemBxSi Int |
            MemBx Int |
            MemUnknown Int deriving (Show)
 
-type FuncRegImm8 = Ctx -> Reg -> Imm8 -> Ctx
-type FuncMemImm8 = Ctx -> Mem -> Imm8 -> Ctx
+type FuncRegImm8 = Ctx -> Reg -> Imm8 -> PrismCtx IO Ctx
+type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
 
 -- R/M -> Reg
 decodeReg8 :: Uint8 -> Reg
@@ -62,8 +66,8 @@ getDisp8 lo = fromIntegral lo :: Int
 getDisp16 :: Uint8 -> Uint8 -> Int
 getDisp16 lo hi = (+) (fromIntegral lo :: Int) $ shiftL (fromIntegral hi :: Int) 8
 
-decodeN8Imm8 :: Ctx -> FuncRegImm8 -> FuncMemImm8 -> InstrBytes -> Ctx
-decodeN8Imm8 ctx freg fmem (b1, b2, b3, b4, b5, b6) = 
+decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> InstrBytes -> Ctx -> PrismCtx IO Ctx
+decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, b6) ctx = 
     let modrm = b2
         mod = shiftR (modrm .&. 0xE0) 6
         rm = modrm .&. 0x07
