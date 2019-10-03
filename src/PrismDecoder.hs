@@ -6,6 +6,7 @@ module PrismDecoder where
 import Data.Bits ((.&.), (.|.), shiftR, shiftL)
 
 import Data.Array (Array, array, accumArray, (!))
+import Control.Monad.Trans (lift, liftIO, MonadIO)
 
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
@@ -57,6 +58,18 @@ data PrismDecoder = PrismDecoder {
         decInstr :: Array Uint8 PrismInstruction
     }
 
+makeDecoder :: [PrismInstruction] -> PrismDecoder
+makeDecoder list =
+    let arr = accumArray acc instrEmpty (0, 255) listF
+        acc _ i = i
+        instrEmpty = makeInstructionS 0 decodeEmpty
+        listF = map (\i -> (instrOpcode i, i)) list
+        in
+    PrismDecoder arr
+
+makeInstructionS :: Uint8 -> PrismInstrFunc -> PrismInstruction
+makeInstructionS opcode func = makeInstruction opcode [(0, func)]
+
 makeInstruction :: Uint8 -> [(Uint8, PrismInstrFunc)] -> PrismInstruction
 makeInstruction opcode [] = 
     PrismInstruction opcode decodeEmpty $ array (0, 0) []
@@ -70,7 +83,7 @@ makeInstruction opcode funcs =
     PrismInstruction opcode func arr 
 
 decodeEmpty :: PrismInstrFunc
-decodeEmpty _ ctx = return ctx
+decodeEmpty _ ctx = liftIO $ putStrLn "Empty" >> return ctx
 
 decodeDemux :: Array Uint8 PrismInstrFunc -> PrismInstrFunc
 decodeDemux _ _ ctx = return ctx
@@ -122,3 +135,12 @@ decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, b6) ctx =
             let reg = Reg8 rm
                 in
             freg ctx reg imm8
+
+decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
+decodeList _ ctx [] = return ctx
+decodeList dec ctx (x:xs) = do
+    ctx1 <- instr x ctx
+    decodeList dec ctx1 xs
+    where
+        (b1, _, _, _, _, _) = x
+        instr = instrFunc $ (decInstr dec) ! b1
