@@ -3,25 +3,37 @@
 
 module PrismDecoder where
 
-import Data.Bits((.&.), (.|.), shiftR, shiftL)
+import Data.Bits ((.&.), (.|.), shiftR, shiftL)
+
+import Data.Array (Array, array, accumArray, (!))
 
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
 
 import Prism
 
-type Imm8 = Uint8
-type Imm16 = Uint16
+al = Reg8 0
+cl = Reg8 1
+dl = Reg8 2
+bl = Reg8 3
+ah = Reg8 4
+ch = Reg8 5
+dh = Reg8 6
+bh = Reg8 7
 
-data Reg = AL | AH | AX |
-           BL | BH | BX |
-           CL | CH | CX |
-           DL | DH | DX |
-           SP |
-           BP |
-           SI |
-           DI |
-           RegUnknown deriving (Show)
+ax = Reg16 0
+cx = Reg16 1
+dx = Reg16 2
+bx = Reg16 3
+sp = Reg16 4
+bp = Reg16 5
+si = Reg16 6
+di = Reg16 7
+
+es = RegSeg 0
+cs = RegSeg 1
+ss = RegSeg 2
+ds = RegSeg 3
 
 data Mem = MemBxSi Int |
            MemBxDi Int |
@@ -33,20 +45,38 @@ data Mem = MemBxSi Int |
            MemBx Int |
            MemUnknown Int deriving (Show)
 
-type FuncRegImm8 = Ctx -> Reg -> Imm8 -> PrismCtx IO Ctx
-type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
+type PrismInstrFunc = InstrBytes -> Ctx -> PrismCtx IO Ctx
 
--- R/M -> Reg
-decodeReg8 :: Uint8 -> Reg
-decodeReg8 0 = AL
-decodeReg8 1 = CL
-decodeReg8 2 = DL
-decodeReg8 3 = BL
-decodeReg8 4 = AH
-decodeReg8 5 = CH
-decodeReg8 6 = DH
-decodeReg8 7 = BH
-decodeReg8 _ = RegUnknown
+data PrismInstruction = PrismInstruction {
+        instrOpcode :: Uint8,
+        instrFunc :: PrismInstrFunc,
+        instrDemux :: Array Uint8 PrismInstrFunc
+    }
+
+data PrismDecoder = PrismDecoder {
+        decInstr :: Array Uint8 PrismInstruction
+    }
+
+makeInstruction :: Uint8 -> [(Uint8, PrismInstrFunc)] -> PrismInstruction
+makeInstruction opcode [] = 
+    PrismInstruction opcode decodeEmpty $ array (0, 0) []
+makeInstruction opcode [(_, func)] = 
+    PrismInstruction opcode func $ array (0, 0) []
+makeInstruction opcode funcs = 
+    let acc _ i = i
+        arr = accumArray acc decodeEmpty (0, 7) funcs
+        func = decodeDemux arr
+        in
+    PrismInstruction opcode func arr 
+
+decodeEmpty :: PrismInstrFunc
+decodeEmpty _ ctx = return ctx
+
+decodeDemux :: Array Uint8 PrismInstrFunc -> PrismInstrFunc
+decodeDemux _ _ ctx = return ctx
+
+type FuncRegImm8 = Ctx -> Reg8 -> Imm8 -> PrismCtx IO Ctx
+type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
 
 -- R/M -> Disp -> Mem
 decodeMem :: Uint8 -> Int -> Mem
@@ -89,6 +119,6 @@ decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, b6) ctx =
                 in
             fmem ctx mem imm8
         0x03 ->
-            let reg = decodeReg8 rm
+            let reg = Reg8 rm
                 in
             freg ctx reg imm8
