@@ -70,21 +70,21 @@ decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, b6) ctx =
         0x00 ->
             let mem = decodeMem rm 0
                 in
-            fmem ctx mem imm8
+            fmem ctx mem imm8 >>= updateIP 3
         0x01 -> 
             let disp8 = getDisp8 b4
                 mem = decodeMem rm disp8
                 in
-            fmem ctx mem imm8
+            fmem ctx mem imm8 >>= updateIP 4
         0x02 ->
             let disp16 = getDisp16 b4 b5 
                 mem = decodeMem rm disp16
                 in
-            fmem ctx mem imm8
+            fmem ctx mem imm8 >>= updateIP 5
         0x03 ->
             let reg = Reg8 rm
                 in
-            freg ctx reg imm8
+            freg ctx reg imm8 >>= updateIP 3
 
 decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
 decodeList _ ctx [] = return ctx

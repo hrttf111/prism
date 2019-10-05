@@ -122,6 +122,14 @@ writeSeg (MemReg mr) (RegSeg ii) val =
     let i = fromIntegral ii in
     liftIO $ pokeByteOff mr (32 + i * 2) val
 
+readRegIP :: MonadIO m => MemReg -> m Uint16
+readRegIP (MemReg mr) = liftIO $ peekByteOff mr 40
+
+writeRegIP :: MonadIO m => MemReg -> Uint16 -> m ()
+writeRegIP (MemReg mr) val = liftIO $ pokeByteOff mr 40 val
+
+-------------------------------------------------------------------------------
+
 showReg8 :: MonadIO m => MemReg -> Reg8 -> m String
 showReg8 memReg reg = do
     val <- readReg8 memReg reg
@@ -144,6 +152,11 @@ showRegs3 memReg reg1 reg2 reg3 = do
     s3 <- showReg16 memReg reg3
     return $ s1 ++ " " ++ s2 ++ " " ++ s3
 
+showRegIP :: MonadIO m => MemReg -> m String
+showRegIP memReg = do
+    val <- readRegIP memReg
+    return $ "IP = 0x" ++ showHex val ""
+
 printRegs :: MonadIO m => MemReg -> m ()
 printRegs memReg = do
     (liftIO . putStrLn) =<< showRegs3 memReg al ah ax
@@ -158,6 +171,7 @@ printRegs memReg = do
     (liftIO . putStrLn) =<< showRegSeg memReg cs
     (liftIO . putStrLn) =<< showRegSeg memReg ss
     (liftIO . putStrLn) =<< showRegSeg memReg ds
+    (liftIO . putStrLn) =<< showRegIP memReg
 
 -------------------------------------------------------------------------------
 
@@ -252,5 +266,16 @@ instance Show Mem where
 
 -------------------------------------------------------------------------------
 
---getIp :: MonadIO m => MemReg -> RegSeg -> Uint16 -> m MemOffset
---getIp mem
+getInstrAddress :: MonadIO m => MemReg -> RegSeg -> Uint16 -> m MemOffset
+getInstrAddress memReg regSeg ip = do
+    valSeg <- fromIntegral <$> readSeg memReg regSeg
+    let ip32 = fromIntegral ip :: MemOffset
+    return $ (shiftL valSeg 4) + ip32
+
+moveRegIP :: MonadIO m => MemReg -> Uint16 -> m ()
+moveRegIP memReg val = do
+    currentVal <- readRegIP memReg
+    writeRegIP memReg (currentVal + val)
+
+updateIP :: MonadIO m => Uint16 -> Ctx -> m Ctx
+updateIP val ctx = moveRegIP (ctxReg ctx) val >> return ctx
