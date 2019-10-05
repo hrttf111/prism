@@ -12,39 +12,7 @@ import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
 
 import Prism
-
-al = Reg8 0
-cl = Reg8 1
-dl = Reg8 2
-bl = Reg8 3
-ah = Reg8 4
-ch = Reg8 5
-dh = Reg8 6
-bh = Reg8 7
-
-ax = Reg16 0
-cx = Reg16 1
-dx = Reg16 2
-bx = Reg16 3
-sp = Reg16 4
-bp = Reg16 5
-si = Reg16 6
-di = Reg16 7
-
-es = RegSeg 0
-cs = RegSeg 1
-ss = RegSeg 2
-ds = RegSeg 3
-
-data Mem = MemBxSi Int |
-           MemBxDi Int |
-           MemBpSi Int |
-           MemBpDi Int |
-           MemSi Int |
-           MemDi Int |
-           MemBp Int |
-           MemBx Int |
-           MemUnknown Int deriving (Show)
+import PrismCpu
 
 type PrismInstrFunc = InstrBytes -> Ctx -> PrismCtx IO Ctx
 
@@ -90,24 +58,6 @@ decodeDemux _ _ ctx = return ctx
 
 type FuncRegImm8 = Ctx -> Reg8 -> Imm8 -> PrismCtx IO Ctx
 type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
-
--- R/M -> Disp -> Mem
-decodeMem :: Uint8 -> Int -> Mem
-decodeMem 0 = MemBxSi 
-decodeMem 1 = MemBxDi
-decodeMem 2 = MemBpSi
-decodeMem 3 = MemBpDi
-decodeMem 4 = MemSi
-decodeMem 5 = MemDi
-decodeMem 6 = MemBp
-decodeMem 7 = MemBx
-decodeMem _ = MemUnknown
-
-getDisp8 :: Uint8 -> Int
-getDisp8 lo = fromIntegral lo :: Int
-
-getDisp16 :: Uint8 -> Uint8 -> Int
-getDisp16 lo hi = (+) (fromIntegral lo :: Int) $ shiftL (fromIntegral hi :: Int) 8
 
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> InstrBytes -> Ctx -> PrismCtx IO Ctx
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, b6) ctx = 

@@ -4,6 +4,7 @@ import Data.Bits((.&.), (.|.), shift)
 
 import Prism
 import PrismDecoder
+import PrismCpu
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 
@@ -11,17 +12,11 @@ import Foreign.Storable (peekByteOff, pokeByteOff)
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
 
-readMem8 :: MonadIO m => Ctx -> Int -> m Uint8
-readMem8 ctx offset = liftIO $ peekByteOff (ctxMem ctx) offset
-
-writeMem8 :: MonadIO m => Ctx -> Uint8 -> Int -> m ()
-writeMem8 ctx val offset = liftIO $ pokeByteOff (ctxMem ctx) offset val
-
 testDecoder = do
     putStrLn "1"
     ptrReg <- callocBytes 64
     ptrMem <- callocBytes 65000
-    let ctx1 = Ctx ptrReg ptrMem 
+    let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem)
     runPrism $ decodeN8Imm8 freg fmem instr ctx1
     where
         rm = (0x80 .|. 0x0 .|. 0x2) :: Uint8
@@ -33,8 +28,8 @@ testDecoder = do
             return $ ctx
         fmem ctx mem imm = liftIO $ do
             putStrLn $ show mem 
-            writeMem8 ctx imm 1000
-            memVal <- readMem8 ctx 1000
+            writeMem8 (ctxReg ctx) (ctxMem ctx) ds mem imm
+            memVal <- readMem8 (ctxReg ctx) (ctxMem ctx) ds mem
             putStrLn $ "Mem val: " ++ (show memVal)
             putStrLn $ show imm
             return $ ctx
@@ -43,7 +38,7 @@ testDecoder1 = do
     putStrLn "Test decoder simple"
     ptrReg <- callocBytes 64
     ptrMem <- callocBytes 65000
-    let ctx1 = Ctx ptrReg ptrMem 
+    let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem)
     runPrism $ decodeList decoder ctx1 instrs
     where
         rm = (0x80 .|. 0x0 .|. 0x2) :: Uint8
@@ -60,8 +55,8 @@ testDecoder1 = do
             return $ ctx
         fmem ctx mem imm = liftIO $ do
             putStrLn $ show mem 
-            writeMem8 ctx imm 1000
-            memVal <- readMem8 ctx 1000
+            writeMem8 (ctxReg ctx) (ctxMem ctx) ds mem imm
+            memVal <- readMem8 (ctxReg ctx) (ctxMem ctx) ds mem
             putStrLn $ "Mem val: " ++ (show memVal)
             putStrLn $ show imm
             return $ ctx
