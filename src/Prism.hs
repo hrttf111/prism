@@ -4,6 +4,7 @@
 module Prism where
 
 import Data.Word (Word8, Word16, Word32)
+import Data.Maybe (Maybe)
 
 import Foreign.Ptr
 
@@ -19,7 +20,6 @@ type Uint16 = Word16
 
 type Disp = Word16
 
---type MemOffset = Word32
 type MemOffset = Int
 
 newtype Reg8 = Reg8 Word8
@@ -42,9 +42,39 @@ type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
 newtype MemReg = MemReg (Ptr Word8) deriving (Show)
 newtype MemMain = MemMain (Ptr Word8) deriving (Show)
 
+data Flags = Flags {
+        flagCF :: Bool,
+        flagPF :: Bool,
+        flagAF :: Bool,
+        flagZF :: Bool,
+        flagSF :: Bool,
+        flagOF :: Bool
+    } deriving (Show)
+
+data EFlags = EFlags {
+        eflagTF :: Bool,
+        eflagIF :: Bool,
+        eflagDF :: Bool
+    } deriving (Show)
+
+clearFlags :: Flags
+clearFlags = Flags False False False False False False
+
+clearEFlags :: EFlags
+clearEFlags = EFlags False False False
+
+instance Show RegSeg where
+    show (RegSeg 0) = "ES"
+    show (RegSeg 1) = "CS"
+    show (RegSeg 2) = "SS"
+    show (RegSeg 3) = "DS"
+
 data Ctx = Ctx {
         ctxReg :: MemReg,
-        ctxMem :: MemMain
+        ctxMem :: MemMain,
+        ctxFlags :: Flags,
+        ctxEFlags :: EFlags,
+        ctxReplaceSeg :: Maybe RegSeg
     } deriving (Show)
 
 newtype PrismCtx m a = PrismCtx {

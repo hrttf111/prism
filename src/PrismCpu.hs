@@ -58,12 +58,6 @@ cs = RegSeg 1
 ss = RegSeg 2
 ds = RegSeg 3
 
-instance Show RegSeg where
-    show (RegSeg 0) = "ES"
-    show (RegSeg 1) = "CS"
-    show (RegSeg 2) = "SS"
-    show (RegSeg 3) = "DS"
-
 -------------------------------------------------------------------------------
 
 -- R/M -> Disp -> Mem

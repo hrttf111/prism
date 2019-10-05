@@ -16,7 +16,7 @@ testDecoder = do
     putStrLn "1"
     ptrReg <- callocBytes 64
     ptrMem <- callocBytes 65000
-    let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem)
+    let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem) clearFlags clearEFlags Nothing
     runPrism $ decodeN8Imm8 freg fmem instr ctx1
     where
         rm = (0x80 .|. 0x0 .|. 0x2) :: Uint8
@@ -38,8 +38,8 @@ testDecoder1 = do
     putStrLn "Test decoder simple"
     ptrReg <- callocBytes 64
     ptrMem <- callocBytes 65000
-    let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem)
-    runPrism $ decodeList decoder ctx1 instrs
+    let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem) clearFlags clearEFlags Nothing
+    runPrism $ decodeList decoder ctx1 instrs >>= (liftIO . putStrLn . show)
     where
         rm = (0x80 .|. 0x0 .|. 0x3) :: Uint8
         --rm = (0xE0 .|. 0x0 .|. 0x4) :: Uint8
