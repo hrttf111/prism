@@ -6,6 +6,7 @@ module PrismCpu where
 import Data.Bits ((.&.), (.|.), shiftR, shiftL)
 
 import Control.Monad.Trans (MonadIO, liftIO)
+import Numeric (showHex)
 
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
@@ -23,6 +24,16 @@ ch = Reg8 5
 dh = Reg8 6
 bh = Reg8 7
 
+instance Show Reg8 where
+    show (Reg8 0) = "AL"
+    show (Reg8 1) = "CL"
+    show (Reg8 2) = "DL"
+    show (Reg8 3) = "BL"
+    show (Reg8 4) = "AH"
+    show (Reg8 5) = "CH"
+    show (Reg8 6) = "DH"
+    show (Reg8 7) = "BH"
+
 ax = Reg16 0
 cx = Reg16 1
 dx = Reg16 2
@@ -32,10 +43,26 @@ bp = Reg16 5
 si = Reg16 6
 di = Reg16 7
 
+instance Show Reg16 where
+    show (Reg16 0) = "AX"
+    show (Reg16 1) = "CX"
+    show (Reg16 2) = "DX"
+    show (Reg16 3) = "BX"
+    show (Reg16 4) = "SP"
+    show (Reg16 5) = "BP"
+    show (Reg16 6) = "SI"
+    show (Reg16 7) = "DI"
+
 es = RegSeg 0
 cs = RegSeg 1
 ss = RegSeg 2
 ds = RegSeg 3
+
+instance Show RegSeg where
+    show (RegSeg 0) = "ES"
+    show (RegSeg 1) = "CS"
+    show (RegSeg 2) = "SS"
+    show (RegSeg 3) = "DS"
 
 -------------------------------------------------------------------------------
 
@@ -95,6 +122,43 @@ writeSeg (MemReg mr) (RegSeg ii) val =
     let i = fromIntegral ii in
     liftIO $ pokeByteOff mr (32 + i * 2) val
 
+showReg8 :: MonadIO m => MemReg -> Reg8 -> m String
+showReg8 memReg reg = do
+    val <- readReg8 memReg reg
+    return $ show reg ++ " = 0x" ++ showHex val ""
+
+showReg16 :: MonadIO m => MemReg -> Reg16 -> m String
+showReg16 memReg reg = do
+    val <- readReg16 memReg reg
+    return $ show reg ++ " = 0x" ++ showHex val ""
+
+showRegSeg :: MonadIO m => MemReg -> RegSeg -> m String
+showRegSeg memReg reg = do
+    val <- readSeg memReg reg
+    return $ show reg ++ " = 0x" ++ showHex val ""
+
+showRegs3 :: MonadIO m => MemReg -> Reg8 -> Reg8 -> Reg16 -> m String
+showRegs3 memReg reg1 reg2 reg3 = do
+    s1 <- showReg8 memReg reg1
+    s2 <- showReg8 memReg reg2
+    s3 <- showReg16 memReg reg3
+    return $ s1 ++ " " ++ s2 ++ " " ++ s3
+
+printRegs :: MonadIO m => MemReg -> m ()
+printRegs memReg = do
+    (liftIO . putStrLn) =<< showRegs3 memReg al ah ax
+    (liftIO . putStrLn) =<< showRegs3 memReg bl bh bx
+    (liftIO . putStrLn) =<< showRegs3 memReg cl ch cx
+    (liftIO . putStrLn) =<< showRegs3 memReg dl dh dx
+    (liftIO . putStrLn) =<< showReg16 memReg sp
+    (liftIO . putStrLn) =<< showReg16 memReg bp
+    (liftIO . putStrLn) =<< showReg16 memReg si
+    (liftIO . putStrLn) =<< showReg16 memReg di
+    (liftIO . putStrLn) =<< showRegSeg memReg es
+    (liftIO . putStrLn) =<< showRegSeg memReg cs
+    (liftIO . putStrLn) =<< showRegSeg memReg ss
+    (liftIO . putStrLn) =<< showRegSeg memReg ds
+
 -------------------------------------------------------------------------------
 
 getMemReg3 :: MonadIO m => MemReg -> Reg16 -> Reg16 -> RegSeg -> Disp -> m MemOffset
@@ -136,6 +200,16 @@ readMem8 memReg (MemMain mm) regSeg mem = do
 
 writeMem8 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> Uint8 -> m ()
 writeMem8 memReg (MemMain mm) regSeg mem val = do
+    offset <- getMemOffset memReg regSeg mem
+    liftIO $ pokeByteOff mm offset val
+
+readMem16 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> m Uint16
+readMem16 memReg (MemMain mm) regSeg mem = do
+    offset <- getMemOffset memReg regSeg mem
+    liftIO $ peekByteOff mm offset
+
+writeMem16 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> Uint16 -> m ()
+writeMem16 memReg (MemMain mm) regSeg mem val = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ pokeByteOff mm offset val
 

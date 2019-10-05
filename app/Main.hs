@@ -58,6 +58,8 @@ testDecoder1 = do
             writeMem8 (ctxReg ctx) (ctxMem ctx) ds mem imm
             memVal <- readMem8 (ctxReg ctx) (ctxMem ctx) ds mem
             putStrLn $ "Mem val: " ++ (show memVal)
+            writeReg16 (ctxReg ctx) ax 0x9989
+            printRegs (ctxReg ctx)
             putStrLn $ show imm
             return $ ctx
 

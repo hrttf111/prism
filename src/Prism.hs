@@ -22,9 +22,9 @@ type Disp = Word16
 --type MemOffset = Word32
 type MemOffset = Int
 
-newtype Reg8 = Reg8 Word8 deriving (Show)
-newtype Reg16 = Reg16 Word8 deriving (Show)
-newtype RegSeg = RegSeg Word8 deriving (Show) 
+newtype Reg8 = Reg8 Word8
+newtype Reg16 = Reg16 Word8
+newtype RegSeg = RegSeg Word8
 
 data Mem = MemBxSi Disp |
            MemBxDi Disp |
