@@ -41,8 +41,8 @@ testDecoder1 = do
     let ctx1 = Ctx (MemReg ptrReg) (MemMain ptrMem)
     runPrism $ decodeList decoder ctx1 instrs
     where
-        rm = (0x80 .|. 0x0 .|. 0x2) :: Uint8
-        --rm = (0xE0 .|. 0x0 .|. 0x2) :: Uint8
+        rm = (0x80 .|. 0x0 .|. 0x3) :: Uint8
+        --rm = (0xE0 .|. 0x0 .|. 0x4) :: Uint8
         instr = (0x80, rm, 0x7F, 0x10, 0x99, 0x00)
         instrE = (0x81, rm, 0x7F, 0x10, 0x99, 0x00)
         instrs = [instr, instrE, instr]
@@ -50,15 +50,14 @@ testDecoder1 = do
         instrP = makeInstructionS 0x80 decInstr
         decoder = makeDecoder [instrP]
         freg ctx reg imm = liftIO $ do
-            putStrLn $ show reg
-            putStrLn $ show imm
+            putStrLn $ "MOV " ++ (show reg) ++ ", " ++ (show imm)
             return $ ctx
         fmem ctx mem imm = liftIO $ do
-            putStrLn $ show mem 
+            putStrLn $ "MOV " ++ (show mem) ++ ", " ++ (show imm)
             writeMem8 (ctxReg ctx) (ctxMem ctx) ds mem imm
             memVal <- readMem8 (ctxReg ctx) (ctxMem ctx) ds mem
             putStrLn $ "Mem val: " ++ (show memVal)
-            writeReg16 (ctxReg ctx) ax 0x9989
+            writeReg16 (ctxReg ctx) cx 0x9989
             printRegs (ctxReg ctx)
             putStrLn $ show imm
             return $ ctx

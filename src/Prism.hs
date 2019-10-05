@@ -34,7 +34,7 @@ data Mem = MemBxSi Disp |
            MemDi Disp |
            MemBp Disp |
            MemBx Disp |
-           MemDirect Disp deriving (Show)
+           MemDirect Disp
 
 -- Note: Max size of instruction is 6 bytes
 type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
