@@ -47,7 +47,7 @@ testDecoder1 = do
         instrE = (0x81, rm, 0x7F, 0x10, 0x99, 0x00)
         instrs = [instr, instrE, instr]
         decInstr = decodeN8Imm8 freg fmem
-        instrP = makeInstructionS 0x80 decInstr
+        instrP = makeInstructionS 0x80 Nothing decInstr
         decoder = makeDecoder [instrP]
         freg ctx reg imm = liftIO $ do
             putStrLn $ "MOV " ++ (show reg) ++ ", " ++ (show imm)
