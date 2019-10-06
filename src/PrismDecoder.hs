@@ -59,8 +59,17 @@ decodeDemux _ _ ctx = return ctx
 type FuncRegImm8 = Ctx -> Reg8 -> Imm8 -> PrismCtx IO Ctx
 type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
 
+type FuncRegImm16 = Ctx -> Reg16 -> Imm16 -> PrismCtx IO Ctx
+type FuncMemImm16 = Ctx -> Mem -> Imm16 -> PrismCtx IO Ctx
+
+type FuncRegReg8 = Ctx -> Reg8 -> Reg8 -> PrismCtx IO Ctx
+type FuncRegReg16 = Ctx -> Reg16 -> Reg16 -> PrismCtx IO Ctx
+
+type FuncMemReg8 = Ctx -> Mem -> Reg8 -> PrismCtx IO Ctx
+type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
+
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> InstrBytes -> Ctx -> PrismCtx IO Ctx
-decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, b6) ctx = 
+decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 
     let modrm = b2
         mod = shiftR (modrm .&. 0xE0) 6
         rm = modrm .&. 0x07
@@ -94,3 +103,29 @@ decodeList dec ctx (x:xs) = do
     where
         (b1, _, _, _, _, _) = x
         instr = instrFunc $ (decInstr dec) ! b1
+
+pokeTuple6 :: MonadIO m => Ptr Uint8 -> Int -> (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8) -> m (Ptr Uint8)
+pokeTuple6 ptr offset (b1, b2, b3, b4, b5, b6) = liftIO $ do
+    pokeByteOff ptr offset b1
+    pokeByteOff ptr (offset + 1) b2
+    pokeByteOff ptr (offset + 2) b3
+    pokeByteOff ptr (offset + 3) b4
+    pokeByteOff ptr (offset + 4) b5
+    pokeByteOff ptr (offset + 5) b6
+    return ptr
+
+peekTuple6 :: MonadIO m => Ptr Uint8 -> Int -> m (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
+peekTuple6 ptr offset = liftIO $ do
+    b1 <- peekByteOff ptr offset
+    b2 <- peekByteOff ptr (offset + 1)
+    b3 <- peekByteOff ptr (offset + 2)
+    b4 <- peekByteOff ptr (offset + 3)
+    b5 <- peekByteOff ptr (offset + 4)
+    b6 <- peekByteOff ptr (offset + 5)
+    return (b1, b2, b3, b4, b5, b6)
+
+pokeInstrBytes :: MonadIO m => Ptr Uint8 -> Int -> InstrBytes -> m (Ptr Uint8)
+pokeInstrBytes = pokeTuple6
+
+peekInstrBytes :: MonadIO m => Ptr Uint8 -> Int -> m InstrBytes
+peekInstrBytes = peekTuple6
