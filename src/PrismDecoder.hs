@@ -134,27 +134,62 @@ decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx =
     let modrm = b2
         mod = shiftR (modrm .&. 0xE0) 6
         rm = modrm .&. 0x07
-        imm8 = b3 :: Imm8
         in
     case mod of
         0x00 ->
             let mem = decodeMem rm 0
+                imm8 = b3 :: Imm8
                 in
             fmem ctx mem imm8 >>= updateIP 3
         0x01 -> 
-            let disp8 = getDisp8 b4
+            let disp8 = getDisp8 b3
                 mem = decodeMem rm disp8
+                imm8 = b4 :: Imm8
                 in
             fmem ctx mem imm8 >>= updateIP 4
         0x02 ->
-            let disp16 = getDisp16 b4 b5 
+            let disp16 = getDisp16 b3 b4 
                 mem = decodeMem rm disp16
+                imm8 = b5 :: Imm8
                 in
             fmem ctx mem imm8 >>= updateIP 5
         0x03 ->
             let reg = Reg8 rm
+                imm8 = b3 :: Imm8
                 in
             freg ctx reg imm8 >>= updateIP 3
+
+
+decodeN16Imm :: FuncRegImm16 -> FuncMemImm16 -> InstrBytes -> Ctx -> PrismCtx IO Ctx
+decodeN16Imm freg fmem (b1, b2, b3, b4, b5, b6) ctx = 
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        in
+    case mod of
+        0x00 ->
+            let mem = decodeMem rm 0
+                imm16 = getImm16 b3 b4
+                in
+            fmem ctx mem imm16 >>= updateIP 4
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem rm disp8
+                imm16 = getImm16 b4 b5
+                in
+            fmem ctx mem imm16 >>= updateIP 5
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem rm disp16
+                imm16 = getImm16 b5 b6
+                in
+            fmem ctx mem imm16 >>= updateIP 6
+        0x03 ->
+            let reg = Reg16 rm
+                imm16 = getImm16 b3 b4
+                in
+            freg ctx reg imm16 >>= updateIP 4
+
 
 decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
 decodeList _ ctx [] = return ctx
