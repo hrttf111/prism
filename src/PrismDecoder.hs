@@ -129,7 +129,7 @@ type FuncRegReg16 = Ctx -> Reg16 -> Reg16 -> PrismCtx IO Ctx
 type FuncMemReg8 = Ctx -> Mem -> Reg8 -> PrismCtx IO Ctx
 type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
 
-decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> InstrBytes -> Ctx -> PrismCtx IO Ctx
+decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 
     let modrm = b2
         mod = shiftR (modrm .&. 0xE0) 6
@@ -160,7 +160,7 @@ decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx =
             freg ctx reg imm8 >>= updateIP 3
 
 
-decodeN16Imm :: FuncRegImm16 -> FuncMemImm16 -> InstrBytes -> Ctx -> PrismCtx IO Ctx
+decodeN16Imm :: FuncRegImm16 -> FuncMemImm16 -> PrismInstrFunc
 decodeN16Imm freg fmem (b1, b2, b3, b4, b5, b6) ctx = 
     let modrm = b2
         mod = shiftR (modrm .&. 0xE0) 6
@@ -189,6 +189,62 @@ decodeN16Imm freg fmem (b1, b2, b3, b4, b5, b6) ctx =
                 imm16 = getImm16 b3 b4
                 in
             freg ctx reg imm16 >>= updateIP 4
+
+
+decodeRm8 :: FuncRegReg8 -> FuncMemReg8 -> PrismInstrFunc
+decodeRm8 freg fmem (b1, b2, b3, b4, _, _) ctx =
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        reg = Reg8 $ shiftR (modrm .&. 0x38) 3
+        in
+    case mod of
+        0x00 ->
+            let mem = decodeMem rm 0
+                in
+            fmem ctx mem reg >>= updateIP 2
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem rm disp8
+                in
+            fmem ctx mem reg >>= updateIP 3
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem rm disp16
+                in
+            fmem ctx mem reg >>= updateIP 4
+        0x03 ->
+            let reg2 = Reg8 rm
+                in
+            freg ctx reg reg2 >>= updateIP 2
+
+
+decodeRm16 :: FuncRegReg16 -> FuncMemReg16 -> PrismInstrFunc
+decodeRm16 freg fmem (b1, b2, b3, b4, _, _) ctx =
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        reg = Reg16 $ shiftR (modrm .&. 0x38) 3
+        in
+    case mod of
+        0x00 ->
+            let mem = decodeMem rm 0
+                in
+            fmem ctx mem reg >>= updateIP 2
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem rm disp8
+                in
+            fmem ctx mem reg >>= updateIP 3
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem rm disp16
+                in
+            fmem ctx mem reg >>= updateIP 4
+        0x03 ->
+            let reg2 = Reg16 rm
+                in
+            freg ctx reg reg2 >>= updateIP 2
 
 
 decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
