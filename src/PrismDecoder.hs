@@ -129,6 +129,16 @@ type FuncRegReg16 = Ctx -> Reg16 -> Reg16 -> PrismCtx IO Ctx
 type FuncMemReg8 = Ctx -> Mem -> Reg8 -> PrismCtx IO Ctx
 type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
 
+decodeAcc8 :: FuncRegImm8 -> Reg8 -> PrismInstrFunc
+decodeAcc8 freg reg (_, b2, _, _, _, _) ctx =
+    freg ctx reg (b2 :: Imm8)
+
+decodeAcc16 :: FuncRegImm16 -> Reg16 -> PrismInstrFunc
+decodeAcc16 freg reg (_, b2, b3, _, _, _) ctx =
+    let imm16 = getImm16 b2 b3
+        in
+    freg ctx reg imm16
+
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 
     let modrm = b2
