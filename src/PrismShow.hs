@@ -65,7 +65,9 @@ instructionShow = [
         makeShowFunctionN "ADD" 0x80 (Just 0) decodeN8Imm8,
         makeShowFunctionN "ADD" 0x81 (Just 0) decodeN16Imm,
         makeShowFunctionN "ADD" 0x82 (Just 0) decodeN8Imm8,
-        makeShowFunctionN "ADD" 0x83 (Just 0) decodeN16Imm
+        makeShowFunctionN "ADD" 0x83 (Just 0) decodeN16Imm,
+
+        makeShowFunctionN "OR" 0x80 (Just 1) decodeN8Imm8
     ]
 
 makeShowDecoder :: PrismDecoder
