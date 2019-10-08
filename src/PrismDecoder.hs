@@ -101,6 +101,8 @@ showAny3 name ctx a b = liftIO $ do
     putStrLn $ name ++ " " ++ (show a) ++ ", " ++ (show b)
     return ctx
 
+showAny3Ref name ctx a b = showAny3 name ctx b a
+
 makeShowDecodeFunc :: String -> (a -> b -> c) -> (String -> a) -> (String -> b) -> c
 makeShowDecodeFunc name f a b = f (a name) (b name)
 
