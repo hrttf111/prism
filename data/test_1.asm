@@ -1,8 +1,12 @@
-mov AL, BYTE 1
-mov AH, BYTE 1
-mov BL, BYTE 1
-mov BH, BYTE 1
-mov CL, BYTE 1
-mov CH, BYTE 1
-mov DL, BYTE 1
-mov DH, BYTE 1
+ADD AL, AH
+ADD BL, BH
+ADD CL, CH
+ADD DL, DH
+ADD AL, [BX + 1]
+ADD BL, [BX]
+ADD [BX], AH
+ADD [BX + 10000], CL
+ADD AX, BX
+ADD CX, DX
+ADD BX, AX
+ADD DX, AX

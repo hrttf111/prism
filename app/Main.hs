@@ -5,6 +5,8 @@ import Data.Bits((.&.), (.|.), shift)
 import Prism
 import PrismDecoder
 import PrismCpu
+import PrismIO
+import PrismShow
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 
@@ -65,8 +67,20 @@ testDecoder1 = do
             putStrLn $ show imm
             return $ ctx
 
+testDecoder2 = do
+    putStrLn "Test decoder file"
+    ptrReg <- callocBytes 64
+    ptrMem <- callocBytes 65000
+    readCodeToPtr "data/test_1" ptrMem 0
+    let ctx = Ctx (MemReg ptrReg) (MemMain ptrMem) clearFlags clearEFlags Nothing
+    runPrism $ decodeMemIp decoder ctx >>= (liftIO . putStrLn . show)
+    where
+        decoder = makeShowDecoder
+
+
 main :: IO ()
 main = do
     putStrLn "Start"
-    testDecoder1
+    --testDecoder1
+    testDecoder2
     return ()
