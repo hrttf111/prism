@@ -11,6 +11,7 @@ import Data.Either (fromRight)
 
 import Prism
 import PrismDecoder
+import PrismCpu
 
 
 showAny3 :: (Show a, Show b) => String -> Ctx -> a -> b -> PrismCtx IO Ctx
@@ -43,13 +44,24 @@ makeShowFunctionNRev :: (Show a, Show b, Show c, Show d)
 makeShowFunctionNRev name opcode rm func = 
     makeInstructionS opcode rm $ makeShowDecodeFunc name func showAny3Rev showAny3Rev
 
+makeShowFunctionAcc :: (Show a, Show b)
+    => String
+    -> Uint8
+    -> Maybe Uint8
+    -> (RmShowFunc a b -> PrismInstrFunc)
+    -> PrismInstruction
+makeShowFunctionAcc name opcode rm func = 
+    makeInstructionS opcode rm $ func (showAny3 name)
+
 -------------------------------------------------------------------------------
 
 instructionShow = [
         makeShowFunctionN "ADD" 0x00 Nothing decodeRm8,
         makeShowFunctionN "ADD" 0x01 Nothing decodeRm16,
         makeShowFunctionNRev "ADD" 0x02 Nothing decodeRm8,
-        makeShowFunctionNRev "ADD" 0x03 Nothing decodeRm16
+        makeShowFunctionNRev "ADD" 0x03 Nothing decodeRm16,
+        makeShowFunctionAcc "ADD" 0x04 Nothing (decodeAcc8 al),
+        makeShowFunctionAcc "ADD" 0x05 Nothing (decodeAcc16 ax)
     ]
 
 makeShowDecoder :: PrismDecoder
