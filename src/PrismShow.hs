@@ -69,8 +69,7 @@ instructionShow = [
 makeShowDecoder :: PrismDecoder
 makeShowDecoder = fromRight emptyDecoder $ makeDecoder <$> mergedInstr
     where
-        listResult = foldM (flip addInstrList) emptyList instructionShow
-        emptyList = [] :: InstructionList
+        listResult = foldM (flip addInstrList) [] instructionShow
         mergedInstr :: Either String [PrismInstruction]
-        mergedInstr = (\ l -> map (uncurry mergeInstruction) l) <$> listResult
+        mergedInstr = map (uncurry mergeInstruction) <$> listResult
         emptyDecoder = makeDecoder []
