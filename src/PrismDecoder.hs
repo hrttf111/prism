@@ -207,7 +207,7 @@ decodeRm8 freg fmem (b1, b2, b3, b4, _, _) ctx =
         0x03 ->
             let reg2 = Reg8 rm
                 in
-            freg ctx reg reg2 >>= updateIP 2
+            freg ctx reg2 reg >>= updateIP 2
 
 
 decodeRm16 :: FuncRegReg16 -> FuncMemReg16 -> PrismInstrFunc
@@ -235,7 +235,7 @@ decodeRm16 freg fmem (b1, b2, b3, b4, _, _) ctx =
         0x03 ->
             let reg2 = Reg16 rm
                 in
-            freg ctx reg reg2 >>= updateIP 2
+            freg ctx reg2 reg >>= updateIP 2
 
 
 decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx

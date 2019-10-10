@@ -3,7 +3,7 @@
 
 module PrismCpu where
 
-import Data.Bits ((.&.), (.|.), shiftR, shiftL)
+import Data.Bits ((.&.), (.|.), shiftR, shiftL, popCount)
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Numeric (showHex)
@@ -263,6 +263,29 @@ instance Show Mem where
     show (MemBp disp) = showMem2 bp ds disp
     show (MemBx disp) = showMem2 bx ds disp
     show (MemDirect disp) = showMem1 ds disp
+
+-------------------------------------------------------------------------------
+
+calcCFCarry8 :: Uint8 -> Uint8 -> Bool
+calcCFCarry8 before after = after < before
+
+calcCFBorrow8 :: Uint8 -> Uint8 -> Bool
+calcCFBorrow8 before after = (before > 0x80) && ((before .&. 0x80) /= (after .&. 0x80))
+
+calcPF8 :: Uint8 -> Bool
+calcPF8 = (== 1) . (.&. 0x01) . popCount
+
+calcAF8 :: Uint8 -> Uint8 -> Bool
+calcAF8 before after = (before .&. 0x08) /= (after .&. 0x08)
+
+calcZF8 :: Uint8 -> Bool
+calcZF8 = (==0)
+
+calcSF8 :: Uint8 -> Bool
+calcSF8 = (==0x80) . (.&. 0x80) 
+
+calcOF8 :: Uint8 -> Bool
+calcOF8 _ = False
 
 -------------------------------------------------------------------------------
 
