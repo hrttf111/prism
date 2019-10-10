@@ -247,14 +247,16 @@ decodeList dec ctx (x:xs) = do
         (b1, _, _, _, _, _) = x
         instr = instrFunc $ (decInstr dec) ! b1
 
-decodeMemIp :: PrismDecoder -> Ctx -> PrismCtx IO Ctx
-decodeMemIp dec ctx = do
+decodeMemIp :: PrismDecoder -> Int -> Ctx -> PrismCtx IO Ctx
+decodeMemIp dec len ctx = do
     ip <- readRegIP memReg 
-    offset <- getInstrAddress memReg cs ip
-    instr <- peekInstrBytes (ctxMem ctx) offset
-    let (b1, _, _, _, _, _) = instr
-        func = instrFunc $ (decInstr dec) ! b1
-    func instr ctx >>= decodeMemIp dec
+    if (fromIntegral ip) >= len then return ctx
+    else do
+        offset <- getInstrAddress memReg cs ip
+        instr <- peekInstrBytes (ctxMem ctx) offset
+        let (b1, _, _, _, _, _) = instr
+            func = instrFunc $ (decInstr dec) ! b1
+        func instr ctx >>= decodeMemIp dec len
     where
         memReg = ctxReg ctx
 
