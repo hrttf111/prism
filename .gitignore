@@ -1,5 +1,4 @@
 .stack-work/
-prism.cabal
 *~
 stack.yaml.lock
 data/test_1
