@@ -48,6 +48,9 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    dependencies:
+    - prism
+    - hspec
   prism-test-asm:
     main:                Spec.hs
     source-dirs:         test-asm

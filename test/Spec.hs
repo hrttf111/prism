@@ -1,2 +1,8 @@
+import TestFlags
+
+import Test.Hspec
+import TestFlags
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = hspec $ do
+    testFlagsCF
