@@ -81,10 +81,10 @@ asmMacros = [text|
         mov WORD [rdi+10], bp
         mov WORD [rdi+12], si
         mov WORD [rdi+14], di
-        mov WORD [rdi+32], es
+        ;mov WORD [rdi+32], es
         mov WORD [rdi+34], cs
-        mov WORD [rdi+36], ss
-        mov WORD [rdi+38], ds
+        ;mov WORD [rdi+36], ss
+        ;mov WORD [rdi+38], ds
     %endmacro
 |]
 -------------------------------------------------------------------------------

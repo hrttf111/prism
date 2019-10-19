@@ -13,41 +13,40 @@ import Data.Text (Text)
 
 import Control.Monad.Trans (MonadIO, liftIO)
 
-import Data.Word (Word8, Word16)
-import Foreign.Ptr
-import Foreign.Marshal.Array (allocaArray, callocArray)
-import Foreign.Storable (peekByteOff)
-
-
 
 testMov execC =
-    describe "MOV" $ do
-        memReg <- runIO $ execC [text|
+    describe "MOV" $! do
+        runIO $ putStrLn "mov_"
+        memReg <- runIO $! execC [text|
             mov ax, WORD 199
             mov bx, 34
             mov cx, 43
             mov dx, 131
             add bx, 123
         |]
-        it "AX and CX" $ do
-            ax `shouldEq` 199 $ memReg
-            cx `shouldEq` 43 $ memReg
+        runIO $ putStrLn "mov__"
+        it "AX and CX" $! do
+            al `shouldEq` 199 $ memReg
+            cl `shouldEq` 43 $ memReg
 
-{-
 testAdd execC =
-    describe "ADD" $ do
-        ptrA <- runIO $ execC [text|
+    describe "ADD" $! do
+        runIO $ putStrLn "add_"
+        memReg <- runIO $! execC [text|
             mov ax, 0
             mov bx, 5
             add ax, 4
             add ax, bx
         |]
-        testReg16 "Add imm8 to AL" memReg al 9
--}
+        runIO $ putStrLn "add__"
+        it "Add imm8 to AL" $! do
+            al `shouldEq` 9 $ memReg
+
 
 main :: IO ()
 main = do
     execC <- createTestEnv 
     hspec $ do
         testMov execC
-        testFlagsZF execC
+        testAdd execC
+        --testFlagsZF execC

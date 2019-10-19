@@ -24,15 +24,14 @@ createTestEnv = liftIO $ do
     ptrA <- callocArray 100
     return $ execCodeTest asmTest (MemReg ptrA)
 
-
 class RegTest a where
-    shouldEq :: a -> Int -> MemReg -> Expectation
-    shouldEqReg :: a -> MemReg -> MemReg -> Expectation
-
+    shouldEq :: (HasCallStack) => a -> Int -> MemReg -> Expectation
+    shouldEqReg :: (HasCallStack) => a -> MemReg -> MemReg -> Expectation
 
 instance RegTest Reg8 where
     shouldEq reg valExp memReg = do
         val <- readReg8 memReg reg
+        putStrLn $ (show val) ++ " " ++ (show valExp)
         val `shouldBe` (fromIntegral valExp)
     shouldEqReg reg memReg1 memReg2 = do
         val1 <- readReg8 memReg1 reg

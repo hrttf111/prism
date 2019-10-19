@@ -10,11 +10,9 @@ import TestCommon
 import PrismCpu
 
 import NeatInterpolation
-import Data.Text (Text)
 
+import Data.Text (Text)
 import Data.Word (Word8, Word16)
-import Foreign.Ptr
-import Foreign.Storable (peekByteOff)
 
 testFlagsZF execC = 
     describe "Flags ZF" $ do
