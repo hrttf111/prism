@@ -1,0 +1,114 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.32.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: bd41240bdab155fd7d3857e8a1b72bc94131c5622dd10ff50892b7e2a7c5ebf2
+
+name:           prism
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/prism#readme>
+homepage:       https://github.com/githubuser/prism#readme
+bug-reports:    https://github.com/githubuser/prism/issues
+author:         Author name here
+maintainer:     example@example.com
+copyright:      2019 Author name here
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/githubuser/prism
+
+library
+  exposed-modules:
+      Lib
+      Prism
+      PrismCpu
+      PrismDecoder
+      PrismIO
+      PrismShow
+  other-modules:
+      Paths_prism
+  hs-source-dirs:
+      src
+  build-depends:
+      array >=0.5.3.0
+    , base >=4.7 && <5
+    , bytestring >=0.10.8.2
+    , mtl >=2.2.2
+    , transformers >=0.5.2.0
+  default-language: Haskell2010
+
+executable prism-exe
+  main-is: Main.hs
+  other-modules:
+      Paths_prism
+  hs-source-dirs:
+      app
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array >=0.5.3.0
+    , base >=4.7 && <5
+    , bytestring >=0.10.8.2
+    , mtl >=2.2.2
+    , prism
+    , transformers >=0.5.2.0
+  default-language: Haskell2010
+
+test-suite prism-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      TestFlags
+      Paths_prism
+  hs-source-dirs:
+      test
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      array >=0.5.3.0
+    , base >=4.7 && <5
+    , bytestring >=0.10.8.2
+    , hspec
+    , mtl >=2.2.2
+    , prism
+    , transformers >=0.5.2.0
+  default-language: Haskell2010
+
+test-suite prism-test-asm
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Assembler
+      TestCommon
+      TestFlags
+      Paths_prism
+  hs-source-dirs:
+      test-asm
+  default-extensions: ForeignFunctionInterface ScopedTypeVariables CPP
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  cc-options: -Wall -O0 -g
+  include-dirs:
+      test-asm/libc
+  c-sources:
+      test-asm/libc/mmap.c
+  build-depends:
+      array >=0.5.3.0
+    , base >=4.7 && <5
+    , bytestring >=0.10.8.2
+    , directory >=1.3.0.2
+    , hspec
+    , hspec-core
+    , hspec-expectations
+    , mtl >=2.2.2
+    , neat-interpolation
+    , prism
+    , text
+    , transformers >=0.5.2.0
+    , unix >=2.7.2.2
+  default-language: Haskell2010

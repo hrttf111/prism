@@ -35,10 +35,18 @@ testFlagsCF execC =
             |]
             (flags, _) <- readFlags memReg
             (flagCF flags) `shouldBe` False
+        it "CF cleared sub" $ do
+            memReg <- execC [text|
+                mov al, 0x80
+                sub al, 1
+            |]
+            (flags, _) <- readFlags memReg
+            (flagCF flags) `shouldBe` False
+            al `shouldEq` 127 $ memReg
         it "CF set" $ do
             memReg <- execC [text|
-                mov al, 10
-                add al, 246
+                mov al, 1
+                add al, 255
             |]
             (flags, _) <- readFlags memReg
             (flagCF flags) `shouldBe` True
@@ -48,6 +56,15 @@ testFlagsCF execC =
                 add al, -120
             |]
             (flags, _) <- readFlags memReg
+            (flagCF flags) `shouldBe` True
+            (flagOF flags) `shouldBe` False
+        it "CF set sub" $ do
+            memReg <- execC [text|
+                mov al, 1
+                sub al, 2
+            |]
+            (flags, _) <- readFlags memReg
+            al `shouldEq` 255 $ memReg
             (flagCF flags) `shouldBe` True
             (flagOF flags) `shouldBe` False
 
