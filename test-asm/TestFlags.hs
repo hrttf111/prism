@@ -15,19 +15,15 @@ testFlagsZF execC =
         it "ZF set" $ do
             memReg <- execC [text|
                 mov ax, 0
-                pushf
-                pop rax
             |]
-            (flags, _) <- regToFlags memReg ax
+            (flags, _) <- readFlags memReg
             (flagZF flags) `shouldBe` True
         it "ZF cleared" $ do
             memReg <- execC [text|
                 mov al, 0
                 add al, 1
-                pushf
-                pop rax
             |]
-            (flags, _) <- regToFlags memReg ax
+            (flags, _) <- readFlags memReg
             (flagZF flags) `shouldBe` False
 
 testFlagsCF execC = 
@@ -36,17 +32,64 @@ testFlagsCF execC =
             memReg <- execC [text|
                 mov al, 10
                 add al, 245
-                pushf
-                pop rax
             |]
-            (flags, _) <- regToFlags memReg ax
+            (flags, _) <- readFlags memReg
             (flagCF flags) `shouldBe` False
         it "CF set" $ do
             memReg <- execC [text|
                 mov al, 10
                 add al, 246
-                pushf
-                pop rax
             |]
-            (flags, _) <- regToFlags memReg ax
+            (flags, _) <- readFlags memReg
+            (flagCF flags) `shouldBe` True
+        it "CF set negative" $ do
+            memReg <- execC [text|
+                mov al, 127
+                add al, -120
+            |]
+            (flags, _) <- readFlags memReg
+            (flagCF flags) `shouldBe` True
+            (flagOF flags) `shouldBe` False
+
+testFlagsOF execC = 
+    describe "Flags OF" $ do
+        it "OF cleared" $ do
+            memReg <- execC [text|
+                mov al, -127
+                add al, 255
+            |]
+            (flags, _) <- readFlags memReg
+            (flagOF flags) `shouldBe` False
+            (flagCF flags) `shouldBe` True
+        it "OF set when ADD" $ do
+            memReg <- execC [text|
+                mov al, -127
+                add al, 127
+            |]
+            (flags, _) <- readFlags memReg
+            (flagOF flags) `shouldBe` False
+            (flagCF flags) `shouldBe` True
+        it "OF set when ADD negative" $ do
+            memReg <- execC [text|
+                mov al, -127
+                add al, -120
+            |]
+            (flags, _) <- readFlags memReg
+            (flagOF flags) `shouldBe` True
+            (flagCF flags) `shouldBe` True
+        it "OF set when SUB" $ do
+            memReg <- execC [text|
+                mov al, -127
+                sub al, 120
+            |]
+            (flags, _) <- readFlags memReg
+            (flagOF flags) `shouldBe` True
+            (flagCF flags) `shouldBe` False
+        it "OF set when SUB negative" $ do
+            memReg <- execC [text|
+                mov al, -127
+                sub al, -120
+            |]
+            (flags, _) <- readFlags memReg
+            (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True

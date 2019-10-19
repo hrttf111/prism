@@ -73,6 +73,7 @@ asmMacros = [text|
     %endmacro
 
     %macro set_regs 0
+        pushf
         mov WORD [rdi], ax
         mov WORD [rdi+2], cx
         mov WORD [rdi+4], dx
@@ -85,6 +86,8 @@ asmMacros = [text|
         mov WORD [rdi+34], cs
         ;mov WORD [rdi+36], ss
         ;mov WORD [rdi+38], ds
+        pop rax
+        mov WORD [rdi+42], ax
     %endmacro
 |]
 -------------------------------------------------------------------------------

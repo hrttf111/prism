@@ -289,7 +289,7 @@ calcOF8 _ = False
 
 flagsToVal :: Flags -> Uint16 -> Uint16
 flagsToVal (Flags cf pf af zf sf of_) = 
-    (stf of_ 0x0400)
+    (stf of_ 0x0800)
     . (stf sf 0x0080)
     . (stf zf 0x0040)
     . (stf af 0x0010)
@@ -314,7 +314,7 @@ valToFlags val =
         (gtf 0x0010 val)
         (gtf 0x0040 val)
         (gtf 0x0080 val)
-        (gtf 0x0400 val)
+        (gtf 0x0800 val)
     where
         gtf bit val = (val .&. bit) == bit
 
@@ -331,6 +331,11 @@ regToFlags :: MonadIO m => MemReg -> Reg16 -> m (Flags, EFlags)
 regToFlags memReg reg = do
     valReg <- readReg16 memReg reg
     return $ (valToFlags valReg, valToEFlags valReg)
+
+readFlags :: MonadIO m => MemReg -> m (Flags, EFlags)
+readFlags (MemReg mr) = do
+    val <- liftIO $ peekByteOff mr 42
+    return $ (valToFlags val, valToEFlags val)
 
 -------------------------------------------------------------------------------
 

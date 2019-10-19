@@ -47,3 +47,4 @@ main = do
         testAdd execC
         testFlagsZF execC
         testFlagsCF execC
+        testFlagsOF execC
