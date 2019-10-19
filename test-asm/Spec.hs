@@ -3,9 +3,15 @@
 import Test.Hspec
 
 import Assembler
+import TestCommon
+import TestFlags
+
+import PrismCpu
 
 import NeatInterpolation
 import Data.Text (Text)
+
+import Control.Monad.Trans (MonadIO, liftIO)
 
 import Data.Word (Word8, Word16)
 import Foreign.Ptr
@@ -13,31 +19,21 @@ import Foreign.Marshal.Array (allocaArray, callocArray)
 import Foreign.Storable (peekByteOff)
 
 
-execCodeTest :: AsmTest -> Ptr Word8 -> Text -> IO (Ptr Word8)
-execCodeTest asmTest ptrA code = do
-    mainCode <- makeAsmStr code
-    execCode asmTest mainCode ptrA
-
-
-testReg str ptrA index val = do
-    a <- runIO $ (peekByteOff ptrA index :: IO Word16)
-    it str $
-        a `shouldBe` val
-
 
 testMov execC =
     describe "MOV" $ do
-        ptrA <- runIO $ execC [text|
+        memReg <- runIO $ execC [text|
             mov ax, WORD 199
             mov bx, 34
             mov cx, 43
             mov dx, 131
             add bx, 123
         |]
-        testReg "MOV imm8 to AX" ptrA 0 199
-        testReg "MOV imm8 to CX" ptrA 2 43
+        it "AX and CX" $ do
+            ax `shouldEq` 199 $ memReg
+            cx `shouldEq` 43 $ memReg
 
-
+{-
 testAdd execC =
     describe "ADD" $ do
         ptrA <- runIO $ execC [text|
@@ -46,13 +42,12 @@ testAdd execC =
             add ax, 4
             add ax, bx
         |]
-        testReg "ADD imm8 and reg to AX" ptrA 0 9
-
+        testReg16 "Add imm8 to AL" memReg al 9
+-}
 
 main :: IO ()
-main = hspec $ do
-  asmTest <- runIO $ makeAsmTest
-  ptrA <- runIO $ callocArray 100
-  let execC = execCodeTest asmTest ptrA
-  testMov execC
-  testAdd execC
+main = do
+    execC <- createTestEnv 
+    hspec $ do
+        testMov execC
+        testFlagsZF execC
