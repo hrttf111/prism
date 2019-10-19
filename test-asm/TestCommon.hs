@@ -31,7 +31,6 @@ class RegTest a where
 instance RegTest Reg8 where
     shouldEq reg valExp memReg = do
         val <- readReg8 memReg reg
-        putStrLn $ (show val) ++ " " ++ (show valExp)
         val `shouldBe` (fromIntegral valExp)
     shouldEqReg reg memReg1 memReg2 = do
         val1 <- readReg8 memReg1 reg
