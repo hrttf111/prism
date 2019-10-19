@@ -3,7 +3,7 @@
 
 module PrismCpu where
 
-import Data.Bits ((.&.), (.|.), shiftR, shiftL, popCount)
+import Data.Bits ((.&.), (.|.), shiftR, shiftL, popCount, testBit)
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Numeric (showHex)
@@ -286,6 +286,51 @@ calcSF8 = (==0x80) . (.&. 0x80)
 
 calcOF8 :: Uint8 -> Bool
 calcOF8 _ = False
+
+flagsToVal :: Flags -> Uint16 -> Uint16
+flagsToVal (Flags cf pf af zf sf of_) = 
+    (stf of_ 0x0400)
+    . (stf sf 0x0080)
+    . (stf zf 0x0040)
+    . (stf af 0x0010)
+    . (stf pf 0x0004)
+    . (stf cf 0x0001)
+    where
+        stf flag bit val = if flag then val .|. bit else val
+
+eflagsToVal :: EFlags -> Uint16 -> Uint16
+eflagsToVal (EFlags tf if_ df) = 
+    (stf tf 0x0100)
+    . (stf if_ 0x0200)
+    . (stf df 0x0400)
+    where
+        stf flag bit val = if flag then val .|. bit else val
+
+valToFlags :: Uint16 -> Flags
+valToFlags val = 
+    Flags 
+        (gtf 0x0001 val) 
+        (gtf 0x0004 val)
+        (gtf 0x0010 val)
+        (gtf 0x0040 val)
+        (gtf 0x0080 val)
+        (gtf 0x0400 val)
+    where
+        gtf bit val = (val .&. bit) == bit
+
+valToEFlags :: Uint16 -> EFlags
+valToEFlags val =
+    EFlags
+        (gtf 0x0100 val)
+        (gtf 0x0200 val)
+        (gtf 0x0400 val) 
+    where
+        gtf bit val = (val .&. bit) == bit
+
+regToFlags :: MonadIO m => MemReg -> Reg16 -> m (Flags, EFlags)
+regToFlags memReg reg = do
+    valReg <- readReg16 memReg reg
+    return $ (valToFlags valReg, valToEFlags valReg)
 
 -------------------------------------------------------------------------------
 

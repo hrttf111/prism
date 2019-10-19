@@ -46,3 +46,4 @@ main = do
         testMov execC
         testAdd execC
         testFlagsZF execC
+        testFlagsCF execC
