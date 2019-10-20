@@ -5,8 +5,10 @@ import Test.Hspec
 import Assembler
 import TestCommon
 import TestFlags
+import TestTransfer
 
 import PrismCpu
+import Instruction.Transfer
 
 import NeatInterpolation
 import Data.Text (Text)
@@ -14,7 +16,7 @@ import Data.Text (Text)
 import Control.Monad.Trans (MonadIO, liftIO)
 
 
-testMov execC =
+testMov1 execC =
     describe "MOV" $ do
         it "AX and CX" $! do
             memReg <- execC [text|
@@ -38,13 +40,16 @@ testAdd execC =
             |]
             al `shouldEq` 9 $ memReg
 
+instrList = transferInstrList
 
 main :: IO ()
 main = do
     execC <- createTestEnv 
+    env <- createTestEnv2 instrList
     hspec $ do
-        testMov execC
-        testAdd execC
+        testMov env
+        {-testAdd execC
         testFlagsZF execC
         testFlagsCF execC
         testFlagsOF execC
+        -}

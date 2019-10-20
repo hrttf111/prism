@@ -6,6 +6,8 @@ module PrismDecoder where
 
 import Data.Bits ((.&.), (.|.), shiftR, shiftL)
 
+import Numeric (showHex)
+
 import Data.Maybe (fromJust)
 import Data.Array (Array, array, accumArray, (!), bounds)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
@@ -265,6 +267,7 @@ decodeMemIp dec len ctx = do
         instr <- peekInstrBytes (ctxMem ctx) offset
         let (b1, _, _, _, _, _) = instr
             func = instrFunc $ (decInstr dec) ! b1
+        liftIO $ putStrLn (showHex b1 "")
         func instr ctx >>= decodeMemIp dec len
     where
         memReg = ctxReg ctx

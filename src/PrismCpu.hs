@@ -387,7 +387,7 @@ type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
 instrRegImm8 :: Func8To8 -> FuncRegImm8
 instrRegImm8 func ctx reg imm = do
     valReg <- readReg8 memReg reg
-    let (ctxNew, valRegNew) = func ctx valReg imm
+    let (ctxNew, valRegNew) = func ctx imm valReg
     writeReg8 (ctxReg ctx) reg valRegNew
     return ctxNew
     where
@@ -398,7 +398,7 @@ instrRegImm8 func ctx reg imm = do
 instrRegImm16 :: Func16To16 -> FuncRegImm16
 instrRegImm16 func ctx reg imm = do
     valReg <- readReg16 memReg reg
-    let (ctxNew, valRegNew) = func ctx valReg imm
+    let (ctxNew, valRegNew) = func ctx imm valReg
     writeReg16 (ctxReg ctx) reg valRegNew
     return ctxNew
     where
@@ -429,7 +429,7 @@ instrRegToReg16 func ctx reg1 reg2 = do
 instrMemImm8 :: Func8To8 -> FuncMemImm8
 instrMemImm8 func ctx mem imm = do
     valMem <- readMem8 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx valMem imm
+    let (ctxNew, valMemNew) = func ctx imm valMem
     writeMem8 memReg memMain regSeg mem valMemNew
     return ctxNew
     where
@@ -440,7 +440,7 @@ instrMemImm8 func ctx mem imm = do
 instrMemImm16 :: Func16To16 -> FuncMemImm16
 instrMemImm16 func ctx mem imm = do
     valMem <- readMem16 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx valMem imm
+    let (ctxNew, valMemNew) = func ctx imm valMem
     writeMem16 memReg memMain regSeg mem valMemNew
     return ctxNew
     where

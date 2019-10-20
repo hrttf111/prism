@@ -2,6 +2,7 @@ module TestCommon where
 
 import Prism
 import PrismCpu
+import PrismDecoder
 
 import Assembler
 
@@ -10,13 +11,44 @@ import Test.Hspec.Expectations
 
 import NeatInterpolation
 import Data.Text (Text)
+import qualified Data.ByteString as B
 
 import Control.Monad.Trans (MonadIO, liftIO)
 
 import Data.Word (Word8, Word16)
-import Foreign.Marshal.Array (allocaArray, callocArray)
+import Foreign.Marshal.Array (allocaArray, callocArray, pokeArray)
+import Foreign.Marshal.Alloc (callocBytes)
+import Foreign.Marshal.Utils (fillBytes)
 
 type CodeExecutor = (Text -> IO MemReg)
+
+data TestEnv = TestEnv {
+        assembleNative :: (Text -> IO B.ByteString),
+        executeNative :: (B.ByteString -> IO MemReg),
+        executePrism :: (B.ByteString -> IO Ctx)
+    }
+
+createTestEnv1 :: MonadIO m => PrismDecoder -> m TestEnv
+createTestEnv1 decoder = liftIO $ do
+    ptrReg <- callocBytes 64
+    ptrMem <- callocBytes 65000
+    asmTest <- makeAsmTest
+    ptrA <- callocArray 64
+    return $ TestEnv makeAsmStr (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
+    where
+        execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
+        execP ptrReg ptrMem decoder mainCode = do
+            let codeLen = B.length mainCode
+                ctx = Ctx (MemReg ptrReg) (MemMain ptrMem) clearFlags clearEFlags Nothing
+                array = B.unpack mainCode
+                f (MemMain p) = p
+                f1 (MemReg p) = p
+            fillBytes (f1 $ ctxReg ctx) 0 64
+            pokeArray (f $ ctxMem ctx) array
+            runPrism $ decodeMemIp decoder codeLen ctx
+
+createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
+createTestEnv2 instrList = createTestEnv1 $ makeDecoder instrList
 
 createTestEnv :: MonadIO m => m CodeExecutor
 createTestEnv = liftIO $ do
