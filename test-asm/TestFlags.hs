@@ -67,6 +67,16 @@ testFlagsCF execC =
             al `shouldEq` 255 $ memReg
             (flagCF flags) `shouldBe` True
             (flagOF flags) `shouldBe` False
+        it "CF set mul" $ do
+            memReg <- execC [text|
+                mov bl, 100
+                mov al, 10
+                mul bl
+            |]
+            (flags, _) <- readFlags memReg
+            ax `shouldEq` 1000 $ memReg
+            (flagCF flags) `shouldBe` True
+            (flagOF flags) `shouldBe` True
 
 testFlagsOF execC = 
     describe "Flags OF" $ do

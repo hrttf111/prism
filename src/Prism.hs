@@ -81,6 +81,8 @@ newtype PrismCtx m a = PrismCtx {
     runPrism :: m a
 } deriving (Monad, Applicative, Functor)
 
+type PrismM = PrismCtx IO Ctx
+
 instance MonadTrans PrismCtx where
     lift = PrismCtx
 

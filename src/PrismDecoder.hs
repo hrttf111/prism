@@ -9,6 +9,9 @@ import Data.Bits ((.&.), (.|.), shiftR, shiftL)
 import Data.Maybe (fromJust)
 import Data.Array (Array, array, accumArray, (!), bounds)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
+import Control.Monad (foldM)
+
+import Data.Either (fromRight)
 
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
@@ -98,18 +101,6 @@ decodeDemux commands instr@(_, b2, _, _, _, _) ctx =
 
 -------------------------------------------------------------------------------
 
-type FuncRegImm8 = Ctx -> Reg8 -> Imm8 -> PrismCtx IO Ctx
-type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
-
-type FuncRegImm16 = Ctx -> Reg16 -> Imm16 -> PrismCtx IO Ctx
-type FuncMemImm16 = Ctx -> Mem -> Imm16 -> PrismCtx IO Ctx
-
-type FuncRegReg8 = Ctx -> Reg8 -> Reg8 -> PrismCtx IO Ctx
-type FuncRegReg16 = Ctx -> Reg16 -> Reg16 -> PrismCtx IO Ctx
-
-type FuncMemReg8 = Ctx -> Mem -> Reg8 -> PrismCtx IO Ctx
-type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
-
 decodeAcc8 :: Reg8 -> FuncRegImm8 -> PrismInstrFunc
 decodeAcc8 reg freg (_, b2, _, _, _, _) ctx =
     freg ctx reg (b2 :: Imm8) >>= updateIP 2
@@ -119,6 +110,24 @@ decodeAcc16 reg freg (_, b2, b3, _, _, _) ctx =
     let imm16 = getImm16 b2 b3
         in
     freg ctx reg imm16 >>= updateIP 3
+
+decodeAccSeg :: RegSeg -> FuncSegImm16 -> PrismInstrFunc
+decodeAccSeg reg freg (_, b2, b3, _, _, _) ctx =
+    let imm16 = getImm16 b2 b3
+        in
+    freg ctx reg imm16 >>= updateIP 3
+
+decodeAccMem8 :: Reg8 -> FuncMemReg8 -> PrismInstrFunc
+decodeAccMem8 reg freg (_, b2, b3, _, _, _) ctx =
+    let mem = MemDirect $ getDisp16 b2 b3
+        in
+    freg ctx mem reg >>= updateIP 3
+
+decodeAccMem16 :: Reg16 -> FuncMemReg16 -> PrismInstrFunc
+decodeAccMem16 reg freg (_, b2, b3, _, _, _) ctx =
+    let mem = MemDirect $ getDisp16 b2 b3
+        in
+    freg ctx mem reg >>= updateIP 3
 
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 
@@ -285,3 +294,11 @@ pokeInstrBytes (MemMain ptr) offset instr = pokeTuple6 ptr offset instr
 
 peekInstrBytes :: MonadIO m => MemMain -> Int -> m InstrBytes
 peekInstrBytes (MemMain ptr) offset = peekTuple6 ptr offset
+
+makeDecoderList :: [PrismInstruction] -> PrismDecoder
+makeDecoderList instrList = fromRight emptyDecoder $ makeDecoder <$> mergedInstr
+    where
+        listResult = foldM (flip addInstrList) [] instrList
+        mergedInstr :: Either String [PrismInstruction]
+        mergedInstr = map (uncurry mergeInstruction) <$> listResult
+        emptyDecoder = makeDecoder []
