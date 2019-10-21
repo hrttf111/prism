@@ -64,6 +64,8 @@ transferInstrList = [
         makeInstructionS 0x89 Nothing (decodeRm16 movRegToReg16 movRegToMem16),
         makeInstructionS 0x8A Nothing (decodeRm8 movRegToReg8 movMemToReg8),
         makeInstructionS 0x8B Nothing (decodeRm16 movRegToReg16 movMemToReg16),
+        makeInstructionS 0x8C Nothing (decodeRmS16 movSegToReg16 movSegToMem16),
+        makeInstructionS 0x8E Nothing (decodeRmS16 movRegToSeg16 movMemToSeg16),
         makeInstructionS 0xA0 Nothing (decodeAccMem8 al movMemToReg8),
         makeInstructionS 0xA1 Nothing (decodeAccMem16 ax movMemToReg16),
         makeInstructionS 0xA2 Nothing (decodeAccMem8 al movRegToMem8),

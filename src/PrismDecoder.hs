@@ -249,6 +249,34 @@ decodeRm16 freg fmem (b1, b2, b3, b4, _, _) ctx =
             freg ctx reg2 reg >>= updateIP 2
 
 
+decodeRmS16 :: FuncSegReg16 -> FuncMemSeg16 -> PrismInstrFunc
+decodeRmS16 freg fmem (b1, b2, b3, b4, _, _) ctx =
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        reg = RegSeg $ shiftR (modrm .&. 0x38) 3
+        in
+    case mod of
+        0x00 ->
+            let mem = decodeMem rm 0
+                in
+            fmem ctx mem reg >>= updateIP 2
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem rm disp8
+                in
+            fmem ctx mem reg >>= updateIP 3
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem rm disp16
+                in
+            fmem ctx mem reg >>= updateIP 4
+        0x03 ->
+            let reg2 = Reg16 rm
+                in
+            freg ctx reg2 reg >>= updateIP 2
+
+
 decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
 decodeList _ ctx [] = return ctx
 decodeList dec ctx (x:xs) = do
