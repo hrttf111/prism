@@ -377,6 +377,8 @@ type FuncMemReg8 = Ctx -> Mem -> Reg8 -> PrismCtx IO Ctx
 type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
 
 type FuncSegImm16 = Ctx -> RegSeg -> Imm16 -> PrismM
+type FuncSegReg16 = Ctx -> Reg16 -> RegSeg -> PrismM
+type FuncMemSeg16 = Ctx -> Mem -> RegSeg -> PrismM
 
 -------------------------------------------------------------------------------
 
@@ -495,3 +497,56 @@ instrMemToReg16 func ctx mem reg = do
         memReg = ctxReg ctx
         memMain = ctxMem ctx
         regSeg = findRegSegData ctx
+
+instrSegImm16 :: Func16To16 -> FuncSegImm16
+instrSegImm16 func ctx regSeg imm = do
+    valSeg <- readSeg memReg regSeg
+    let (ctxNew, valSegNew) = func ctx imm valSeg
+    writeSeg memReg regSeg valSegNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+
+instrRegToSeg16 :: Func16To16 -> FuncSegReg16
+instrRegToSeg16 func ctx reg regSeg = do
+    valReg <- readReg16 memReg reg
+    valSeg <- readSeg memReg regSeg
+    let (ctxNew, valSegNew) = func ctx valReg valSeg
+    writeSeg memReg regSeg valSegNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+
+instrSegToReg16 :: Func16To16 -> FuncSegReg16
+instrSegToReg16 func ctx reg regSeg = do
+    valReg <- readReg16 memReg reg
+    valSeg <- readSeg memReg regSeg
+    let (ctxNew, valRegNew) = func ctx valSeg valReg
+    writeReg16 memReg reg valRegNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+
+instrMemToSeg16 :: Func16To16 -> FuncMemSeg16
+instrMemToSeg16 func ctx mem regSeg = do
+    valSeg <- readSeg memReg regSeg
+    valMem <- readMem16 memReg memMain regSegM mem
+    let (ctxNew, valSegNew) = func ctx valMem valSeg
+    writeSeg memReg regSeg valSegNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSegM = findRegSegData ctx
+
+instrSegToMem16 :: Func16To16 -> FuncMemSeg16
+instrSegToMem16 func ctx mem regSeg = do
+    valSeg <- readSeg memReg regSeg
+    valMem <- readMem16 memReg memMain regSegM mem
+    let (ctxNew, valMemNew) = func ctx valSeg valMem
+    writeMem16 memReg memMain regSeg mem valMemNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSegM = findRegSegData ctx

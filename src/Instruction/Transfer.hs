@@ -21,9 +21,19 @@ movRegImm16 :: Ctx -> Reg16 -> Imm16 -> PrismM
 movRegImm16 = instrRegImm16 mov16
 
 movSegImm16 :: Ctx -> RegSeg -> Imm16 -> PrismM
-movSegImm16 ctx reg imm = do
-    writeSeg (ctxReg ctx) reg imm
-    return ctx
+movSegImm16 = instrSegImm16 mov16
+
+movRegToSeg16 :: Ctx -> Reg16 -> RegSeg -> PrismM
+movRegToSeg16 = instrRegToSeg16 mov16
+
+movSegToReg16 :: Ctx -> Reg16 -> RegSeg -> PrismM
+movSegToReg16 = instrSegToReg16 mov16
+
+movMemToSeg16 :: Ctx -> Mem -> RegSeg -> PrismM 
+movMemToSeg16 = instrMemToSeg16 mov16
+
+movSegToMem16 :: Ctx -> Mem -> RegSeg -> PrismM
+movSegToMem16 = instrSegToMem16 mov16
 
 movRegToReg8 :: Ctx -> Reg8 -> Reg8 -> PrismM
 movRegToReg8 = instrRegToReg8 mov8
