@@ -103,6 +103,10 @@ decodeDemux commands instr@(_, b2, _, _, _, _) ctx =
 
 -------------------------------------------------------------------------------
 
+decodeReg16 :: Reg16 -> FuncReg16 -> PrismInstrFunc
+decodeReg16 reg freg _ ctx =
+    freg ctx reg >>= updateIP 1
+
 decodeAcc8 :: Reg8 -> FuncRegImm8 -> PrismInstrFunc
 decodeAcc8 reg freg (_, b2, _, _, _, _) ctx =
     freg ctx reg (b2 :: Imm8) >>= updateIP 2

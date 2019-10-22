@@ -227,6 +227,26 @@ writeMem16 memReg (MemMain mm) regSeg mem val = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ pokeByteOff mm offset val
 
+writeMemSp8 :: MonadIO m => MemReg -> MemMain -> Uint8 -> m () 
+writeMemSp8 memReg (MemMain mm) val = do
+    offset <- getMemReg2 memReg sp ss 0
+    liftIO $ pokeByteOff mm offset val
+
+writeMemSp16 :: MonadIO m => MemReg -> MemMain -> Uint16 -> m () 
+writeMemSp16 memReg (MemMain mm) val = do
+    offset <- getMemReg2 memReg sp ss 0
+    liftIO $ pokeByteOff mm offset val
+
+readMemSp8 :: MonadIO m => MemReg -> MemMain -> m Uint8
+readMemSp8 memReg (MemMain mm) = do
+    offset <- getMemReg2 memReg sp ss 0
+    liftIO $ peekByteOff mm offset
+
+readMemSp16 :: MonadIO m => MemReg -> MemMain -> m Uint16
+readMemSp16 memReg (MemMain mm) = do
+    offset <- getMemReg2 memReg sp ss 0
+    liftIO $ peekByteOff mm offset
+
 findRegSeg :: RegSeg -> Ctx -> RegSeg
 findRegSeg defaultRegSeg ctx = getRegSeg (ctxReplaceSeg ctx) 
     where
@@ -363,6 +383,9 @@ updateIP :: MonadIO m => Uint16 -> Ctx -> m Ctx
 updateIP val ctx = moveRegIP (ctxReg ctx) val >> return ctx
 
 -------------------------------------------------------------------------------
+
+type FuncReg8 = Ctx -> Reg8 -> PrismM
+type FuncReg16 = Ctx -> Reg16 -> PrismM
 
 type FuncRegImm8 = Ctx -> Reg8 -> Imm8 -> PrismM
 type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx

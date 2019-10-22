@@ -107,6 +107,67 @@ xchgMemReg16 ctx mem reg = do
 
 -------------------------------------------------------------------------------
 
+push8 :: Ctx -> Uint8 -> PrismM
+push8 ctx val = do
+    valSp <- readReg16 memReg sp
+    let valNewSp = valSp - 2
+    writeReg16 memReg sp valNewSp
+    writeMemSp8 memReg memMain val
+    return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+
+push16 :: Ctx -> Uint16 -> PrismM
+push16 ctx val = do
+    valSp <- readReg16 memReg sp
+    let valNewSp = valSp - 2
+    writeReg16 memReg sp valNewSp
+    writeMemSp16 memReg memMain val
+    return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+
+pop8 :: MonadIO m => Ctx -> m Uint8
+pop8 ctx = do
+    val <- readMemSp8 memReg memMain
+    valSp <- readReg16 memReg sp
+    let valNewSp = valSp + 2
+    writeReg16 memReg sp valNewSp
+    return val
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+
+pop16 :: MonadIO m => Ctx -> m Uint16
+pop16 ctx = do
+    val <- readMemSp16 memReg memMain
+    valSp <- readReg16 memReg sp
+    let valNewSp = valSp + 2
+    writeReg16 memReg sp valNewSp
+    return val 
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+
+pushReg16 :: Ctx -> Reg16 -> PrismM
+pushReg16 ctx reg = do
+    val <- readReg16 memReg reg
+    push16 ctx val
+    where
+        memReg = ctxReg ctx
+
+popReg16 :: Ctx -> Reg16 -> PrismM
+popReg16 ctx reg = do
+    val <- pop16 ctx
+    writeReg16 memReg reg val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+-------------------------------------------------------------------------------
+
 transferInstrList = [
         --MOV
         makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
@@ -147,6 +208,22 @@ transferInstrList = [
         makeInstructionS 0x94 Nothing (decodeAccReg16 ax sp xchgRegReg16),
         makeInstructionS 0x95 Nothing (decodeAccReg16 ax bp xchgRegReg16),
         makeInstructionS 0x96 Nothing (decodeAccReg16 ax si xchgRegReg16),
-        makeInstructionS 0x97 Nothing (decodeAccReg16 ax di xchgRegReg16)
+        makeInstructionS 0x97 Nothing (decodeAccReg16 ax di xchgRegReg16),
+        --PUSH/POP
+        makeInstructionS 0x50 Nothing (decodeReg16 ax pushReg16),
+        makeInstructionS 0x51 Nothing (decodeReg16 cx pushReg16),
+        makeInstructionS 0x52 Nothing (decodeReg16 dx pushReg16),
+        makeInstructionS 0x53 Nothing (decodeReg16 bx pushReg16),
+        makeInstructionS 0x54 Nothing (decodeReg16 bp pushReg16),
+        makeInstructionS 0x55 Nothing (decodeReg16 sp pushReg16),
+        makeInstructionS 0x56 Nothing (decodeReg16 si pushReg16),
+        makeInstructionS 0x57 Nothing (decodeReg16 di pushReg16),
+        makeInstructionS 0x58 Nothing (decodeReg16 ax popReg16),
+        makeInstructionS 0x59 Nothing (decodeReg16 cx popReg16),
+        makeInstructionS 0x5A Nothing (decodeReg16 dx popReg16),
+        makeInstructionS 0x5B Nothing (decodeReg16 bx popReg16),
+        makeInstructionS 0x5C Nothing (decodeReg16 bp popReg16),
+        makeInstructionS 0x5D Nothing (decodeReg16 sp popReg16),
+        makeInstructionS 0x5E Nothing (decodeReg16 si popReg16),
+        makeInstructionS 0x5F Nothing (decodeReg16 di popReg16)
     ]
-

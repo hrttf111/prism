@@ -45,7 +45,11 @@ createTestEnv1 decoder = liftIO $ do
                 f1 (MemReg p) = p
             fillBytes (f1 $ ctxReg ctx) 0 64
             pokeArray (f $ ctxMem ctx) array
-            runPrism $ decodeMemIp decoder codeLen ctx
+            runPrism $ execPrism decoder codeLen ctx
+        execPrism decoder codeLen ctx = do
+            writeSeg (ctxReg ctx) ss 1000
+            writeReg16 (ctxReg ctx) sp 640
+            decodeMemIp decoder codeLen ctx
 
 createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
 createTestEnv2 instrList = createTestEnv1 $ makeDecoder instrList

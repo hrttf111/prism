@@ -82,3 +82,25 @@ testMov env =
             bx `shouldEqReg` memRegN $ memRegP
             cx `shouldEqReg` memRegN $ memRegP
             dx `shouldEqReg` memRegN $ memRegP
+        it "PUSH Reg16" $ do
+            code <- (assembleNative env) $ [text|
+                mov ax, 0x1001
+                mov bx, 0x2002
+                mov cx, 0x3003
+                mov dx, 0x4004
+                push ax
+                push bx
+                push cx
+                push dx
+                pop ax
+                pop bx
+                pop cx
+                pop dx
+            |]
+            memRegN <- (executeNative env) code
+            ctx <- (executePrism env) code
+            let memRegP = ctxReg ctx
+            ax `shouldEqReg` memRegN $ memRegP
+            bx `shouldEqReg` memRegN $ memRegP
+            cx `shouldEqReg` memRegN $ memRegP
+            dx `shouldEqReg` memRegN $ memRegP
