@@ -390,23 +390,19 @@ instrRegImm8 :: Func8To8 -> FuncRegImm8
 instrRegImm8 func ctx reg imm = do
     valReg <- readReg8 memReg reg
     let (ctxNew, valRegNew) = func ctx imm valReg
-    writeReg8 (ctxReg ctx) reg valRegNew
+    writeReg8 memReg reg valRegNew
     return ctxNew
     where
         memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
 
 instrRegImm16 :: Func16To16 -> FuncRegImm16
 instrRegImm16 func ctx reg imm = do
     valReg <- readReg16 memReg reg
     let (ctxNew, valRegNew) = func ctx imm valReg
-    writeReg16 (ctxReg ctx) reg valRegNew
+    writeReg16 memReg reg valRegNew
     return ctxNew
     where
         memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
 
 instrRegToReg8 :: Func8To8 -> FuncRegReg8
 instrRegToReg8 func ctx reg1 reg2 = do

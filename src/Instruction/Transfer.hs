@@ -59,7 +59,56 @@ movMemImm8 = instrMemImm8 mov8
 movMemImm16 :: Ctx -> Mem -> Imm16 -> PrismM
 movMemImm16 = instrMemImm16 mov16
 
+-------------------------------------------------------------------------------
+
+xchgRegReg8 :: FuncRegReg8
+xchgRegReg8 ctx reg1 reg2 = do
+    valReg1 <- readReg8 memReg reg1
+    valReg2 <- readReg8 memReg reg2
+    writeReg8 memReg reg1 valReg2
+    writeReg8 memReg reg2 valReg1
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+xchgRegReg16 :: FuncRegReg16
+xchgRegReg16 ctx reg1 reg2 = do
+    valReg1 <- readReg16 memReg reg1
+    valReg2 <- readReg16 memReg reg2
+    writeReg16 memReg reg1 valReg2
+    writeReg16 memReg reg2 valReg1
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+xchgMemReg8 :: FuncMemReg8
+xchgMemReg8 ctx mem reg = do
+    valReg <- readReg8 memReg reg
+    valMem <- readMem8 memReg memMain regSeg mem
+    writeMem8 memReg memMain regSeg mem valReg
+    writeReg8 memReg reg valMem
+    return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+xchgMemReg16 :: FuncMemReg16
+xchgMemReg16 ctx mem reg = do
+    valReg <- readReg16 memReg reg
+    valMem <- readMem16 memReg memMain regSeg mem
+    writeMem16 memReg memMain regSeg mem valReg
+    writeReg16 memReg reg valMem
+    return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+-------------------------------------------------------------------------------
+
 transferInstrList = [
+        --MOV
         makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
         makeInstructionS 0x89 Nothing (decodeRm16 movRegToReg16 movRegToMem16),
         makeInstructionS 0x8A Nothing (decodeRm8 movRegToReg8 movMemToReg8),
@@ -87,7 +136,17 @@ transferInstrList = [
         makeInstructionS 0xBE Nothing (decodeAcc16 si movRegImm16),
         makeInstructionS 0xBF Nothing (decodeAcc16 di movRegImm16),
         makeInstructionS 0xC6 (Just 0) (decodeN8Imm8 movRegImm8 movMemImm8),
-        makeInstructionS 0xC7 (Just 0) (decodeN16Imm movRegImm16 movMemImm16)
+        makeInstructionS 0xC7 (Just 0) (decodeN16Imm movRegImm16 movMemImm16),
+        --XCHG
+        makeInstructionS 0x86 Nothing (decodeRm8 xchgRegReg8 xchgMemReg8),
+        makeInstructionS 0x87 Nothing (decodeRm16 xchgRegReg16 xchgMemReg16),
+        --makeInstructionS 0x90 Nothing (decodeAccReg16 ax ax xchgRegReg16), NOP
+        makeInstructionS 0x91 Nothing (decodeAccReg16 ax cx xchgRegReg16),
+        makeInstructionS 0x92 Nothing (decodeAccReg16 ax dx xchgRegReg16),
+        makeInstructionS 0x93 Nothing (decodeAccReg16 ax bx xchgRegReg16),
+        makeInstructionS 0x94 Nothing (decodeAccReg16 ax sp xchgRegReg16),
+        makeInstructionS 0x95 Nothing (decodeAccReg16 ax bp xchgRegReg16),
+        makeInstructionS 0x96 Nothing (decodeAccReg16 ax si xchgRegReg16),
+        makeInstructionS 0x97 Nothing (decodeAccReg16 ax di xchgRegReg16)
     ]
 
--------------------------------------------------------------------------------

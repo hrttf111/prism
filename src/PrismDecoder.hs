@@ -113,6 +113,14 @@ decodeAcc16 reg freg (_, b2, b3, _, _, _) ctx =
         in
     freg ctx reg imm16 >>= updateIP 3
 
+decodeAccReg8 :: Reg8 -> Reg8 -> FuncRegReg8 -> PrismInstrFunc
+decodeAccReg8 reg1 reg2 freg _ ctx =
+    freg ctx reg1 reg2 >>= updateIP 1 
+
+decodeAccReg16 :: Reg16 -> Reg16 -> FuncRegReg16 -> PrismInstrFunc
+decodeAccReg16 reg1 reg2 freg _ ctx =
+    freg ctx reg1 reg2 >>= updateIP 1 
+
 decodeAccSeg :: RegSeg -> FuncSegImm16 -> PrismInstrFunc
 decodeAccSeg reg freg (_, b2, b3, _, _, _) ctx =
     let imm16 = getImm16 b2 b3
