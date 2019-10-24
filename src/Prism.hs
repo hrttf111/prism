@@ -20,6 +20,7 @@ type Uint16 = Word16
 
 type Disp = Word16
 
+type EA = Uint16
 type MemOffset = Int
 
 newtype Reg8 = Reg8 Word8

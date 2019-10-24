@@ -175,6 +175,28 @@ printRegs memReg = do
 
 -------------------------------------------------------------------------------
 
+getEA3 :: MonadIO m => MemReg -> Reg16 -> Reg16 -> Disp -> m EA
+getEA3 memReg reg1 reg2 disp = do
+    valR1 <- fromIntegral <$> readReg16 memReg reg1
+    valR2 <- fromIntegral <$> readReg16 memReg reg2
+    return $ valR1 + valR2 + disp
+
+getEA2 :: MonadIO m => MemReg -> Reg16 -> Disp -> m EA
+getEA2 memReg reg1 disp = do
+    valR1 <- readReg16 memReg reg1
+    return $ valR1 + disp
+
+getEA :: MonadIO m => MemReg -> Mem -> m EA
+getEA memReg (MemBxSi disp) = getEA3 memReg bx si disp
+getEA memReg (MemBxDi disp) = getEA3 memReg bx di disp
+getEA memReg (MemBpSi disp) = getEA3 memReg bp si disp
+getEA memReg (MemBpDi disp) = getEA3 memReg bp di disp
+getEA memReg (MemSi disp) = getEA2 memReg si disp
+getEA memReg (MemDi disp) = getEA2 memReg di disp
+getEA memReg (MemBp disp) = getEA2 memReg bp disp
+getEA memReg (MemBx disp) = getEA2 memReg bx disp
+getEA memReg (MemDirect disp) = return disp
+
 getMemReg3 :: MonadIO m => MemReg -> Reg16 -> Reg16 -> RegSeg -> Disp -> m MemOffset
 getMemReg3 memReg reg1 reg2 regSeg disp = do
     valR1 <- fromIntegral <$> readReg16 memReg reg1
@@ -196,6 +218,7 @@ getMemReg1 memReg regSeg disp = do
     let disp32 = fromIntegral disp :: MemOffset
     return $ (shiftL valSeg 4) + disp32
 
+--todo: EA for BP-based addresses is SS, not DS
 getMemOffset :: MonadIO m => MemReg -> RegSeg -> Mem -> m MemOffset
 getMemOffset memReg regSeg (MemBxSi disp) = getMemReg3 memReg bx si regSeg disp
 getMemOffset memReg regSeg (MemBxDi disp) = getMemReg3 memReg bx di regSeg disp
@@ -407,6 +430,9 @@ type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
 type FuncSegImm16 = Ctx -> RegSeg -> Imm16 -> PrismM
 type FuncSegReg16 = Ctx -> Reg16 -> RegSeg -> PrismM
 type FuncMemSeg16 = Ctx -> Mem -> RegSeg -> PrismM
+
+emptyRegReg :: Ctx -> a -> a -> PrismM
+emptyRegReg ctx _ _ = return ctx
 
 -------------------------------------------------------------------------------
 

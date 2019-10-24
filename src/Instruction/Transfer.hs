@@ -1,6 +1,7 @@
 module Instruction.Transfer where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
+import Data.Bits (shiftR)
 
 import Prism
 import PrismDecoder
@@ -180,6 +181,36 @@ popSeg regSeg ctx = do
 
 -------------------------------------------------------------------------------
 
+lea16 :: FuncMemReg16
+lea16 ctx mem reg = do
+    offset <- getEA memReg mem
+    writeReg16 memReg reg offset
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+-------------------------------------------------------------------------------
+
+lxs16 :: RegSeg -> FuncMemReg16
+lxs16 regSeg1 ctx mem reg = do
+    ptr <- getMemOffset memReg regSeg mem
+    let segVal = fromIntegral $ shiftR ptr 16
+        regVal = fromIntegral ptr
+    writeReg16 memReg reg regVal
+    writeSeg memReg regSeg1 segVal
+    return ctx
+    where
+        memReg = ctxReg ctx
+        regSeg = findRegSegData ctx
+
+lds16 :: FuncMemReg16
+lds16 = lxs16 ds
+
+les16 :: FuncMemReg16
+les16 = lxs16 es
+
+-------------------------------------------------------------------------------
+
 transferInstrList = [
         --MOV
         makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
@@ -246,5 +277,11 @@ transferInstrList = [
         makeInstructionS 0x5E Nothing (decodeReg16 si popReg16),
         makeInstructionS 0x5F Nothing (decodeReg16 di popReg16),
         makeInstructionS 0x8F (Just 0) (decodeN16 popReg16 popMem),
-        makeInstructionS 0xFF (Just 6) (decodeN16 pushReg16 pushMem)
+        makeInstructionS 0xFF (Just 6) (decodeN16 pushReg16 pushMem),
+        --LEA
+        makeInstructionS 0x8D Nothing (decodeRm16 emptyRegReg lea16),
+        --LES
+        makeInstructionS 0xC4 Nothing (decodeRm16 emptyRegReg les16),
+        --LDS
+        makeInstructionS 0xC5 Nothing (decodeRm16 emptyRegReg lds16)
     ]
