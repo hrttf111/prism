@@ -103,6 +103,10 @@ decodeDemux commands instr@(_, b2, _, _, _, _) ctx =
 
 -------------------------------------------------------------------------------
 
+decodeImplicit :: FuncImplicit -> PrismInstrFunc
+decodeImplicit freg _ ctx =
+    freg ctx >>= updateIP 1
+
 decodeReg16 :: Reg16 -> FuncReg16 -> PrismInstrFunc
 decodeReg16 reg freg _ ctx =
     freg ctx reg >>= updateIP 1
@@ -203,6 +207,33 @@ decodeN16Imm freg fmem (b1, b2, b3, b4, b5, b6) ctx =
                 imm16 = getImm16 b3 b4
                 in
             freg ctx reg imm16 >>= updateIP 4
+
+
+decodeN16 :: FuncReg16 -> FuncMem -> PrismInstrFunc
+decodeN16 freg fmem (b1, b2, b3, b4, b5, b6) ctx =
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        in
+    case mod of
+        0x00 ->
+            let mem = decodeMem rm 0
+                in
+            fmem ctx mem >>= updateIP 2
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem rm disp8
+                in
+            fmem ctx mem >>= updateIP 3
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem rm disp16
+                in
+            fmem ctx mem >>= updateIP 4
+        0x03 ->
+            let reg = Reg16 rm
+                in
+            freg ctx reg >>= updateIP 2
 
 
 decodeRm8 :: FuncRegReg8 -> FuncMemReg8 -> PrismInstrFunc

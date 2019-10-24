@@ -107,17 +107,6 @@ xchgMemReg16 ctx mem reg = do
 
 -------------------------------------------------------------------------------
 
-push8 :: Ctx -> Uint8 -> PrismM
-push8 ctx val = do
-    valSp <- readReg16 memReg sp
-    let valNewSp = valSp - 2
-    writeReg16 memReg sp valNewSp
-    writeMemSp8 memReg memMain val
-    return ctx
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-
 push16 :: Ctx -> Uint16 -> PrismM
 push16 ctx val = do
     valSp <- readReg16 memReg sp
@@ -125,17 +114,6 @@ push16 ctx val = do
     writeReg16 memReg sp valNewSp
     writeMemSp16 memReg memMain val
     return ctx
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-
-pop8 :: MonadIO m => Ctx -> m Uint8
-pop8 ctx = do
-    val <- readMemSp8 memReg memMain
-    valSp <- readReg16 memReg sp
-    let valNewSp = valSp + 2
-    writeReg16 memReg sp valNewSp
-    return val
     where
         memReg = ctxReg ctx
         memMain = ctxMem ctx
@@ -162,6 +140,40 @@ popReg16 :: Ctx -> Reg16 -> PrismM
 popReg16 ctx reg = do
     val <- pop16 ctx
     writeReg16 memReg reg val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+pushMem :: Ctx -> Mem -> PrismM
+pushMem ctx mem = do
+    val <- readMem16 memReg memMain regSeg mem
+    push16 ctx val
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+popMem :: Ctx -> Mem -> PrismM
+popMem ctx mem = do
+    val <- pop16 ctx
+    writeMem16 memReg memMain regSeg mem val
+    return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+pushSeg :: RegSeg -> Ctx -> PrismM
+pushSeg regSeg ctx = do
+    val <- readSeg memReg regSeg
+    push16 ctx val
+    where
+        memReg = ctxReg ctx
+
+popSeg :: RegSeg -> Ctx -> PrismM
+popSeg regSeg ctx = do
+    val <- pop16 ctx
+    writeSeg memReg regSeg val
     return ctx
     where
         memReg = ctxReg ctx
@@ -210,6 +222,13 @@ transferInstrList = [
         makeInstructionS 0x96 Nothing (decodeAccReg16 ax si xchgRegReg16),
         makeInstructionS 0x97 Nothing (decodeAccReg16 ax di xchgRegReg16),
         --PUSH/POP
+        makeInstructionS 0x06 Nothing (decodeImplicit $ pushSeg es),
+        makeInstructionS 0x07 Nothing (decodeImplicit $ popSeg es),
+        makeInstructionS 0x0E Nothing (decodeImplicit $ pushSeg cs),
+        makeInstructionS 0x16 Nothing (decodeImplicit $ pushSeg ss),
+        makeInstructionS 0x17 Nothing (decodeImplicit $ popSeg ss),
+        makeInstructionS 0x1E Nothing (decodeImplicit $ pushSeg ds),
+        makeInstructionS 0x1F Nothing (decodeImplicit $ popSeg ds),
         makeInstructionS 0x50 Nothing (decodeReg16 ax pushReg16),
         makeInstructionS 0x51 Nothing (decodeReg16 cx pushReg16),
         makeInstructionS 0x52 Nothing (decodeReg16 dx pushReg16),
@@ -225,5 +244,7 @@ transferInstrList = [
         makeInstructionS 0x5C Nothing (decodeReg16 bp popReg16),
         makeInstructionS 0x5D Nothing (decodeReg16 sp popReg16),
         makeInstructionS 0x5E Nothing (decodeReg16 si popReg16),
-        makeInstructionS 0x5F Nothing (decodeReg16 di popReg16)
+        makeInstructionS 0x5F Nothing (decodeReg16 di popReg16),
+        makeInstructionS 0x8F (Just 0) (decodeN16 popReg16 popMem),
+        makeInstructionS 0xFF (Just 6) (decodeN16 pushReg16 pushMem)
     ]
