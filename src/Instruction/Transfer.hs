@@ -243,6 +243,20 @@ sahf ctx = do
 
 -------------------------------------------------------------------------------
 
+xlat :: FuncImplicit
+xlat ctx = do
+    val <- readReg8 memReg al
+    let disp = fromIntegral val :: Disp
+    val1 <- readMem8 memReg memMain regSeg (MemBx disp)
+    writeReg8 memReg al val1
+    return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+-------------------------------------------------------------------------------
+
 transferInstrList = [
         --MOV
         makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
@@ -321,5 +335,7 @@ transferInstrList = [
         makeInstructionS 0x9D Nothing (decodeImplicit popf),
         --LAHF/SAHF
         makeInstructionS 0x9E Nothing (decodeImplicit sahf),
-        makeInstructionS 0x9F Nothing (decodeImplicit lahf)
+        makeInstructionS 0x9F Nothing (decodeImplicit lahf),
+        --XLAT
+        makeInstructionS 0xD7 Nothing (decodeImplicit xlat)
     ]
