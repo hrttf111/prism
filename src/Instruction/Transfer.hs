@@ -211,6 +211,38 @@ les16 = lxs16 es
 
 -------------------------------------------------------------------------------
 
+pushf :: FuncImplicit
+pushf ctx = push16 ctx val
+    where
+        val = flagsToVal (ctxFlags ctx) $ eflagsToVal (ctxEFlags ctx) 0
+
+popf :: FuncImplicit
+popf ctx = do
+    val <- pop16 ctx
+    let flags = valToFlags val
+        eflags = valToEFlags val
+    return $ ctx { ctxFlags = flags, ctxEFlags = eflags } 
+
+lahf :: FuncImplicit
+lahf ctx = do
+    writeReg8 memReg ah val
+    return ctx
+    where
+        val = (fromIntegral $ flagsToVal (ctxFlags ctx) 0) :: Uint8
+        memReg = ctxReg ctx
+
+sahf :: FuncImplicit
+sahf ctx = do
+    val <- readReg8 memReg ah
+    let flags_ = valToFlags $ (fromIntegral val :: Uint16)
+        of_ = flagOF $ ctxFlags ctx
+        flags = flags_ { flagOF = of_ }
+    return $ ctx { ctxFlags = flags }
+    where
+        memReg = ctxReg ctx
+
+-------------------------------------------------------------------------------
+
 transferInstrList = [
         --MOV
         makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
@@ -283,5 +315,11 @@ transferInstrList = [
         --LES
         makeInstructionS 0xC4 Nothing (decodeRm16 emptyRegReg les16),
         --LDS
-        makeInstructionS 0xC5 Nothing (decodeRm16 emptyRegReg lds16)
+        makeInstructionS 0xC5 Nothing (decodeRm16 emptyRegReg lds16),
+        --PUSHF/POPF
+        makeInstructionS 0x9C Nothing (decodeImplicit pushf),
+        makeInstructionS 0x9D Nothing (decodeImplicit popf),
+        --LAHF/SAHF
+        makeInstructionS 0x9E Nothing (decodeImplicit sahf),
+        makeInstructionS 0x9F Nothing (decodeImplicit lahf)
     ]
