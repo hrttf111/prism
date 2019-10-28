@@ -257,6 +257,37 @@ xlat ctx = do
 
 -------------------------------------------------------------------------------
 
+portIn8 :: MonadIO m => Ctx -> Uint16 -> m Uint8
+portIn8 ctx portNum =
+    --todo
+    return 0
+
+portIn16 :: MonadIO m => Ctx -> Uint16 -> m Uint16
+portIn16 ctx portNum =
+    --todo
+    return 0
+
+portOut8 :: MonadIO m => Ctx -> Uint16 -> Uint8 -> m ()
+portOut8 ctx portNum val =
+    --todo
+    return ()
+
+portOut16 :: MonadIO m => Ctx -> Uint16 -> Uint16 -> m ()
+portOut16 ctx portNum val =
+    --todo
+    return ()
+
+portInAlDx :: FuncImplicit
+portInAlDx ctx = do
+    portNum <- readReg16 memReg dx
+    val <- portIn8 ctx portNum
+    writeReg8 memReg al val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+-------------------------------------------------------------------------------
+
 transferInstrList = [
         --MOV
         makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
