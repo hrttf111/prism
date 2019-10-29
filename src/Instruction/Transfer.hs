@@ -311,7 +311,6 @@ portInAxImm ctx portNum = do
     where
         memReg = ctxReg ctx
 
---
 portOutAlDx :: FuncImplicit
 portOutAlDx ctx = do
     portNum <- readReg16 memReg dx

@@ -24,6 +24,7 @@ type CodeExecutor = (Text -> IO MemReg)
 
 data TestEnv = TestEnv {
         assembleNative :: (Text -> IO B.ByteString),
+        assembleNative16 :: (Text -> IO B.ByteString),
         executeNative :: (B.ByteString -> IO MemReg),
         executePrism :: (B.ByteString -> IO Ctx)
     }
@@ -34,7 +35,7 @@ createTestEnv1 decoder = liftIO $ do
     ptrMem <- callocBytes 65000
     asmTest <- makeAsmTest
     ptrA <- callocArray 64
-    return $ TestEnv makeAsmStr (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
+    return $ TestEnv makeAsmStr makeAsmStr16 (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
     where
         execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
         execP ptrReg ptrMem decoder mainCode = do

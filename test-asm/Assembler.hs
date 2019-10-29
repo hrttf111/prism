@@ -5,6 +5,7 @@ module Assembler
       AsmTest,
       makeAsm,
       makeAsmStr,
+      makeAsmStr16,
       makeAsmTest,
       execApp,
       execCode
@@ -119,9 +120,12 @@ makeAsmTest = do
 -------------------------------------------------------------------------------
 
 makeAsmStr :: Text -> IO B.ByteString
-makeAsmStr text = makeAsm $  encodeUtf8 (prefix `append` text)
+makeAsmStr text = makeAsm $ encodeUtf8 (prefix `append` text)
     where
         prefix = pack "BITS 64\n"
+
+makeAsmStr16 :: Text -> IO B.ByteString
+makeAsmStr16 text = makeAsm $ encodeUtf8 text
 
 -------------------------------------------------------------------------------
 

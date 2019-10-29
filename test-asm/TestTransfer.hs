@@ -104,13 +104,11 @@ testMov env =
             bx `shouldEqReg` memRegN $ memRegP
             cx `shouldEqReg` memRegN $ memRegP
             dx `shouldEqReg` memRegN $ memRegP
-        {-it "Test LEA" $ do
-            code <- (assembleNative env) $ [text|
+        it "Test LEA" $ do
+            code <- (assembleNative16 env) $ [text|
                 mov bx, 0x2002
                 lea ax, [bx + 120]
             |]
-            memRegN <- (executeNative env) code
             ctx <- (executePrism env) code
             let memRegP = ctxReg ctx
-            ax `shouldEqReg` memRegN $ memRegP
-            -}
+            ax `shouldEq` (0x2002 + 120) $ memRegP

@@ -10,113 +10,126 @@ import TestCommon
 
 import NeatInterpolation
 
-testFlagsZF execC = 
+testFlagsZF env = 
     describe "Flags ZF" $ do
         it "ZF set" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov ax, 0
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagZF flags) `shouldBe` True
         it "ZF cleared" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, 0
                 add al, 1
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagZF flags) `shouldBe` False
 
-testFlagsCF execC = 
+testFlagsCF env = 
     describe "Flags CF" $ do
         it "CF cleared" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, 10
                 add al, 245
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagCF flags) `shouldBe` False
         it "CF cleared sub" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, 0x80
                 sub al, 1
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagCF flags) `shouldBe` False
-            al `shouldEq` 127 $ memReg
+            al `shouldEq` 127 $ memRegN
         it "CF set" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, 1
                 add al, 255
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagCF flags) `shouldBe` True
         it "CF set negative" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, 127
                 add al, -120
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagCF flags) `shouldBe` True
             (flagOF flags) `shouldBe` False
         it "CF set sub" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, 1
                 sub al, 2
             |]
-            (flags, _) <- readFlags memReg
-            al `shouldEq` 255 $ memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
+            al `shouldEq` 255 $ memRegN
             (flagCF flags) `shouldBe` True
             (flagOF flags) `shouldBe` False
         it "CF set mul" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov bl, 100
                 mov al, 10
                 mul bl
             |]
-            (flags, _) <- readFlags memReg
-            ax `shouldEq` 1000 $ memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
+            ax `shouldEq` 1000 $ memRegN
             (flagCF flags) `shouldBe` True
             (flagOF flags) `shouldBe` True
 
-testFlagsOF execC = 
+testFlagsOF env = 
     describe "Flags OF" $ do
         it "OF cleared" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, -127
                 add al, 255
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True
         it "OF set when ADD" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, -127
                 add al, 127
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True
         it "OF set when ADD negative" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, -127
                 add al, -120
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` True
             (flagCF flags) `shouldBe` True
         it "OF set when SUB" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, -127
                 sub al, 120
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` True
             (flagCF flags) `shouldBe` False
         it "OF set when SUB negative" $ do
-            memReg <- execC [text|
+            code <- (assembleNative env) [text|
                 mov al, -127
                 sub al, -120
             |]
-            (flags, _) <- readFlags memReg
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True
