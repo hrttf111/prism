@@ -286,6 +286,66 @@ portInAlDx ctx = do
     where
         memReg = ctxReg ctx
 
+portInAlImm :: FuncImm8
+portInAlImm ctx portNum = do
+    val <- portIn8 ctx $ fromIntegral portNum
+    writeReg8 memReg al val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+portInAxDx :: FuncImplicit
+portInAxDx ctx = do
+    portNum <- readReg16 memReg dx
+    val <- portIn16 ctx portNum
+    writeReg16 memReg ax val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+portInAxImm :: FuncImm8
+portInAxImm ctx portNum = do
+    val <- portIn16 ctx $ fromIntegral portNum
+    writeReg16 memReg ax val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+--
+portOutAlDx :: FuncImplicit
+portOutAlDx ctx = do
+    portNum <- readReg16 memReg dx
+    val <- readReg8 memReg al
+    portOut8 ctx portNum val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+portOutAlImm :: FuncImm8
+portOutAlImm ctx portNum = do
+    val <- readReg8 memReg al
+    portOut8 ctx (fromIntegral portNum) val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+portOutAxDx :: FuncImplicit
+portOutAxDx ctx = do
+    portNum <- readReg16 memReg dx
+    val <- readReg16 memReg ax
+    portOut16 ctx portNum val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+portOutAxImm :: FuncImm8
+portOutAxImm ctx portNum = do
+    val <- readReg16 memReg ax
+    portOut16 ctx (fromIntegral portNum) val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
 -------------------------------------------------------------------------------
 
 transferInstrList = [
@@ -368,5 +428,14 @@ transferInstrList = [
         makeInstructionS 0x9E Nothing (decodeImplicit sahf),
         makeInstructionS 0x9F Nothing (decodeImplicit lahf),
         --XLAT
-        makeInstructionS 0xD7 Nothing (decodeImplicit xlat)
+        makeInstructionS 0xD7 Nothing (decodeImplicit xlat),
+        --IN/OUT
+        makeInstructionS 0xE4 Nothing (decodeImm8 portInAlImm),
+        makeInstructionS 0xE5 Nothing (decodeImm8 portInAxImm),
+        makeInstructionS 0xE6 Nothing (decodeImm8 portOutAlImm),
+        makeInstructionS 0xE7 Nothing (decodeImm8 portOutAxImm),
+        makeInstructionS 0xEC Nothing (decodeImplicit portInAlDx),
+        makeInstructionS 0xED Nothing (decodeImplicit portInAxDx),
+        makeInstructionS 0xEE Nothing (decodeImplicit portOutAlDx),
+        makeInstructionS 0xEF Nothing (decodeImplicit portOutAxDx)
     ]

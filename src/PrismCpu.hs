@@ -408,6 +408,7 @@ updateIP val ctx = moveRegIP (ctxReg ctx) val >> return ctx
 -------------------------------------------------------------------------------
 
 type FuncImplicit = Ctx -> PrismM
+type FuncImm8 = Ctx -> Imm8 -> PrismM
 
 type FuncReg8 = Ctx -> Reg8 -> PrismM
 type FuncReg16 = Ctx -> Reg16 -> PrismM
