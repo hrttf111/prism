@@ -38,6 +38,7 @@ testFlagsCF env =
             memRegN <- (executeNative env) code
             (flags, _) <- readFlags memRegN
             (flagCF flags) `shouldBe` False
+            (flagOF flags) `shouldBe` False
         it "CF cleared sub" $ do
             code <- (assembleNative env) [text|
                 mov al, 0x80
@@ -46,6 +47,7 @@ testFlagsCF env =
             memRegN <- (executeNative env) code
             (flags, _) <- readFlags memRegN
             (flagCF flags) `shouldBe` False
+            (flagOF flags) `shouldBe` True
             al `shouldEq` 127 $ memRegN
         it "CF set" $ do
             code <- (assembleNative env) [text|
