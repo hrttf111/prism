@@ -97,6 +97,7 @@ testFlagsOF env =
             |]
             memRegN <- (executeNative env) code
             (flags, _) <- readFlags memRegN
+            al `shouldEq` (-128) $ memRegN
             (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True
         it "OF set when ADD" $ do
@@ -108,6 +109,16 @@ testFlagsOF env =
             (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True
+        it "OF set when ADD -2" $ do
+            code <- (assembleNative env) [text|
+                mov al, -2
+                add al, -2
+            |]
+            memRegN <- (executeNative env) code
+            (flags, _) <- readFlags memRegN
+            al `shouldEq` 0xFC $ memRegN
+            (flagOF flags) `shouldBe` False
+            (flagCF flags) `shouldBe` True
         it "OF set when ADD negative" $ do
             code <- (assembleNative env) [text|
                 mov al, -127
@@ -115,6 +126,7 @@ testFlagsOF env =
             |]
             memRegN <- (executeNative env) code
             (flags, _) <- readFlags memRegN
+            al `shouldEq` 9 $ memRegN
             (flagOF flags) `shouldBe` True
             (flagCF flags) `shouldBe` True
         it "OF set when SUB" $ do

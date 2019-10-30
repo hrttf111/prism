@@ -53,3 +53,12 @@ testFlagsAF =
             (calcAFBorrow8 0x09 0x05) `shouldBe` False -- 9 - 4 = 5
             (calcAFBorrow8 0x01 0x01) `shouldBe` False -- 1 - 0 = 1
             (calcAFBorrow8 0x01 0x08) `shouldBe` True -- 1 - 9 = 8
+
+testFlagsOF =
+    describe "Flags OF" $ do
+        it "OF add8" $ do
+            (calcOFAdd8 1 1 2) `shouldBe` False
+            (calcOFAdd8 127 1 (-128)) `shouldBe` True
+            (calcOFAdd8 (-2) (-2) (-4)) `shouldBe` False
+            (calcOFAdd8 (-127) (-1) (-128)) `shouldBe` False
+            (calcOFAdd8 (-127) (-120) 9) `shouldBe` True

@@ -10,3 +10,4 @@ main = hspec $ do
     testFlagsZF
     testFlagsPF
     testFlagsAF
+    testFlagsOF

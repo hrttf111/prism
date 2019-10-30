@@ -4,6 +4,7 @@
 module PrismCpu where
 
 import Data.Bits ((.&.), (.|.), shiftR, shiftL, popCount, testBit)
+import Data.Int
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Numeric (showHex)
@@ -339,8 +340,17 @@ calcZF8 = (==0)
 calcSF8 :: Uint8 -> Bool
 calcSF8 = (==0x80) . (.&. 0x80) 
 
-calcOF8 :: Uint8 -> Bool
-calcOF8 _ = False
+{-calcOFAdd8 :: Uint8 -> Uint8 -> Bool
+calcOFAdd8 before val | before < 0x80 =
+    if val < 0x80 then (before + val) > 0x7F else False
+calcOFAdd8 before val = 
+    if val >= 0x80 then (before + val) > 0xFF else False
+        -}
+calcOFAdd8 :: Int8 -> Int8 -> Int8 -> Bool
+calcOFAdd8 before val after | before >= 0 =
+    if val >= 0 then before > after else False
+calcOFAdd8 before val after =
+    if val <= 0 then before < after else False
 
 flagsToVal :: Flags -> Uint16 -> Uint16
 flagsToVal (Flags cf pf af zf sf of_) = 
