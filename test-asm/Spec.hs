@@ -10,13 +10,14 @@ import TestArithmetic
 
 import PrismCpu
 import Instruction.Transfer
+import Instruction.Arithmetic
 
 import NeatInterpolation
 import Data.Text (Text)
 
 import Control.Monad.Trans (MonadIO, liftIO)
 
-instrList = transferInstrList
+instrList = transferInstrList ++ arithmeticInstrList
 
 main :: IO ()
 main = do
