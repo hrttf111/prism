@@ -57,8 +57,22 @@ testFlagsAF =
 testFlagsOF =
     describe "Flags OF" $ do
         it "OF add8" $ do
+            (calcOFAdd8i 1 1 2) `shouldBe` False
+            (calcOFAdd8i 127 1 (-128)) `shouldBe` True
+            (calcOFAdd8i (-2) (-2) (-4)) `shouldBe` False
+            (calcOFAdd8i (-127) (-1) (-128)) `shouldBe` False
+            (calcOFAdd8i (-127) (-120) 9) `shouldBe` True
             (calcOFAdd8 1 1 2) `shouldBe` False
-            (calcOFAdd8 127 1 (-128)) `shouldBe` True
-            (calcOFAdd8 (-2) (-2) (-4)) `shouldBe` False
-            (calcOFAdd8 (-127) (-1) (-128)) `shouldBe` False
-            (calcOFAdd8 (-127) (-120) 9) `shouldBe` True
+            (calcOFAdd8 0x7F 1 0x80) `shouldBe` True
+            (calcOFAdd8 0xFE 0xFE 0xFC) `shouldBe` False
+            (calcOFAdd8 0x81 0xFF 0x80) `shouldBe` False
+            (calcOFAdd8 0x81 0x88 9) `shouldBe` True
+        it "OF sub8" $ do
+            (calcOFSub8i 1 1 0) `shouldBe` False
+            (calcOFSub8i 127 (-1) (-128)) `shouldBe` True
+            (calcOFSub8i (-128) 1 127) `shouldBe` True
+            (calcOFSub8i (-127) 120 9) `shouldBe` True
+            (calcOFSub8 1 1 0) `shouldBe` False
+            (calcOFSub8 127 0xFF 0x80) `shouldBe` True
+            (calcOFSub8 0x80 1 127) `shouldBe` True
+            (calcOFSub8 0x81 120 9) `shouldBe` True

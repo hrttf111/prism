@@ -340,17 +340,29 @@ calcZF8 = (==0)
 calcSF8 :: Uint8 -> Bool
 calcSF8 = (==0x80) . (.&. 0x80) 
 
-{-calcOFAdd8 :: Uint8 -> Uint8 -> Bool
-calcOFAdd8 before val | before < 0x80 =
-    if val < 0x80 then (before + val) > 0x7F else False
-calcOFAdd8 before val = 
-    if val >= 0x80 then (before + val) > 0xFF else False
-        -}
-calcOFAdd8 :: Int8 -> Int8 -> Int8 -> Bool
-calcOFAdd8 before val after | before >= 0 =
+calcOFAdd8i :: Int8 -> Int8 -> Int8 -> Bool
+calcOFAdd8i before val after | before >= 0 =
     if val >= 0 then before > after else False
-calcOFAdd8 before val after =
+calcOFAdd8i before val after =
     if val <= 0 then before < after else False
+
+calcOFSub8i :: Int8 -> Int8 -> Int8 -> Bool
+calcOFSub8i before val after | before >= 0 =
+    if val <= 0 then before > after else False
+calcOFSub8i before val after =
+    if val >= 0 then before < after else False
+
+calcOFAdd8 :: Uint8 -> Uint8 -> Uint8 -> Bool
+calcOFAdd8 before val after | before < 0x80 =
+    if val < 0x80 then after >= 0x80 else False
+calcOFAdd8 before val after =
+    if val >= 0x80 then after < 0x80 else False
+
+calcOFSub8 :: Uint8 -> Uint8 -> Uint8 -> Bool
+calcOFSub8 before val after | before < 0x80 =
+    if val >= 0x80 then after >= 0x80 else False
+calcOFSub8 before val after =
+    if val < 0x80 then after < 0x80 else False
 
 flagsToVal :: Flags -> Uint16 -> Uint16
 flagsToVal (Flags cf pf af zf sf of_) = 

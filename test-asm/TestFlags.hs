@@ -136,6 +136,7 @@ testFlagsOF env =
             |]
             memRegN <- (executeNative env) code
             (flags, _) <- readFlags memRegN
+            al `shouldEq` 9 $ memRegN
             (flagOF flags) `shouldBe` True
             (flagCF flags) `shouldBe` False
         it "OF set when SUB negative" $ do
