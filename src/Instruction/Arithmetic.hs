@@ -16,7 +16,6 @@ add8 ctx source dest = (newCtx, after)
         flags = Flags (calcCFCarry8 dest after) (calcPF8 after) (calcAFCarry8 dest after) (calcZF8 after) (calcSF8 after) (calcOFAdd8 dest source after)
         newCtx = ctx { ctxFlags = flags }
 
---
 addRegImm8 :: Ctx -> Reg8 -> Imm8 -> PrismM
 addRegImm8 = instrRegImm8 add8
 

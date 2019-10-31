@@ -50,7 +50,7 @@ data Flags = Flags {
         flagZF :: Bool,
         flagSF :: Bool,
         flagOF :: Bool
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 data EFlags = EFlags {
         eflagTF :: Bool,

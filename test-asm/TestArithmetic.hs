@@ -24,6 +24,7 @@ testAdd env =
             let memRegP = ctxReg ctx
             al `shouldEq` 3 $ memRegN
             al `shouldEqReg` memRegN $ memRegP
+            (ctxFlags ctx) `flagsShouldEq` memRegN
         it "Add8 neg" $ do
             code <- (assembleNative env) $ [text|
                 mov al, 1
@@ -34,3 +35,15 @@ testAdd env =
             let memRegP = ctxReg ctx
             al `shouldEq` 0 $ memRegN
             al `shouldEqReg` memRegN $ memRegP
+            (ctxFlags ctx) `flagsShouldEq` memRegN
+        it "Add8 neg2" $ do
+            code <- (assembleNative env) $ [text|
+                mov al, -127
+                add al, -120
+            |]
+            memRegN <- (executeNative env) code
+            ctx <- (executePrism env) code
+            let memRegP = ctxReg ctx
+            al `shouldEq` 9 $ memRegN
+            al `shouldEqReg` memRegN $ memRegP
+            (ctxFlags ctx) `flagsShouldEq` memRegN

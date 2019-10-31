@@ -37,11 +37,11 @@ testFlagsZF =
 testFlagsPF =
     describe "Flags PF" $ do
         it "PZ 8" $ do
-            (calcPF8 0) `shouldBe` False
-            (calcPF8 1) `shouldBe` True
-            (calcPF8 0xFF) `shouldBe` False
-            (calcPF8 0x11) `shouldBe` False
-            (calcPF8 0x31) `shouldBe` True
+            (calcPF8 0) `shouldBe` True
+            (calcPF8 1) `shouldBe` False
+            (calcPF8 0xFF) `shouldBe` True
+            (calcPF8 0x11) `shouldBe` True
+            (calcPF8 0x31) `shouldBe` False
 
 testFlagsAF =
     describe "Flags AF" $ do

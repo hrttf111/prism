@@ -83,6 +83,11 @@ instance RegTest Reg16 where
         val2 <- readReg16 memReg2 reg
         val1 `shouldBe` val2
 
+flagsShouldEq :: (HasCallStack) => Flags -> MemReg -> Expectation
+flagsShouldEq flags memReg = do
+    (flagsN, _) <- readFlags memReg
+    flags `shouldBe` flagsN
+
 execCodeTest :: MonadIO m => AsmTest -> MemReg -> Text -> m MemReg
 execCodeTest asmTest (MemReg ptrA) code = liftIO $ do
     mainCode <- makeAsmStr code

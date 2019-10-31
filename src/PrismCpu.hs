@@ -326,7 +326,7 @@ calcCFBorrow8 :: Uint8 -> Uint8 -> Bool
 calcCFBorrow8 before after = after > before
 
 calcPF8 :: Uint8 -> Bool
-calcPF8 = (== 1) . (.&. 0x01) . popCount
+calcPF8 = even . popCount
 
 calcAFCarry8 :: Uint8 -> Uint8 -> Bool
 calcAFCarry8 before after = (after .&. 0x0F) < (before .&. 0x0F)
