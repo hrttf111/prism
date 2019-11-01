@@ -12,38 +12,36 @@ import TestCommon
 
 import NeatInterpolation
 
-testAdd env =
-    describe "Test add8" $ do
+testAdd env = do
+    describe "Test add" $ do
         it "Add8" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmp [al] env $ [text|
                 mov al, 1
                 add al, 2
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            al `shouldEq` 3 $ memRegN
-            al `shouldEqReg` memRegN $ memRegP
-            (ctxFlags ctx) `flagsShouldEq` memRegN
         it "Add8 neg" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmp [al] env $ [text|
                 mov al, 1
                 add al, -1
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            al `shouldEq` 0 $ memRegN
-            al `shouldEqReg` memRegN $ memRegP
-            (ctxFlags ctx) `flagsShouldEq` memRegN
         it "Add8 neg2" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmp [al] env $ [text|
                 mov al, -127
                 add al, -120
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            al `shouldEq` 9 $ memRegN
-            al `shouldEqReg` memRegN $ memRegP
-            (ctxFlags ctx) `flagsShouldEq` memRegN
+    describe "Test add16" $ do
+        it "Add16" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 1
+                add ax, 2
+            |]
+        it "Add16 neg" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 1
+                add ax, -1
+            |]
+        it "Add16 neg2" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, -32123
+                add ax, -31234
+            |]

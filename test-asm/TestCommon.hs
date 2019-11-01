@@ -88,6 +88,15 @@ flagsShouldEq flags memReg = do
     (flagsN, _) <- readFlags memReg
     flags `shouldBe` flagsN
 
+execAndCmp :: (HasCallStack, RegTest a) => [a] -> TestEnv -> Text -> Expectation
+execAndCmp regs env cd = do
+    code <- (assembleNative env) cd
+    memRegN <- (executeNative env) code
+    ctx <- (executePrism env) code
+    let memRegP = ctxReg ctx
+    mapM_ (\r -> r `shouldEqReg` memRegN $ memRegP) regs
+    (ctxFlags ctx) `flagsShouldEq` memRegN
+
 execCodeTest :: MonadIO m => AsmTest -> MemReg -> Text -> m MemReg
 execCodeTest asmTest (MemReg ptrA) code = liftIO $ do
     mainCode <- makeAsmStr code
