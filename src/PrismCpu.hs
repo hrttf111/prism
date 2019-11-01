@@ -528,7 +528,6 @@ instrRegToReg8 func ctx reg1 reg2 = do
     valReg1 <- readReg8 memReg reg1
     valReg2 <- readReg8 memReg reg2
     let (ctxNew, valRegNew) = func ctx valReg1 valReg2
-    liftIO $ putStrLn $ show valRegNew
     writeReg8 memReg reg2 valRegNew
     return ctxNew
     where

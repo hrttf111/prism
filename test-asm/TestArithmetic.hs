@@ -47,7 +47,14 @@ testAdd env = do
             |]
     describe "ADD [8] REG <- REG" $ do
         it "Simple add" $ do
-            execAndCmp [ax] env $ [text|
+            execAndCmp [al, bl] env $ [text|
+                mov al, 1
+                mov bl, 2
+                add al, bl
+            |]
+    describe "ADD [16] REG <- REG" $ do
+        it "Simple add" $ do
+            execAndCmp [ax, bx] env $ [text|
                 mov ax, 1
                 mov bx, 2
                 add ax, bx
