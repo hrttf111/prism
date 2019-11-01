@@ -91,8 +91,9 @@ flagsShouldEq flags memReg = do
 execAndCmp :: (HasCallStack, RegTest a) => [a] -> TestEnv -> Text -> Expectation
 execAndCmp regs env cd = do
     code <- (assembleNative env) cd
+    code16 <- (assembleNative16 env) cd
     memRegN <- (executeNative env) code
-    ctx <- (executePrism env) code
+    ctx <- (executePrism env) code16
     let memRegP = ctxReg ctx
     mapM_ (\r -> r `shouldEqReg` memRegN $ memRegP) regs
     (ctxFlags ctx) `flagsShouldEq` memRegN
@@ -100,8 +101,9 @@ execAndCmp regs env cd = do
 execAndCmpNF :: (HasCallStack, RegTest a) => [a] -> TestEnv -> Text -> Expectation
 execAndCmpNF regs env cd = do
     code <- (assembleNative env) cd
+    code16 <- (assembleNative16 env) cd
     memRegN <- (executeNative env) code
-    ctx <- (executePrism env) code
+    ctx <- (executePrism env) code16
     let memRegP = ctxReg ctx
     mapM_ (\r -> r `shouldEqReg` memRegN $ memRegP) regs
 
