@@ -465,6 +465,12 @@ updateIP val ctx = moveRegIP (ctxReg ctx) val >> return ctx
 
 -------------------------------------------------------------------------------
 
+convertInt8To16 :: Uint8 -> Uint16
+convertInt8To16 val | val > 0x80 = 0xFFFF - (0xFF - (fromIntegral val))
+convertInt8To16 val = fromIntegral val
+
+-------------------------------------------------------------------------------
+
 type FuncImplicit = Ctx -> PrismM
 type FuncImm8 = Ctx -> Imm8 -> PrismM
 

@@ -15,7 +15,7 @@ import NeatInterpolation
 testMov env = 
     describe "Test mov reg8 imm8" $ do
         it "MOV IMM8 to Reg8" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmpNF [al, bl, cl, dl, ah, bh, ch, dh] env $ [text|
                 mov al, 11
                 mov bl, 12
                 mov cl, 13
@@ -25,33 +25,15 @@ testMov env =
                 mov ch, 17
                 mov dh, 18
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            al `shouldEqReg` memRegN $ memRegP
-            bl `shouldEqReg` memRegN $ memRegP
-            cl `shouldEqReg` memRegN $ memRegP
-            dl `shouldEqReg` memRegN $ memRegP
-            ah `shouldEqReg` memRegN $ memRegP
-            bh `shouldEqReg` memRegN $ memRegP
-            ch `shouldEqReg` memRegN $ memRegP
-            dh `shouldEqReg` memRegN $ memRegP
         it "MOV IMM16 to Reg16" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmpNF [ax, bx, cx, dx] env $ [text|
                 mov ax, 0x1001
                 mov bx, 0x2002
                 mov cx, 0x3003
                 mov dx, 0x4004
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            ax `shouldEqReg` memRegN $ memRegP
-            bx `shouldEqReg` memRegN $ memRegP
-            cx `shouldEqReg` memRegN $ memRegP
-            dx `shouldEqReg` memRegN $ memRegP
         it "XCHG to accumulator Reg8" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmpNF [al, bl, cl, dl] env $ [text|
                 mov al, 0x10
                 mov bl, 0x20
                 mov cl, 0x30
@@ -59,15 +41,8 @@ testMov env =
                 xchg al, bl
                 xchg cl, dl
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            al `shouldEqReg` memRegN $ memRegP
-            bl `shouldEqReg` memRegN $ memRegP
-            cl `shouldEqReg` memRegN $ memRegP
-            dl `shouldEqReg` memRegN $ memRegP
         it "XCHG to accumulator Reg16" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmpNF [ax, bx, cx, dx] env $ [text|
                 mov ax, 0x1001
                 mov bx, 0x2002
                 mov cx, 0x3003
@@ -75,15 +50,8 @@ testMov env =
                 xchg ax, bx
                 xchg cx, dx
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            ax `shouldEqReg` memRegN $ memRegP
-            bx `shouldEqReg` memRegN $ memRegP
-            cx `shouldEqReg` memRegN $ memRegP
-            dx `shouldEqReg` memRegN $ memRegP
         it "PUSH Reg16" $ do
-            code <- (assembleNative env) $ [text|
+            execAndCmpNF [ax, bx, cx, dx] env $ [text|
                 mov ax, 0x1001
                 mov bx, 0x2002
                 mov cx, 0x3003
@@ -97,13 +65,6 @@ testMov env =
                 pop cx
                 pop dx
             |]
-            memRegN <- (executeNative env) code
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            ax `shouldEqReg` memRegN $ memRegP
-            bx `shouldEqReg` memRegN $ memRegP
-            cx `shouldEqReg` memRegN $ memRegP
-            dx `shouldEqReg` memRegN $ memRegP
         it "Test LEA" $ do
             code <- (assembleNative16 env) $ [text|
                 mov bx, 0x2002

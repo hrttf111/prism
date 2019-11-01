@@ -66,5 +66,5 @@ arithmeticInstrList = [
         makeInstructionS 0x80 (Just 0) (decodeN8Imm8 addRegImm8 addMemImm8),
         makeInstructionS 0x81 (Just 0) (decodeN16Imm addRegImm16 addMemImm16),
         makeInstructionS 0x82 (Just 0) (decodeN8Imm8 addRegImm8 addMemImm8),
-        makeInstructionS 0x83 (Just 0) (decodeN16Imm addRegImm16 addMemImm16)
+        makeInstructionS 0x83 (Just 0) (decodeN16Imm8 addRegImm16 addMemImm16)
     ]
