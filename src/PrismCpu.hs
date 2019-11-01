@@ -325,8 +325,17 @@ calcCFCarry8 before after = after < before
 calcCFBorrow8 :: Uint8 -> Uint8 -> Bool
 calcCFBorrow8 before after = after > before
 
+calcCFCarry16 :: Uint16 -> Uint16 -> Bool
+calcCFCarry16 before after = after < before
+
+calcCFBorrow16 :: Uint16 -> Uint16 -> Bool
+calcCFBorrow16 before after = after > before
+
 calcPF8 :: Uint8 -> Bool
 calcPF8 = even . popCount
+
+calcPF16 :: Uint16 -> Bool
+calcPF16 = calcPF8 . fromIntegral
 
 calcAFCarry8 :: Uint8 -> Uint8 -> Bool
 calcAFCarry8 before after = (after .&. 0x0F) < (before .&. 0x0F)
@@ -334,11 +343,23 @@ calcAFCarry8 before after = (after .&. 0x0F) < (before .&. 0x0F)
 calcAFBorrow8 :: Uint8 -> Uint8 -> Bool
 calcAFBorrow8 before after = (after .&. 0x0F) > (before .&. 0x0F)
 
+calcAFCarry16 :: Uint16 -> Uint16 -> Bool
+calcAFCarry16 before after = (after .&. 0x0F) < (before .&. 0x0F)
+
+calcAFBorrow16 :: Uint16 -> Uint16 -> Bool
+calcAFBorrow16 before after = (after .&. 0x0F) > (before .&. 0x0F)
+
 calcZF8 :: Uint8 -> Bool
 calcZF8 = (==0)
 
+calcZF16 :: Uint16 -> Bool
+calcZF16 = (==0)
+
 calcSF8 :: Uint8 -> Bool
 calcSF8 = (==0x80) . (.&. 0x80) 
+
+calcSF16 :: Uint16 -> Bool
+calcSF16 = (==0x8000) . (.&. 0x8000) 
 
 calcOFAdd8i :: Int8 -> Int8 -> Int8 -> Bool
 calcOFAdd8i before val after | before >= 0 =
@@ -363,6 +384,18 @@ calcOFSub8 before val after | before < 0x80 =
     if val >= 0x80 then after >= 0x80 else False
 calcOFSub8 before val after =
     if val < 0x80 then after < 0x80 else False
+
+calcOFAdd16 :: Uint16 -> Uint16 -> Uint16 -> Bool
+calcOFAdd16 before val after | before < 0x8000 =
+    if val < 0x8000 then after >= 0x8000 else False
+calcOFAdd16 before val after =
+    if val >= 0x8000 then after < 0x8000 else False
+
+calcOFSub16 :: Uint16 -> Uint16 -> Uint16 -> Bool
+calcOFSub16 before val after | before < 0x8000 =
+    if val >= 0x8000 then after >= 0x8000 else False
+calcOFSub16 before val after =
+    if val < 0x8000 then after < 0x8000 else False
 
 flagsToVal :: Flags -> Uint16 -> Uint16
 flagsToVal (Flags cf pf af zf sf of_) = 
