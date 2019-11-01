@@ -528,10 +528,17 @@ instrRegToReg8 func ctx reg1 reg2 = do
     valReg1 <- readReg8 memReg reg1
     valReg2 <- readReg8 memReg reg2
     let (ctxNew, valRegNew) = func ctx valReg1 valReg2
+    liftIO $ putStrLn $ show valRegNew
     writeReg8 memReg reg2 valRegNew
     return ctxNew
     where
         memReg = ctxReg ctx
+
+instrRegToReg8RmToReg :: Func8To8 -> FuncRegReg8
+instrRegToReg8RmToReg func ctx reg1 reg2 = instrRegToReg8 func ctx reg1 reg2
+
+instrRegToReg8RegToRm :: Func8To8 -> FuncRegReg8
+instrRegToReg8RegToRm func ctx reg1 reg2 = instrRegToReg8 func ctx reg2 reg1
 
 instrRegToReg16 :: Func16To16 -> FuncRegReg16
 instrRegToReg16 func ctx reg1 reg2 = do
@@ -542,6 +549,12 @@ instrRegToReg16 func ctx reg1 reg2 = do
     return ctxNew
     where
         memReg = ctxReg ctx
+
+instrRegToReg16RmToReg :: Func16To16 -> FuncRegReg16
+instrRegToReg16RmToReg func ctx reg1 reg2 = instrRegToReg16 func ctx reg1 reg2
+
+instrRegToReg16RegToRm :: Func16To16 -> FuncRegReg16
+instrRegToReg16RegToRm func ctx reg1 reg2 = instrRegToReg16 func ctx reg2 reg1
         
 instrMemImm8 :: Func8To8 -> FuncMemImm8
 instrMemImm8 func ctx mem imm = do

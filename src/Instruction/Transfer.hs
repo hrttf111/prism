@@ -36,12 +36,6 @@ movMemToSeg16 = instrMemToSeg16 mov16
 movSegToMem16 :: Ctx -> Mem -> RegSeg -> PrismM
 movSegToMem16 = instrSegToMem16 mov16
 
-movRegToReg8 :: Ctx -> Reg8 -> Reg8 -> PrismM
-movRegToReg8 = instrRegToReg8 mov8
-
-movRegToReg16 :: Ctx -> Reg16 -> Reg16 -> PrismM
-movRegToReg16 = instrRegToReg16 mov16
-
 movRegToMem8 :: Ctx -> Mem -> Reg8 -> PrismM
 movRegToMem8 = instrRegToMem8 mov8
 
@@ -349,10 +343,10 @@ portOutAxImm ctx portNum = do
 
 transferInstrList = [
         --MOV
-        makeInstructionS 0x88 Nothing (decodeRm8 movRegToReg8 movRegToMem8),
-        makeInstructionS 0x89 Nothing (decodeRm16 movRegToReg16 movRegToMem16),
-        makeInstructionS 0x8A Nothing (decodeRm8 movRegToReg8 movMemToReg8),
-        makeInstructionS 0x8B Nothing (decodeRm16 movRegToReg16 movMemToReg16),
+        makeInstructionS 0x88 Nothing (decodeRm8 (instrRegToReg8RegToRm mov8) (instrRegToMem8 mov8)),
+        makeInstructionS 0x89 Nothing (decodeRm16 (instrRegToReg16RegToRm mov16) (instrRegToMem16 mov16)),
+        makeInstructionS 0x8A Nothing (decodeRm8 (instrRegToReg8RmToReg mov8) (instrMemToReg8 mov8)),
+        makeInstructionS 0x8B Nothing (decodeRm16 (instrRegToReg16RmToReg mov16) (instrMemToReg16 mov16)),
         makeInstructionS 0x8C Nothing (decodeRmS16 movSegToReg16 movSegToMem16),
         makeInstructionS 0x8E Nothing (decodeRmS16 movRegToSeg16 movMemToSeg16),
         makeInstructionS 0xA0 Nothing (decodeAccMem8 al movMemToReg8),

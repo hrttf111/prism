@@ -13,8 +13,8 @@ import TestCommon
 import NeatInterpolation
 
 testMov env = 
-    describe "Test mov reg8 imm8" $ do
-        it "MOV IMM8 to Reg8" $ do
+    describe "MOV [8] REG <- IMM" $ do
+        it "All regs" $ do
             execAndCmpNF [al, bl, cl, dl, ah, bh, ch, dh] env $ [text|
                 mov al, 11
                 mov bl, 12
@@ -24,6 +24,18 @@ testMov env =
                 mov bh, 16
                 mov ch, 17
                 mov dh, 18
+            |]
+        it "All regs1" $ do
+            execAndCmpNF [al, bl, cl, dl, ah, bh, ch, dh] env $ [text|
+                mov al, 11
+                mov bl, al
+                mov cl, bl
+                mov dl, dl
+                mov ah, dl
+                mov bh, ah
+                mov ch, bh
+                mov dh, ch
+                mov al, dh
             |]
         it "MOV IMM16 to Reg16" $ do
             execAndCmpNF [ax, bx, cx, dx] env $ [text|

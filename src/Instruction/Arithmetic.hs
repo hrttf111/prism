@@ -29,12 +29,6 @@ addRegImm8 = instrRegImm8 add8
 addRegImm16 :: Ctx -> Reg16 -> Imm16 -> PrismM
 addRegImm16 = instrRegImm16 add16
 
-addRegToReg8 :: Ctx -> Reg8 -> Reg8 -> PrismM
-addRegToReg8 = instrRegToReg8 add8
-
-addRegToReg16 :: Ctx -> Reg16 -> Reg16 -> PrismM
-addRegToReg16 = instrRegToReg16 add16
-
 addRegToMem8 :: Ctx -> Mem -> Reg8 -> PrismM
 addRegToMem8 = instrRegToMem8 add8
 
@@ -57,10 +51,10 @@ addMemImm16 = instrMemImm16 add16
 
 arithmeticInstrList = [
         --ADD
-        makeInstructionS 0x00 Nothing (decodeRm8 addRegToReg8 addRegToMem8),
-        makeInstructionS 0x01 Nothing (decodeRm16 addRegToReg16 addRegToMem16),
-        makeInstructionS 0x02 Nothing (decodeRm8 addRegToReg8 addMemToReg8),
-        makeInstructionS 0x03 Nothing (decodeRm16 addRegToReg16 addMemToReg16),
+        makeInstructionS 0x00 Nothing (decodeRm8 (instrRegToReg8RegToRm add8) (instrRegToMem8 add8)),
+        makeInstructionS 0x01 Nothing (decodeRm16 (instrRegToReg16RegToRm add16) (instrRegToMem16 add16)),
+        makeInstructionS 0x02 Nothing (decodeRm8 (instrRegToReg8RmToReg add8) (instrMemToReg8 add8)),
+        makeInstructionS 0x03 Nothing (decodeRm16 (instrRegToReg16RmToReg add16) (instrMemToReg16 add16)),
         makeInstructionS 0x04 Nothing (decodeAcc8 al addRegImm8),
         makeInstructionS 0x05 Nothing (decodeAcc16 ax addRegImm16),
         makeInstructionS 0x80 (Just 0) (decodeN8Imm8 addRegImm8 addMemImm8),
