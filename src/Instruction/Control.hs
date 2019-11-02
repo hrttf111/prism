@@ -10,7 +10,7 @@ import PrismCpu
 -------------------------------------------------------------------------------
 
 jmpShort :: Ctx -> Imm8 -> PrismM
-jmpShort ctx val = jmpNear ctx (fromIntegral val)
+jmpShort ctx val = jmpNear ctx $ signExterndWord val
 
 jmpNear :: Ctx -> Imm16 -> PrismM
 jmpNear ctx val = do
@@ -91,6 +91,44 @@ js ctx val = if sfIsSet ctx then jmpShort ctx val else return ctx
 
 -------------------------------------------------------------------------------
 
+loop :: Ctx -> Imm8 -> PrismM
+loop ctx val = do
+    regVal <- readReg16 memReg cx
+    let newRegVal = regVal - 1
+    writeReg16 memReg cx newRegVal
+    if newRegVal /= 0 then jmpShort ctx val else return ctx
+    where
+        memReg = ctxReg ctx
+
+loopZ :: Ctx -> Imm8 -> PrismM
+loopZ ctx val = do
+    regVal <- readReg16 memReg cx
+    let newRegVal = regVal - 1
+    writeReg16 memReg cx newRegVal
+    if regVal /= 0 && zfIsSet ctx then jmpShort ctx val else return ctx
+    where
+        memReg = ctxReg ctx
+loopE = loopZ
+
+loopNZ :: Ctx -> Imm8 -> PrismM
+loopNZ ctx val = do
+    regVal <- readReg16 memReg cx
+    let newRegVal = regVal - 1
+    writeReg16 memReg cx newRegVal
+    if regVal /= 0 && zfIsClear ctx then jmpShort ctx val else return ctx
+    where
+        memReg = ctxReg ctx
+loopNE = loopNZ
+
+jcxz :: Ctx -> Imm8 -> PrismM
+jcxz ctx val = do
+    regVal <- readReg16 memReg cx
+    if regVal == 0 then jmpShort ctx val else return ctx
+    where
+        memReg = ctxReg ctx
+
+-------------------------------------------------------------------------------
+
 controlInstrList = [
         --JXY
         makeInstructionS 0x70 Nothing (decodeImm8 jo),
@@ -109,6 +147,10 @@ controlInstrList = [
         makeInstructionS 0x7D Nothing (decodeImm8 jnl),
         makeInstructionS 0x7E Nothing (decodeImm8 jle),
         makeInstructionS 0x7F Nothing (decodeImm8 jnle),
+        --LOOP
+        makeInstructionS 0xE0 Nothing (decodeImm8 loopNZ),
+        makeInstructionS 0xE1 Nothing (decodeImm8 loopZ),
+        makeInstructionS 0xE2 Nothing (decodeImm8 loop),
         --JMP
         makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
         --inter

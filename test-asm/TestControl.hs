@@ -23,3 +23,12 @@ testControl env = do
                 L1:
                 mov al, 2
             |]
+    describe "Conditional jump" $ do
+        it "loop" $ do
+            execAndCmpNF [ax, cx] env $ [text|
+                mov ax, 0
+                mov cx, 5
+                L1:
+                inc ax
+                loop L1
+            |]
