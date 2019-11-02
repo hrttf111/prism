@@ -175,6 +175,28 @@ arithmeticInstrList = [
         makeInstructionS 0x81 (Just 0x5) (decodeN16Imm (instrRegImm16 sub16) (instrMemImm16 sub16)),
         makeInstructionS 0x82 (Just 0x5) (decodeN8Imm8 (instrRegImm8 sub8) (instrMemImm8 sub8)),
         makeInstructionS 0x83 (Just 0x5) (decodeN16Imm8 (instrRegImm16 sub16) (instrMemImm16 sub16)),
+        --SBB
+        makeInstructionS 0x18 Nothing (decodeRm8 (instrRegToReg8RegToRm sbb8) (instrRegToMem8 sbb8)),
+        makeInstructionS 0x19 Nothing (decodeRm16 (instrRegToReg16RegToRm sbb16) (instrRegToMem16 sbb16)),
+        makeInstructionS 0x1A Nothing (decodeRm8 (instrRegToReg8RmToReg sbb8) (instrMemToReg8 sbb8)),
+        makeInstructionS 0x1B Nothing (decodeRm16 (instrRegToReg16RmToReg sbb16) (instrMemToReg16 sbb16)),
+        makeInstructionS 0x1C Nothing (decodeAcc8 al $ instrRegImm8 sbb8),
+        makeInstructionS 0x1D Nothing (decodeAcc16 ax $ instrRegImm16 sbb16),
+        makeInstructionS 0x80 (Just 0x3) (decodeN8Imm8 (instrRegImm8 sbb8) (instrMemImm8 sbb8)),
+        makeInstructionS 0x81 (Just 0x3) (decodeN16Imm (instrRegImm16 sbb16) (instrMemImm16 sbb16)),
+        makeInstructionS 0x82 (Just 0x3) (decodeN8Imm8 (instrRegImm8 sbb8) (instrMemImm8 sbb8)),
+        makeInstructionS 0x83 (Just 0x3) (decodeN16Imm8 (instrRegImm16 sbb16) (instrMemImm16 sbb16)),
+        --DEC
+        makeInstructionS 0x48 Nothing (decodeReg16 ax (instrReg16 dec16)),
+        makeInstructionS 0x49 Nothing (decodeReg16 cx (instrReg16 dec16)),
+        makeInstructionS 0x4A Nothing (decodeReg16 dx (instrReg16 dec16)),
+        makeInstructionS 0x4B Nothing (decodeReg16 bx (instrReg16 dec16)),
+        makeInstructionS 0x4C Nothing (decodeReg16 sp (instrReg16 dec16)),
+        makeInstructionS 0x4D Nothing (decodeReg16 bp (instrReg16 dec16)),
+        makeInstructionS 0x4E Nothing (decodeReg16 si (instrReg16 dec16)),
+        makeInstructionS 0x4F Nothing (decodeReg16 di (instrReg16 dec16)),
+        makeInstructionS 0xFE (Just 1) (decodeN8 (instrReg8 dec8) (instrMem8 dec8)),
+        makeInstructionS 0xFF (Just 1) (decodeN16 (instrReg16 dec16) (instrMem16 dec16)),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)

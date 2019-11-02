@@ -110,6 +110,43 @@ testInc env = do
                 inc cx
                 inc dx
             |]
+    describe "DEC [8] REG" $ do
+        it "Simple dec" $ do
+            execAndCmp [al, bl, cl, dl, ah, bh, ch, dh] env $ [text|
+                mov al, 1
+                mov bl, 2
+                mov cl, 3
+                mov dl, 4
+                mov ah, 5
+                mov bh, 6
+                mov ch, 7
+                mov dh, 8
+                dec al
+                dec bl
+                dec cl
+                dec dl
+                dec ah
+                dec bh
+                dec ch
+                dec dh
+            |]
+        it "Simple flags" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 0
+                dec al
+            |]
+    describe "DEC [16] REG" $ do
+        it "Simple dec" $ do
+            execAndCmp [ax, bx, cx, dx] env $ [text|
+                mov ax, 1
+                mov bx, 2
+                mov cx, 3
+                mov dx, 4
+                dec ax
+                dec bx
+                dec cx
+                dec dx
+            |]
 
 testArithOther env = do
     describe "CBW/CWD" $ do
