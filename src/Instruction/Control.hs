@@ -105,7 +105,7 @@ loopZ ctx val = do
     regVal <- readReg16 memReg cx
     let newRegVal = regVal - 1
     writeReg16 memReg cx newRegVal
-    if regVal /= 0 && zfIsSet ctx then jmpShort ctx val else return ctx
+    if newRegVal /= 0 && zfIsSet ctx then jmpShort ctx val else return ctx
     where
         memReg = ctxReg ctx
 loopE = loopZ
@@ -115,7 +115,7 @@ loopNZ ctx val = do
     regVal <- readReg16 memReg cx
     let newRegVal = regVal - 1
     writeReg16 memReg cx newRegVal
-    if regVal /= 0 && zfIsClear ctx then jmpShort ctx val else return ctx
+    if newRegVal /= 0 && zfIsClear ctx then jmpShort ctx val else return ctx
     where
         memReg = ctxReg ctx
 loopNE = loopNZ
