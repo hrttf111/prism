@@ -251,6 +251,13 @@ writeMem16 memReg (MemMain mm) regSeg mem val = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ pokeByteOff mm offset val
 
+readMem32 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> m (Uint16, Uint16)
+readMem32 memReg (MemMain mm) regSeg mem = do
+    offset <- getMemOffset memReg regSeg mem
+    val1 <- liftIO $ peekByteOff mm offset
+    val2 <- liftIO $ peekByteOff mm (offset + 2)
+    return (val1, val2)
+
 writeMemSp8 :: MonadIO m => MemReg -> MemMain -> Uint8 -> m () 
 writeMemSp8 memReg (MemMain mm) val = do
     offset <- getMemReg2 memReg sp ss 0
@@ -478,6 +485,7 @@ signExterndDoubleword val = (0x0000, val)
 type FuncImplicit = Ctx -> PrismM
 type FuncImm8 = Ctx -> Imm8 -> PrismM
 type FuncImm16 = Ctx -> Imm16 -> PrismM
+type FuncImm32 = Ctx -> Imm16 -> Imm16 -> PrismM
 
 type FuncReg8 = Ctx -> Reg8 -> PrismM
 type FuncReg16 = Ctx -> Reg16 -> PrismM
@@ -503,6 +511,9 @@ type FuncMemSeg16 = Ctx -> Mem -> RegSeg -> PrismM
 
 emptyRegReg :: Ctx -> a -> a -> PrismM
 emptyRegReg ctx _ _ = return ctx
+
+emptySingle :: Ctx -> a -> PrismM
+emptySingle ctx _ = return ctx
 
 -------------------------------------------------------------------------------
 

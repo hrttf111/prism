@@ -32,3 +32,15 @@ testControl env = do
                 inc ax
                 loop L1
             |]
+    describe "Call" $ do
+        it "near" $ do
+            execAndCmpNF [ax, cx] env $ [text|
+                mov ax, 0
+                call func1
+                jmp L1
+                func1:
+                    mov ax, 1
+                    ret
+                L1:
+                mov cx, 0
+            |]

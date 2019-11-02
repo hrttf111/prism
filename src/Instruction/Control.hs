@@ -1,11 +1,12 @@
 module Instruction.Control where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
---import Data.Bits ((.&.), (.|.), xor)
 
 import Prism
 import PrismDecoder
 import PrismCpu
+
+import Instruction.Transfer
 
 -------------------------------------------------------------------------------
 
@@ -17,6 +18,101 @@ jmpNear ctx val = do
     ipVal <- readRegIP memReg
     writeRegIP memReg (ipVal + val)
     return ctx
+    where
+        memReg = ctxReg ctx
+
+jmpIntra :: Ctx -> Imm16 -> PrismM
+jmpIntra ctx ipVal = do
+    writeRegIP memReg ipVal
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+jmpInter :: Ctx -> Imm16 -> Imm16 -> PrismM
+jmpInter ctx ipVal csVal = do
+    writeSeg memReg cs csVal
+    writeRegIP memReg ipVal
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+type FuncJ = Ctx -> Imm16 -> PrismM
+type FuncJInter = Ctx -> Imm16 -> Imm16 -> PrismM
+
+instrJReg :: FuncJ -> Ctx -> Reg16 -> PrismM
+instrJReg func ctx reg =
+    readReg16 (ctxReg ctx) reg >>= func ctx
+
+instrJMem16 :: FuncJ -> Ctx -> Mem -> PrismM
+instrJMem16 func ctx mem =
+    readMem16 (ctxReg ctx) (ctxMem ctx) seg mem >>= func ctx
+    where
+        seg = findRegSegData ctx
+
+instrJMem32 :: FuncJInter -> Ctx -> Mem -> PrismM
+instrJMem32 func ctx mem = do
+    (val1, val2) <- readMem32 (ctxReg ctx) (ctxMem ctx) seg mem
+    func ctx val1 val2
+    where
+        seg = findRegSegData ctx
+
+-------------------------------------------------------------------------------
+
+callNear :: Ctx -> Imm16 -> PrismM
+callNear ctx val = do
+    ipVal <- readRegIP memReg
+    push16 ctx ipVal
+    writeRegIP memReg (ipVal + val)
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+callIntra :: Ctx -> Imm16 -> PrismM
+callIntra ctx val = do
+    ipVal <- readRegIP memReg
+    push16 ctx ipVal
+    writeRegIP memReg val
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+callInter :: Ctx -> Imm16 -> Imm16 -> PrismM
+callInter ctx ipVal csVal = do
+    ipValOld <- readRegIP memReg
+    csValOld <- readSeg memReg cs
+    push16 ctx csValOld
+    push16 ctx ipValOld
+    writeSeg memReg cs csVal
+    writeRegIP memReg ipVal
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+retIntra :: Ctx -> Imm16 -> PrismM
+retIntra ctx val = do
+    ipVal <- pop16 ctx
+    writeRegIP memReg ipVal
+    if val /= 0 then do
+        spOld <- readReg16 memReg sp
+        let spNew = spOld + val
+        writeReg16 memReg sp spNew
+        return ctx
+        else return ctx
+    where
+        memReg = ctxReg ctx
+
+retInter :: Ctx -> Imm16 -> PrismM
+retInter ctx val = do
+    csVal <- pop16 ctx
+    ipVal <- pop16 ctx
+    writeRegIP memReg ipVal
+    writeSeg memReg cs csVal
+    if val /= 0 then do
+        spOld <- readReg16 memReg sp
+        let spNew = spOld + val
+        writeReg16 memReg sp spNew
+        return ctx
+        else return ctx
     where
         memReg = ctxReg ctx
 
@@ -153,6 +249,18 @@ controlInstrList = [
         makeInstructionS 0xE2 Nothing (decodeImm8 loop),
         --JMP
         makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
-        --inter
-        makeInstructionS 0xEB Nothing (decodeImm8 jmpShort)
+        makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
+        makeInstructionS 0xEB Nothing (decodeImm8 jmpShort),
+        makeInstructionS 0xFF (Just 4) (decodeN16 (instrJReg jmpIntra) (instrJMem16 jmpIntra)),
+        makeInstructionS 0xFF (Just 5) (decodeN16 emptySingle (instrJMem32 jmpInter)),
+        --CALL
+        makeInstructionS 0xE8 Nothing (decodeImm16 callNear),
+        makeInstructionS 0x9A Nothing (decodeImm32 callInter),
+        makeInstructionS 0xFF (Just 2) (decodeN16 (instrJReg callIntra) (instrJMem16 callIntra)),
+        makeInstructionS 0xFF (Just 3) (decodeN16 emptySingle (instrJMem32 callInter)),
+        --RET
+        makeInstructionS 0xC2 Nothing (decodeImm16 retIntra),
+        makeInstructionS 0xC3 Nothing (decodeImplicit $ flip retIntra 0),
+        makeInstructionS 0xCA Nothing (decodeImm16 retInter),
+        makeInstructionS 0xCB Nothing (decodeImplicit $ flip retInter 0)
     ]

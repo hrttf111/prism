@@ -105,7 +105,7 @@ decodeDemux commands instr@(_, b2, _, _, _, _) ctx =
 
 decodeImplicit :: FuncImplicit -> PrismInstrFunc
 decodeImplicit freg _ ctx =
-    freg ctx >>= updateIP 1
+    updateIP 1 ctx >>= freg
 
 decodeReg8 :: Reg8 -> FuncReg8 -> PrismInstrFunc
 decodeReg8 reg freg _ ctx =
@@ -117,13 +117,20 @@ decodeReg16 reg freg _ ctx =
 
 decodeImm8 :: FuncImm8 -> PrismInstrFunc
 decodeImm8 freg (_, b2, _, _, _, _) ctx =
-    freg ctx (b2 :: Imm8) >>= updateIP 2
+    updateIP 2 ctx >>= flip freg (b2 :: Imm8) 
 
 decodeImm16 :: FuncImm16 -> PrismInstrFunc
 decodeImm16 freg (_, b2, b3, _, _, _) ctx =
     let imm16 = getImm16 b2 b3
         in
-    freg ctx imm16 >>= updateIP 3
+    updateIP 3 ctx >>= flip freg imm16 
+
+decodeImm32 :: FuncImm32 -> PrismInstrFunc
+decodeImm32 freg (_, b2, b3, b4, b5, _) ctx =
+    let imm1 = getImm16 b2 b3
+        imm2 = getImm16 b4 b5
+        in
+    updateIP 5 ctx >>= \c -> freg c imm1 imm2
 
 decodeAcc8 :: Reg8 -> FuncRegImm8 -> PrismInstrFunc
 decodeAcc8 reg freg (_, b2, _, _, _, _) ctx =
