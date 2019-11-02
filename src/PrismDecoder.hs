@@ -95,7 +95,7 @@ decodeEmpty :: PrismInstrFunc
 decodeEmpty _ ctx = liftIO $ putStrLn "Empty" >> (updateIP 1 ctx)
 
 decodeDemux :: Array Uint8 PrismInstrFunc -> PrismInstrFunc
-decodeDemux commands instr@(_, b2, _, _, _, _) ctx = 
+decodeDemux commands instr@(_, b2, _, _, _, _) ctx =
     func instr ctx
     where
         rm = shiftR (b2 .&. 0x38) 3

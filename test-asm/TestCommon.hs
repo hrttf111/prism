@@ -53,7 +53,7 @@ createTestEnv1 decoder = liftIO $ do
             decodeMemIp decoder codeLen ctx
 
 createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
-createTestEnv2 instrList = createTestEnv1 $ makeDecoder instrList
+createTestEnv2 instrList = createTestEnv1 $ makeDecoderList instrList
 
 createTestEnv :: MonadIO m => m CodeExecutor
 createTestEnv = liftIO $ do

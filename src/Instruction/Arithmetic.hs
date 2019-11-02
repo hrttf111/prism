@@ -171,11 +171,10 @@ arithmeticInstrList = [
         makeInstructionS 0x2B Nothing (decodeRm16 (instrRegToReg16RmToReg sub16) (instrMemToReg16 sub16)),
         makeInstructionS 0x2C Nothing (decodeAcc8 al $ instrRegImm8 sub8),
         makeInstructionS 0x2D Nothing (decodeAcc16 ax $ instrRegImm16 sub16),
-        {-makeInstructionS 0x80 (Just 0x5) (decodeN8Imm8 (instrRegImm8 sub8) (instrMemImm8 sub8)),
+        makeInstructionS 0x80 (Just 0x5) (decodeN8Imm8 (instrRegImm8 sub8) (instrMemImm8 sub8)),
         makeInstructionS 0x81 (Just 0x5) (decodeN16Imm (instrRegImm16 sub16) (instrMemImm16 sub16)),
         makeInstructionS 0x82 (Just 0x5) (decodeN8Imm8 (instrRegImm8 sub8) (instrMemImm8 sub8)),
-        makeInstructionS 0x83 (Just 0x5) (decodeN16Imm8 (instrRegImm16 sub16) (instrMemImm16 sub16))
-        -}
+        makeInstructionS 0x83 (Just 0x5) (decodeN16Imm8 (instrRegImm16 sub16) (instrMemImm16 sub16)),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)
