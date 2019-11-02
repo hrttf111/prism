@@ -119,6 +119,12 @@ decodeImm8 :: FuncImm8 -> PrismInstrFunc
 decodeImm8 freg (_, b2, _, _, _, _) ctx =
     freg ctx (b2 :: Imm8) >>= updateIP 2
 
+decodeImm16 :: FuncImm16 -> PrismInstrFunc
+decodeImm16 freg (_, b2, b3, _, _, _) ctx =
+    let imm16 = getImm16 b2 b3
+        in
+    freg ctx imm16 >>= updateIP 3
+
 decodeAcc8 :: Reg8 -> FuncRegImm8 -> PrismInstrFunc
 decodeAcc8 reg freg (_, b2, _, _, _, _) ctx =
     freg ctx reg (b2 :: Imm8) >>= updateIP 2

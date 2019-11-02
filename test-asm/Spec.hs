@@ -8,12 +8,14 @@ import TestFlags
 import TestTransfer
 import TestArithmetic
 import TestLogical
+import TestControl
 
 import PrismCpu
 import Instruction.Transfer
 import Instruction.Arithmetic
 import Instruction.Processor
 import Instruction.Logical
+import Instruction.Control
 
 import NeatInterpolation
 import Data.Text (Text)
@@ -24,6 +26,7 @@ instrList = transferInstrList
     ++ arithmeticInstrList
     ++ processorInstrList
     ++ logicalInstrList
+    ++ controlInstrList
 
 main :: IO ()
 main = do
@@ -36,3 +39,4 @@ main = do
         testInc env
         testArithOther env
         testLog env
+        testControl env

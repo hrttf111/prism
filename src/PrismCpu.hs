@@ -477,6 +477,7 @@ signExterndDoubleword val = (0x0000, val)
 
 type FuncImplicit = Ctx -> PrismM
 type FuncImm8 = Ctx -> Imm8 -> PrismM
+type FuncImm16 = Ctx -> Imm16 -> PrismM
 
 type FuncReg8 = Ctx -> Reg8 -> PrismM
 type FuncReg16 = Ctx -> Reg16 -> PrismM
