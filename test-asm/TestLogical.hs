@@ -36,3 +36,14 @@ testLog env = do
                 not cx
                 not dx
             |]
+    describe "TEST" $ do
+        it "8" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 1
+                test al, 1
+            |]
+        it "16" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 1
+                test ax, 1
+            |]
