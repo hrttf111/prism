@@ -230,3 +230,24 @@ testArithOther env = do
                 mov ax, -1
                 cwd
             |]
+    describe "NEG" $ do
+        it "simple" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 1
+                neg ax
+            |]
+        it "simple negative" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, -11
+                neg ax
+            |]
+        it "CF" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 0
+                neg ax
+            |]
+        it "OF" $ do
+            execAndCmp [al] env $ [text|
+                mov al, -128
+                neg al
+            |]

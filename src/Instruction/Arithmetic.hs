@@ -130,6 +130,26 @@ cwd ctx = do
 
 -------------------------------------------------------------------------------
 
+neg8 :: Ctx -> Uint8 -> (Ctx, Uint8)
+neg8 ctx val = (newCtx, result)
+    where
+        result = 0 - val
+        cf = val /= 0
+        of_ = val == 0x80
+        flags = Flags cf (calcPF8 result) (calcAFBorrow8 0 result) (calcZF8 result) (calcSF8 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+neg16 :: Ctx -> Uint16 -> (Ctx, Uint16)
+neg16 ctx val = (newCtx, result)
+    where
+        result = 0 - val
+        cf = val /= 0
+        of_ = val == 0x8000
+        flags = Flags cf (calcPF16 result) (calcAFBorrow16 0 result) (calcZF16 result) (calcSF16 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+-------------------------------------------------------------------------------
+
 arithmeticInstrList = [
         --ADD
         makeInstructionS 0x00 Nothing (decodeRm8 (instrRegToReg8RegToRm add8) (instrRegToMem8 add8)),
@@ -208,6 +228,9 @@ arithmeticInstrList = [
         makeInstructionS 0x81 (Just 0x7) (decodeN16Imm (instrRegImm16 cmp16) (instrMemImm16 cmp16)),
         makeInstructionS 0x82 (Just 0x7) (decodeN8Imm8 (instrRegImm8 cmp8) (instrMemImm8 cmp8)),
         makeInstructionS 0x83 (Just 0x7) (decodeN16Imm8 (instrRegImm16 cmp16) (instrMemImm16 cmp16)),
+        --NEG
+        makeInstructionS 0xF6 (Just 3) (decodeN8 (instrReg8 neg8) (instrMem8 neg8)),
+        makeInstructionS 0xF7 (Just 3) (decodeN16 (instrReg16 neg16) (instrMem16 neg16)),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)
