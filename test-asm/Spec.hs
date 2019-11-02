@@ -7,18 +7,23 @@ import TestCommon
 import TestFlags
 import TestTransfer
 import TestArithmetic
+import TestLogical
 
 import PrismCpu
 import Instruction.Transfer
 import Instruction.Arithmetic
 import Instruction.Processor
+import Instruction.Logical
 
 import NeatInterpolation
 import Data.Text (Text)
 
 import Control.Monad.Trans (MonadIO, liftIO)
 
-instrList = transferInstrList ++ arithmeticInstrList ++ processorInstrList
+instrList = transferInstrList 
+    ++ arithmeticInstrList
+    ++ processorInstrList
+    ++ logicalInstrList
 
 main :: IO ()
 main = do
@@ -30,6 +35,4 @@ main = do
         testSub env
         testInc env
         testArithOther env
-        --testFlagsOF env
-        --testFlagsCF env
-        --testFlagsZF env
+        testLog env
