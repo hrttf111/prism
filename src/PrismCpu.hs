@@ -465,9 +465,13 @@ updateIP val ctx = moveRegIP (ctxReg ctx) val >> return ctx
 
 -------------------------------------------------------------------------------
 
-convertInt8To16 :: Uint8 -> Uint16
-convertInt8To16 val | val > 0x80 = 0xFFFF - (0xFF - (fromIntegral val))
-convertInt8To16 val = fromIntegral val
+signExterndWord :: Uint8 -> Uint16
+signExterndWord val | val > 0x80 = (+0xFF00) $ fromIntegral val
+signExterndWord val = fromIntegral val
+
+signExterndDoubleword :: Uint16 -> (Uint16, Uint16)
+signExterndDoubleword val | val > 0x8000 = (0xFFFF, val)
+signExterndDoubleword val = (0x0000, val)
 
 -------------------------------------------------------------------------------
 

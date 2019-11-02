@@ -110,3 +110,26 @@ testInc env = do
                 inc cx
                 inc dx
             |]
+
+testArithOther env = do
+    describe "CBW/CWD" $ do
+        it "cbw no sign" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, 0x7F
+                cbw
+            |]
+        it "cbw sign" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, -1
+                cbw
+            |]
+        it "cwd no sign" $ do
+            execAndCmpNF [ax, dx] env $ [text|
+                mov ax, 0x7FFF
+                cwd
+            |]
+        it "cwd sign" $ do
+            execAndCmpNF [ax, dx] env $ [text|
+                mov ax, -1
+                cwd
+            |]

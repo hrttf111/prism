@@ -69,6 +69,67 @@ sub16 ctx source dest = (newCtx, after)
 
 -------------------------------------------------------------------------------
 
+sbb8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
+sbb8 ctx source dest = sub8 ctx source newDest
+    where
+        newDest = dest - if flagCF $ ctxFlags ctx then 1 else 0
+
+sbb16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
+sbb16 ctx source dest = sub16 ctx source newDest
+    where
+        newDest = dest - if flagCF $ ctxFlags ctx then 1 else 0
+
+-------------------------------------------------------------------------------
+
+dec8 :: Ctx -> Uint8 -> (Ctx, Uint8)
+dec8 ctx val = (newCtx, result)
+    where
+        result = val - 1
+        flags = Flags (flagCF . ctxFlags $ ctx) (calcPF8 result) (calcAFBorrow8 val result) (calcZF8 result) (calcSF8 result) (calcOFSub8 val 1 result)
+        newCtx = ctx { ctxFlags = flags }
+
+dec16 :: Ctx -> Uint16 -> (Ctx, Uint16)
+dec16 ctx val = (newCtx, result)
+    where
+        result = val - 1
+        flags = Flags (flagCF . ctxFlags $ ctx) (calcPF16 result) (calcAFBorrow16 val result) (calcZF16 result) (calcSF16 result) (calcOFSub16 val 1 result)
+        newCtx = ctx { ctxFlags = flags }
+
+-------------------------------------------------------------------------------
+
+cmp8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
+cmp8 ctx source dest = (newCtx, dest)
+    where
+        (newCtx, _) = sub8 ctx source dest
+
+cmp16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
+cmp16 ctx source dest = (newCtx, dest)
+    where
+        (newCtx, _) = sub16 ctx source dest
+
+-------------------------------------------------------------------------------
+
+cbw :: Ctx -> PrismM
+cbw ctx = do
+    val8 <- readReg8 memReg al
+    let val16 = signExterndWord val8
+    writeReg16 memReg ax val16
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+cwd :: Ctx -> PrismM
+cwd ctx = do
+    val16 <- readReg16 memReg ax
+    let (valH, valL) = signExterndDoubleword val16
+    writeReg16 memReg ax valL
+    writeReg16 memReg dx valH
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+-------------------------------------------------------------------------------
+
 arithmeticInstrList = [
         --ADD
         makeInstructionS 0x00 Nothing (decodeRm8 (instrRegToReg8RegToRm add8) (instrRegToMem8 add8)),
@@ -109,10 +170,13 @@ arithmeticInstrList = [
         makeInstructionS 0x2A Nothing (decodeRm8 (instrRegToReg8RmToReg sub8) (instrMemToReg8 sub8)),
         makeInstructionS 0x2B Nothing (decodeRm16 (instrRegToReg16RmToReg sub16) (instrMemToReg16 sub16)),
         makeInstructionS 0x2C Nothing (decodeAcc8 al $ instrRegImm8 sub8),
-        makeInstructionS 0x2D Nothing (decodeAcc16 ax $ instrRegImm16 sub16)
+        makeInstructionS 0x2D Nothing (decodeAcc16 ax $ instrRegImm16 sub16),
         {-makeInstructionS 0x80 (Just 0x5) (decodeN8Imm8 (instrRegImm8 sub8) (instrMemImm8 sub8)),
         makeInstructionS 0x81 (Just 0x5) (decodeN16Imm (instrRegImm16 sub16) (instrMemImm16 sub16)),
         makeInstructionS 0x82 (Just 0x5) (decodeN8Imm8 (instrRegImm8 sub8) (instrMemImm8 sub8)),
         makeInstructionS 0x83 (Just 0x5) (decodeN16Imm8 (instrRegImm16 sub16) (instrMemImm16 sub16))
         -}
+        --CBW/CWD
+        makeInstructionS 0x98 Nothing (decodeImplicit cbw),
+        makeInstructionS 0x99 Nothing (decodeImplicit cwd)
     ]
