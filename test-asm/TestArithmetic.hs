@@ -148,6 +148,66 @@ testInc env = do
                 dec dx
             |]
 
+testSub env = do
+    describe "SUB [8] ACC REG <- IMM" $ do
+        it "Simple sub" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 2
+                sub al, 1
+            |]
+        it "Add negative CF ZF" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 1
+                sub al, 1
+            |]
+        it "Add negative CF and OF" $ do
+            execAndCmp [al] env $ [text|
+                mov al, -127
+                sub al, 120
+            |]
+    describe "SUB [16] ACC REG <- IMM" $ do
+        it "Simple sub" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 2
+                sub ax, 1
+            |]
+        it "Add negative CF ZF" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 1
+                sub ax, 1
+            |]
+        it "Add negative CF and OF" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, -32123
+                sub ax, 31234
+            |]
+    describe "SUB [8] REG <- REG" $ do
+        it "Simple sub" $ do
+            execAndCmp [al, bl] env $ [text|
+                mov al, 1
+                mov bl, 2
+                sub al, bl
+            |]
+        it "Add negative CF and OF" $ do
+            execAndCmp [al] env $ [text|
+                mov al, -127
+                mov bl, 120
+                sub bl, al
+            |]
+    describe "SUB [16] REG <- REG" $ do
+        it "Simple sub" $ do
+            execAndCmp [ax, bx] env $ [text|
+                mov ax, 1
+                mov bx, 2
+                add ax, bx
+            |]
+        it "Add negative CF and OF" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, -32123
+                mov bx, 31234
+                sub bx, ax
+            |]
+
 testArithOther env = do
     describe "CBW/CWD" $ do
         it "cbw no sign" $ do

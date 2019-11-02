@@ -56,14 +56,14 @@ inc16 ctx val = (newCtx, result)
 sub8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
 sub8 ctx source dest = (newCtx, after)
     where
-        after = source - dest
+        after = dest - source
         flags = Flags (calcCFBorrow8 dest after) (calcPF8 after) (calcAFBorrow8 dest after) (calcZF8 after) (calcSF8 after) (calcOFSub8 dest source after)
         newCtx = ctx { ctxFlags = flags }
 
 sub16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
 sub16 ctx source dest = (newCtx, after)
     where
-        after = source - dest
+        after = dest - source
         flags = Flags (calcCFBorrow16 dest after) (calcPF16 after) (calcAFBorrow16 dest after) (calcZF16 after) (calcSF16 after) (calcOFSub16 dest source after)
         newCtx = ctx { ctxFlags = flags }
 
@@ -197,6 +197,17 @@ arithmeticInstrList = [
         makeInstructionS 0x4F Nothing (decodeReg16 di (instrReg16 dec16)),
         makeInstructionS 0xFE (Just 1) (decodeN8 (instrReg8 dec8) (instrMem8 dec8)),
         makeInstructionS 0xFF (Just 1) (decodeN16 (instrReg16 dec16) (instrMem16 dec16)),
+        --CMP
+        makeInstructionS 0x38 Nothing (decodeRm8 (instrRegToReg8RegToRm cmp8) (instrRegToMem8 cmp8)),
+        makeInstructionS 0x39 Nothing (decodeRm16 (instrRegToReg16RegToRm cmp16) (instrRegToMem16 cmp16)),
+        makeInstructionS 0x3A Nothing (decodeRm8 (instrRegToReg8RmToReg cmp8) (instrMemToReg8 cmp8)),
+        makeInstructionS 0x3B Nothing (decodeRm16 (instrRegToReg16RmToReg cmp16) (instrMemToReg16 cmp16)),
+        makeInstructionS 0x3C Nothing (decodeAcc8 al $ instrRegImm8 cmp8),
+        makeInstructionS 0x3D Nothing (decodeAcc16 ax $ instrRegImm16 cmp16),
+        makeInstructionS 0x80 (Just 0x7) (decodeN8Imm8 (instrRegImm8 cmp8) (instrMemImm8 cmp8)),
+        makeInstructionS 0x81 (Just 0x7) (decodeN16Imm (instrRegImm16 cmp16) (instrMemImm16 cmp16)),
+        makeInstructionS 0x82 (Just 0x7) (decodeN8Imm8 (instrRegImm8 cmp8) (instrMemImm8 cmp8)),
+        makeInstructionS 0x83 (Just 0x7) (decodeN16Imm8 (instrRegImm16 cmp16) (instrMemImm16 cmp16)),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)
