@@ -52,10 +52,61 @@ testAdd env = do
                 mov bl, 2
                 add al, bl
             |]
+        it "Add negative CF and OF" $ do
+            execAndCmp [al] env $ [text|
+                mov al, -127
+                mov bl, -120
+                add bl, al
+            |]
     describe "ADD [16] REG <- REG" $ do
         it "Simple add" $ do
             execAndCmp [ax, bx] env $ [text|
                 mov ax, 1
                 mov bx, 2
                 add ax, bx
+            |]
+        it "Add negative CF and OF" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, -32123
+                mov bx, -31234
+                add bx, ax
+            |]
+
+testInc env = do
+    describe "INC [8] REG" $ do
+        it "Simple inc" $ do
+            execAndCmp [al, bl, cl, dl, ah, bh, ch, dh] env $ [text|
+                mov al, 1
+                mov bl, 2
+                mov cl, 3
+                mov dl, 4
+                mov ah, 5
+                mov bh, 6
+                mov ch, 7
+                mov dh, 8
+                inc al
+                inc bl
+                inc cl
+                inc dl
+                inc ah
+                inc bh
+                inc ch
+                inc dh
+            |]
+        it "Simple flags" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 0xFF
+                inc al
+            |]
+    describe "INC [16] REG" $ do
+        it "Simple inc" $ do
+            execAndCmp [ax, bx, cx, dx] env $ [text|
+                mov ax, 1
+                mov bx, 2
+                mov cx, 3
+                mov dx, 4
+                inc ax
+                inc bx
+                inc cx
+                inc dx
             |]

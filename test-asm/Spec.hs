@@ -26,6 +26,7 @@ main = do
     hspec $ do
         testMov env
         testAdd env
+        testInc env
         testFlagsOF env
         testFlagsCF env
         testFlagsZF env

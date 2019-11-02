@@ -505,6 +505,49 @@ emptyRegReg ctx _ _ = return ctx
 type Func8To8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
 type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
 
+type Func8 = Ctx -> Uint8 -> (Ctx, Uint8)
+type Func16 = Ctx -> Uint16 -> (Ctx, Uint16)
+
+instrReg8 :: Func8 -> FuncReg8
+instrReg8 func ctx reg = do
+    valReg <- readReg8 memReg reg
+    let (ctxNew, valRegNew) = func ctx valReg
+    writeReg8 memReg reg valRegNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+
+instrReg16 :: Func16 -> FuncReg16
+instrReg16 func ctx reg = do
+    valReg <- readReg16 memReg reg
+    let (ctxNew, valRegNew) = func ctx valReg
+    writeReg16 memReg reg valRegNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+
+instrMem8 :: Func8 -> FuncMem
+instrMem8 func ctx mem = do
+    valMem <- readMem8 memReg memMain regSeg mem
+    let (ctxNew, valMemNew) = func ctx valMem
+    writeMem8 memReg memMain regSeg mem valMemNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+instrMem16 :: Func16 -> FuncMem
+instrMem16 func ctx mem = do
+    valMem <- readMem16 memReg memMain regSeg mem
+    let (ctxNew, valMemNew) = func ctx valMem
+    writeMem16 memReg memMain regSeg mem valMemNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
 instrRegImm8 :: Func8To8 -> FuncRegImm8
 instrRegImm8 func ctx reg imm = do
     valReg <- readReg8 memReg reg
