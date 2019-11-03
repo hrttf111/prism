@@ -77,10 +77,10 @@ signRetained before after = testBit before bit == testBit after bit
         bit = (finiteBitSize before) - 1
 
 lastBitShiftedL :: (Bits a, FiniteBits a) => a -> Int -> Bool
-lastBitShiftedL val shVal = testBit val ((finiteBitSize val) - (fromIntegral shVal))
+lastBitShiftedL val shVal = testBit val ((finiteBitSize val) - shVal)
 
 lastBitShiftedR :: (Bits a, FiniteBits a) => a -> Int -> Bool
-lastBitShiftedR val shVal = testBit val (fromIntegral shVal)
+lastBitShiftedR val shVal = testBit val (shVal - 1)
 
 rotateFlagsOF :: (Bits a, FiniteBits a, Integral b, Num b, Ord b) => Bool -> a -> a -> b -> Bool
 rotateFlagsOF of_ _ _ shVal | shVal > 1 = of_
@@ -117,7 +117,7 @@ shr8 ctx val shVal = (newCtx, result)
     where
         result = shiftR val $ fromIntegral shVal
         cf_ = lastBitShiftedR val $ fromIntegral shVal
-        of_ = not $ signRetained val result
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
         newCtx = ctx { ctxFlags = flags }
 
@@ -126,7 +126,7 @@ shr16 ctx val shVal = (newCtx, result)
     where
         result = shiftR val $ fromIntegral shVal
         cf_ = lastBitShiftedR val $ fromIntegral shVal
-        of_ = not $ signRetained val result
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
         newCtx = ctx { ctxFlags = flags }
 
@@ -135,7 +135,7 @@ sar8 ctx val shVal = (newCtx, result)
     where
         result = shiftR val $ fromIntegral shVal
         cf_ = lastBitShiftedR val $ fromIntegral shVal
-        of_ = not $ signRetained val result
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
         newCtx = ctx { ctxFlags = flags }
 
@@ -144,7 +144,7 @@ sar16 ctx val shVal = (newCtx, result)
     where
         result = shiftR val $ fromIntegral shVal
         cf_ = lastBitShiftedR val $ fromIntegral shVal
-        of_ = not $ signRetained val result
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
         newCtx = ctx { ctxFlags = flags }
 
@@ -218,6 +218,16 @@ logicalInstrList = [
         makeInstructionS 0xD1 (Just 4) (decodeN16 (instrReg16 $ rotateFuncOne16 shl16) (instrMem16 $ rotateFuncOne16 shl16)),
         makeInstructionS 0xD2 (Just 4) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shl8) (instrMemVal8 $ rotateFuncCl8 shl8)),
         makeInstructionS 0xD3 (Just 4) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shl16) (instrMemVal16 $ rotateFuncCl16 shl16)),
+        --SHR
+        makeInstructionS 0xD0 (Just 5) (decodeN8 (instrReg8 $ rotateFuncOne8 shr8) (instrMem8 $ rotateFuncOne8 shr8)),
+        makeInstructionS 0xD1 (Just 5) (decodeN16 (instrReg16 $ rotateFuncOne16 shr16) (instrMem16 $ rotateFuncOne16 shr16)),
+        makeInstructionS 0xD2 (Just 5) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shr8) (instrMemVal8 $ rotateFuncCl8 shr8)),
+        makeInstructionS 0xD3 (Just 5) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shr16) (instrMemVal16 $ rotateFuncCl16 shr16)),
+        --SAR
+        makeInstructionS 0xD0 (Just 7) (decodeN8 (instrReg8 $ rotateFuncOne8 sar8) (instrMem8 $ rotateFuncOne8 sar8)),
+        makeInstructionS 0xD1 (Just 7) (decodeN16 (instrReg16 $ rotateFuncOne16 sar16) (instrMem16 $ rotateFuncOne16 sar16)),
+        makeInstructionS 0xD2 (Just 7) (decodeN8 (instrRegVal8 $ rotateFuncCl8 sar8) (instrMemVal8 $ rotateFuncCl8 sar8)),
+        makeInstructionS 0xD3 (Just 7) (decodeN16 (instrRegVal16 $ rotateFuncCl16 sar16) (instrMemVal16 $ rotateFuncCl16 sar16)),
         --NOT
         makeInstructionS 0xF6 (Just 2) (decodeN8 (instrReg8 not8) (instrMem8 not8)),
         makeInstructionS 0xF7 (Just 2) (decodeN16 (instrReg16 not16) (instrMem16 not16))

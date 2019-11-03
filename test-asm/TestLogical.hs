@@ -69,3 +69,27 @@ testLog env = do
                 mov cl, 4
                 shl bl, cl
             |]
+        it "8 multi2" $ do
+            --todo: OF is undefined need to cmp without OF in this case
+            execAndCmpNF [al, dl] env $ [text|
+                mov al, 0
+                shl al, 1
+                mov dl, 0xAF
+                mov cl, 2
+                shl dl, cl
+            |]
+    describe "SHR" $ do
+        it "8" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 1
+                shr al, 1
+            |]
+        it "8 neg" $ do
+            --todo: OF is undefined need to cmp without OF in this case
+            execAndCmpNF [al] env $ [text|
+                mov al, 0
+                shl al, 1
+                mov al, 0xAF
+                mov cl, 2
+                shr al, cl
+            |]

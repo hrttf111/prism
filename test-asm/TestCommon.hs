@@ -95,7 +95,7 @@ execAndCmp regs env cd = do
     memRegN <- (executeNative env) code
     ctx <- (executePrism env) code16
     let memRegP = ctxReg ctx
-    mapM_ (\r -> r `shouldEqReg` memRegN $ memRegP) regs
+    mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
     (ctxFlags ctx) `flagsShouldEq` memRegN
 
 execAndCmpNF :: (HasCallStack, RegTest a) => [a] -> TestEnv -> Text -> Expectation
@@ -105,7 +105,7 @@ execAndCmpNF regs env cd = do
     memRegN <- (executeNative env) code
     ctx <- (executePrism env) code16
     let memRegP = ctxReg ctx
-    mapM_ (\r -> r `shouldEqReg` memRegN $ memRegP) regs
+    mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
 
 execCodeTest :: MonadIO m => AsmTest -> MemReg -> Text -> m MemReg
 execCodeTest asmTest (MemReg ptrA) code = liftIO $ do
