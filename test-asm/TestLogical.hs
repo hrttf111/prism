@@ -47,3 +47,25 @@ testLog env = do
                 mov ax, 1
                 test ax, 1
             |]
+    describe "SHL" $ do
+        it "8" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 1
+                shl al, 1
+            |]
+        it "8 neg" $ do
+            execAndCmp [al, bl] env $ [text|
+                mov al, 0xAF
+                mov cl, 1
+                shl al, cl
+                mov bl, 0x80
+                shl bl, 1
+            |]
+        it "8 multi" $ do
+            execAndCmp [al, bl] env $ [text|
+                mov al, 0
+                shl al, 1
+                mov bl, 0x0F
+                mov cl, 4
+                shl bl, cl
+            |]

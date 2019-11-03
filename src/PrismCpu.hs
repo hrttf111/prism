@@ -517,6 +517,47 @@ emptySingle ctx _ = return ctx
 
 -------------------------------------------------------------------------------
 
+type FuncVal8 = Ctx -> Uint8 -> PrismCtx IO (Ctx, Uint8)
+type FuncVal16 = Ctx -> Uint16 -> PrismCtx IO (Ctx, Uint16)
+
+instrRegVal8 :: FuncVal8 -> FuncReg8
+instrRegVal8 func ctx reg = do
+    valReg <- readReg8 (ctxReg ctx) reg
+    (ctxNew, valRegNew) <- func ctx valReg
+    writeReg8 (ctxReg ctxNew) reg valRegNew
+    return ctxNew
+
+instrRegVal16 :: FuncVal16 -> FuncReg16
+instrRegVal16 func ctx reg = do
+    valReg <- readReg16 (ctxReg ctx) reg
+    (ctxNew, valRegNew) <- func ctx valReg
+    writeReg16 (ctxReg ctxNew) reg valRegNew
+    return ctxNew
+
+instrMemVal8 :: FuncVal8 -> FuncMem
+instrMemVal8 func ctx mem = do
+    valMem <- readMem8 memReg memMain regSeg mem
+    (ctxNew, valMemNew) <- func ctx valMem
+    writeMem8 memReg memMain regSeg mem valMemNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+instrMemVal16 :: FuncVal16 -> FuncMem
+instrMemVal16 func ctx mem = do
+    valMem <- readMem16 memReg memMain regSeg mem
+    (ctxNew, valMemNew) <- func ctx valMem
+    writeMem16 memReg memMain regSeg mem valMemNew
+    return ctxNew
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+-------------------------------------------------------------------------------
+
 -- ctx -> source -> dest -> (ctx, result)
 type Func8To8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
 type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)

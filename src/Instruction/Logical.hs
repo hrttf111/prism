@@ -1,7 +1,7 @@
 module Instruction.Logical where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
-import Data.Bits (shiftR, complement, (.&.), (.|.), xor)
+import Data.Bits
 
 import Prism
 import PrismDecoder
@@ -71,6 +71,107 @@ test16 ctx source dest = (logicalUpdateFlags16 ctx result, dest)
 
 -------------------------------------------------------------------------------
 
+signRetained :: (Bits a, FiniteBits a) => a -> a -> Bool
+signRetained before after = testBit before bit == testBit after bit
+    where
+        bit = (finiteBitSize before) - 1
+
+lastBitShiftedL :: (Bits a, FiniteBits a) => a -> Int -> Bool
+lastBitShiftedL val shVal = testBit val ((finiteBitSize val) - (fromIntegral shVal))
+
+lastBitShiftedR :: (Bits a, FiniteBits a) => a -> Int -> Bool
+lastBitShiftedR val shVal = testBit val (fromIntegral shVal)
+
+rotateFlagsOF :: (Bits a, FiniteBits a, Integral b, Num b, Ord b) => Bool -> a -> a -> b -> Bool
+rotateFlagsOF of_ _ _ shVal | shVal > 1 = of_
+rotateFlagsOF _ val result _ = not $ signRetained val result
+
+--todo: specialize
+
+type RotateFunc8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
+type RotateFunc16 = Ctx -> Uint16 -> Uint8 -> (Ctx, Uint16)
+
+shl8 :: RotateFunc8
+shl8 ctx val shVal = (newCtx, result)
+    where
+        result = shiftL val $ fromIntegral shVal
+        cf_ = lastBitShiftedL val $ fromIntegral shVal
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
+        flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+shl16 :: RotateFunc16
+shl16 ctx val shVal = (newCtx, result)
+    where
+        result = shiftL val $ fromIntegral shVal
+        cf_ = lastBitShiftedL val $ fromIntegral shVal
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
+        flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+sal8 = shl8
+sal16 = shl16
+
+shr8 :: RotateFunc8
+shr8 ctx val shVal = (newCtx, result)
+    where
+        result = shiftR val $ fromIntegral shVal
+        cf_ = lastBitShiftedR val $ fromIntegral shVal
+        of_ = not $ signRetained val result
+        flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+shr16 :: RotateFunc16
+shr16 ctx val shVal = (newCtx, result)
+    where
+        result = shiftR val $ fromIntegral shVal
+        cf_ = lastBitShiftedR val $ fromIntegral shVal
+        of_ = not $ signRetained val result
+        flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+sar8 :: RotateFunc8
+sar8 ctx val shVal = (newCtx, result)
+    where
+        result = shiftR val $ fromIntegral shVal
+        cf_ = lastBitShiftedR val $ fromIntegral shVal
+        of_ = not $ signRetained val result
+        flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+sar16 :: RotateFunc16
+sar16 ctx val shVal = (newCtx, result)
+    where
+        result = shiftR val $ fromIntegral shVal
+        cf_ = lastBitShiftedR val $ fromIntegral shVal
+        of_ = not $ signRetained val result
+        flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
+        newCtx = ctx { ctxFlags = flags }
+
+-------------------------------------------------------------------------------
+
+rotateFuncCl8 :: RotateFunc8 -> Ctx -> Uint8 -> PrismCtx IO (Ctx, Uint8)
+rotateFuncCl8 func ctx val = do
+    shVal <- readReg8 memReg cl
+    return $ func ctx val shVal
+    where
+        memReg = ctxReg ctx
+
+rotateFuncCl16 :: RotateFunc16 -> Ctx -> Uint16 -> PrismCtx IO (Ctx, Uint16)
+rotateFuncCl16 func ctx val = do
+    shVal <- readReg8 memReg cl
+    return $ func ctx val shVal
+    where
+        memReg = ctxReg ctx
+
+rotateFuncOne8 :: RotateFunc8 -> Func8
+rotateFuncOne8 func ctx val = func ctx val 1
+
+rotateFuncOne16 :: RotateFunc16 -> Func16
+rotateFuncOne16 func ctx val = func ctx val 1
+
+-------------------------------------------------------------------------------
+
 logicalInstrList = [
         --OR
         makeInstructionS 0x08 Nothing (decodeRm8 (instrRegToReg8RegToRm or8) (instrRegToMem8 or8)),
@@ -112,6 +213,11 @@ logicalInstrList = [
         makeInstructionS 0xA9 Nothing (decodeAcc16 ax $ instrRegImm16 test16),
         makeInstructionS 0xF6 (Just 0) (decodeN8Imm8 (instrRegImm8 test8) (instrMemImm8 test8)),
         makeInstructionS 0xF7 (Just 0) (decodeN16Imm (instrRegImm16 test16) (instrMemImm16 test16)),
+        --SHL/SAL
+        makeInstructionS 0xD0 (Just 4) (decodeN8 (instrReg8 $ rotateFuncOne8 shl8) (instrMem8 $ rotateFuncOne8 shl8)),
+        makeInstructionS 0xD1 (Just 4) (decodeN16 (instrReg16 $ rotateFuncOne16 shl16) (instrMem16 $ rotateFuncOne16 shl16)),
+        makeInstructionS 0xD2 (Just 4) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shl8) (instrMemVal8 $ rotateFuncCl8 shl8)),
+        makeInstructionS 0xD3 (Just 4) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shl16) (instrMemVal16 $ rotateFuncCl16 shl16)),
         --NOT
         makeInstructionS 0xF6 (Just 2) (decodeN8 (instrReg8 not8) (instrMem8 not8)),
         makeInstructionS 0xF7 (Just 2) (decodeN16 (instrReg16 not16) (instrMem16 not16))
