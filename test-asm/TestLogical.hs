@@ -93,3 +93,79 @@ testLog env = do
                 mov cl, 2
                 shr al, cl
             |]
+    describe "ROL" $ do
+        it "8" $ do
+            execAndCmpNF [al] env $ [text|
+                mov al, 0x81
+                rol al, 1
+            |]
+        it "8 multi" $ do
+            execAndCmpNF [al, bl] env $ [text|
+                mov al, 0x7F
+                mov cl, 2
+                rol al, cl
+                mov bl, 0x7F
+                mov cl, 4
+                rol al, cl
+            |]
+    describe "ROR" $ do
+        it "8" $ do
+            execAndCmpNF [al] env $ [text|
+                mov al, 0x81
+                ror al, 1
+            |]
+        it "8 multi" $ do
+            execAndCmpNF [al, bl] env $ [text|
+                mov al, 0x7F
+                mov cl, 2
+                ror al, cl
+                mov bl, 0x7F
+                mov cl, 4
+                ror al, cl
+            |]
+    describe "RCL" $ do
+        it "8 CF=0" $ do
+            execAndCmpNF [al] env $ [text|
+                clc
+                mov al, 0x81
+                rcl al, 1
+            |]
+        it "8 CF=1" $ do
+            execAndCmpNF [al] env $ [text|
+                stc
+                mov al, 0x81
+                rcl al, 1
+            |]
+        it "8 multi" $ do
+            execAndCmpNF [al, bl] env $ [text|
+                clc
+                mov al, 0x7F
+                mov cl, 2
+                rcl al, cl
+                mov bl, 0x7F
+                mov cl, 4
+                rcl al, cl
+            |]
+    describe "RCR" $ do
+        it "8 CF=0" $ do
+            execAndCmpNF [al] env $ [text|
+                clc
+                mov al, 0x81
+                rcr al, 1
+            |]
+        it "8 CF=1" $ do
+            execAndCmpNF [al] env $ [text|
+                stc
+                mov al, 0x81
+                rcr al, 1
+            |]
+        it "8 multi" $ do
+            execAndCmpNF [al, bl] env $ [text|
+                clc
+                mov al, 0xF7
+                mov cl, 2
+                rcr al, cl
+                mov bl, 0xF7
+                mov cl, 4
+                rcr al, cl
+            |]
