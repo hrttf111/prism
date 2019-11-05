@@ -195,6 +195,36 @@ aas ctx val = (newCtx, result)
 
 -------------------------------------------------------------------------------
 
+daa :: Ctx -> Uint8 -> (Ctx, Uint8)
+daa ctx val = (newCtx, result)
+    where
+        af = (flagAF . ctxFlags $ ctx)
+        cf = (flagCF . ctxFlags $ ctx)
+        overflowL = ((val .&. 0x0F) > 9) || af
+        overflowH = (val > 0x99) || cf
+        resultL = if overflowL then val + 6 else val
+        result = if overflowH then resultL + 0x60 else resultL
+        cf_ = overflowH || (calcCFCarry8 val resultL)
+        af_ = overflowL
+        flags = Flags cf_ False af_ False False False
+        newCtx = ctx { ctxFlags = flags }
+
+das :: Ctx -> Uint8 -> (Ctx, Uint8)
+das ctx val = (newCtx, result)
+    where
+        af = (flagAF . ctxFlags $ ctx)
+        cf = (flagCF . ctxFlags $ ctx)
+        overflowL = ((val .&. 0x0F) > 9) || af
+        overflowH = (val > 0x99) || cf
+        resultL = if overflowL then val - 6 else val
+        result = if overflowH then resultL - 0x60 else resultL
+        cf_ = overflowH || (calcCFCarry8 val resultL)
+        af_ = overflowL
+        flags = Flags cf_ False af_ False False False
+        newCtx = ctx { ctxFlags = flags }
+
+-------------------------------------------------------------------------------
+
 arithmeticInstrList = [
         --ADD
         makeInstructionS 0x00 Nothing (decodeRm8 (instrRegToReg8RegToRm add8) (instrRegToMem8 add8)),
@@ -281,6 +311,9 @@ arithmeticInstrList = [
         makeInstructionS 0xD5 (Just 1) (decodeReg16 ax $ instrReg16 aad),
         makeInstructionS 0xD4 (Just 1) (decodeReg16 ax $ instrReg16 aam),
         makeInstructionS 0x3F Nothing (decodeReg16 ax $ instrReg16 aas),
+        --DAA/DAS
+        makeInstructionS 0x27 Nothing (decodeReg8 al $ instrReg8 daa),
+        makeInstructionS 0x2F Nothing (decodeReg8 al $ instrReg8 das),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)
