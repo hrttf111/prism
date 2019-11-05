@@ -251,3 +251,9 @@ testArithOther env = do
                 mov al, -128
                 neg al
             |]
+    describe "AAA" $ do
+        it "simple" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, 99
+                aaa
+            |]

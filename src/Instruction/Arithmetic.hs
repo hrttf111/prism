@@ -1,7 +1,7 @@
 module Instruction.Arithmetic where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
-import Data.Bits (shiftR)
+import Data.Bits (shiftR, shiftL, (.|.), (.&.))
 
 import Prism
 import PrismDecoder
@@ -150,6 +150,51 @@ neg16 ctx val = (newCtx, result)
 
 -------------------------------------------------------------------------------
 
+aaa :: Ctx -> Uint16 -> (Ctx, Uint16)
+aaa ctx val = (newCtx, result)
+    where
+        alVal = val .&. 0xFF
+        af = (flagAF . ctxFlags $ ctx)
+        overflow = ((alVal .&. 0x0F) > 9) || af
+        result = (if overflow then val + 0x106 else val) .&. 0xFF0F
+        cf_ = overflow
+        af_ = overflow
+        flags = Flags cf_ False af_ False False False
+        newCtx = ctx { ctxFlags = flags }
+
+aad :: Ctx -> Uint16 -> (Ctx, Uint16)
+aad ctx val = (newCtx, result)
+    where
+        alVal = val .&. 0xFF
+        ahVal = shiftR val 8
+        result = (alVal + ahVal * 10) .&. 0x00FF
+        flags = Flags False (calcPF16 result) False (calcZF16 result) (calcSF16 result) False
+        newCtx = ctx { ctxFlags = flags }
+
+aam :: Ctx -> Uint16 -> (Ctx, Uint16)
+aam ctx val = (newCtx, result)
+    where
+        alVal = val .&. 0xFF
+        newAhVal = shiftL (div alVal 10) 8
+        newAlVal = mod alVal 10
+        result = newAhVal .|. newAlVal
+        flags = Flags False (calcPF16 result) False (calcZF16 result) (calcSF16 result) False
+        newCtx = ctx { ctxFlags = flags }
+
+aas :: Ctx -> Uint16 -> (Ctx, Uint16)
+aas ctx val = (newCtx, result)
+    where
+        alVal = val .&. 0xFF
+        af = (flagAF . ctxFlags $ ctx)
+        overflow = ((alVal .&. 0x0F) > 9) || af
+        result = (if overflow then val - 0x106 else val) .&. 0xFF0F
+        cf_ = overflow
+        af_ = overflow
+        flags = Flags cf_ False af_ False False False
+        newCtx = ctx { ctxFlags = flags }
+
+-------------------------------------------------------------------------------
+
 arithmeticInstrList = [
         --ADD
         makeInstructionS 0x00 Nothing (decodeRm8 (instrRegToReg8RegToRm add8) (instrRegToMem8 add8)),
@@ -231,6 +276,11 @@ arithmeticInstrList = [
         --NEG
         makeInstructionS 0xF6 (Just 3) (decodeN8 (instrReg8 neg8) (instrMem8 neg8)),
         makeInstructionS 0xF7 (Just 3) (decodeN16 (instrReg16 neg16) (instrMem16 neg16)),
+        --AAA/AAD/AAM/AAS
+        makeInstructionS 0x37 Nothing (decodeReg16 ax $ instrReg16 aaa),
+        makeInstructionS 0xD5 (Just 1) (decodeReg16 ax $ instrReg16 aad),
+        makeInstructionS 0xD4 (Just 1) (decodeReg16 ax $ instrReg16 aam),
+        makeInstructionS 0x3F Nothing (decodeReg16 ax $ instrReg16 aas),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)
