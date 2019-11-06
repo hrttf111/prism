@@ -556,6 +556,37 @@ instrMemVal16 func ctx mem = do
         memMain = ctxMem ctx
         regSeg = findRegSegData ctx
 
+type FuncNoVal8 = Ctx -> Uint8 -> PrismM
+type FuncNoVal16 = Ctx -> Uint16 -> PrismM
+
+instrRegNoVal8 :: FuncNoVal8 -> FuncReg8
+instrRegNoVal8 func ctx reg = do
+    valReg <- readReg8 (ctxReg ctx) reg
+    func ctx valReg
+
+instrRegNoVal16 :: FuncNoVal16 -> FuncReg16
+instrRegNoVal16 func ctx reg = do
+    valReg <- readReg16 (ctxReg ctx) reg
+    func ctx valReg
+
+instrMemNoVal8 :: FuncNoVal8 -> FuncMem
+instrMemNoVal8 func ctx mem = do
+    valMem <- readMem8 memReg memMain regSeg mem
+    func ctx valMem
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
+instrMemNoVal16 :: FuncNoVal16 -> FuncMem
+instrMemNoVal16 func ctx mem = do
+    valMem <- readMem16 memReg memMain regSeg mem
+    func ctx valMem
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+        regSeg = findRegSegData ctx
+
 -------------------------------------------------------------------------------
 
 -- ctx -> source -> dest -> (ctx, result)

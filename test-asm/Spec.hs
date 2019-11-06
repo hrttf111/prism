@@ -37,6 +37,7 @@ main = do
         testAdd env
         testSub env
         testInc env
+        testArithMuldiv env
         testArithOther env
         testLog env
         testControl env

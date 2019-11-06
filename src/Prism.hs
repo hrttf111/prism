@@ -17,6 +17,7 @@ type Imm16 = Uint16
 
 type Uint8 = Word8
 type Uint16 = Word16
+type Uint32 = Word32
 
 type Disp = Word16
 

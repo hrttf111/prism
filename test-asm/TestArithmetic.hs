@@ -251,9 +251,62 @@ testArithOther env = do
                 mov al, -128
                 neg al
             |]
-    describe "AAA" $ do
+    {-describe "AAA" $ do
         it "simple" $ do
             execAndCmpNF [ax] env $ [text|
                 mov al, 99
                 aaa
+            |]-}
+
+testArithMuldiv env = do
+    describe "MUL" $ do
+        it "8 no OF/CF" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, 10
+                mov bl, 20
+                mul bl
+            |]
+        it "8 OF/CF" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, 100
+                mov bl, 20
+                mul bl
+            |]
+        {-it "16 no OF/CF" $ do
+            execAndCmpNF [ax, dx] env $ [text|
+                mov ax, 10
+                mov bx, 200
+                mul bx
+            |]
+        it "16 OF/CF" $ do
+            execAndCmpNF [ax, dx] env $ [text|
+                mov ax, 255
+                mov bx, 300
+                mul bx
+            |]
+            -}
+    describe "IMUL" $ do
+        it "8 no OF/CF" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, -10
+                mov bl, 20
+                imul bl
+            |]
+        it "8 no OF/CF" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, -10
+                mov bl, -20
+                imul bl
+            |]
+        it "8 OF/CF" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, 100
+                mov bl, -20
+                imul bl
+            |]
+        it "8 OF/CF" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov al, -10
+                mov bl, -20
+                imul bl
             |]
