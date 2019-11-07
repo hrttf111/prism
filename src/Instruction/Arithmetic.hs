@@ -2,6 +2,7 @@ module Instruction.Arithmetic where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Bits (shiftR, shiftL, (.|.), (.&.))
+import Data.Int
 
 import Prism
 import PrismDecoder
@@ -251,7 +252,8 @@ mul16 ctx val1 val2 = (newCtx, resultH, resultL)
 imul8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint16)
 imul8 ctx val1 val2 = (newCtx, result)
     where
-        result = (fromIntegral val1) * (fromIntegral val2)
+        op = (*) :: Int16 -> Int16 -> Int16
+        result = signedOp op (signExterndWord val1) (signExterndWord val2)
         signExt = result .&. 0xFF00
         cf_ = signExt /= 0 && signExt /= 0xFF00
         of_ = cf_
@@ -261,7 +263,8 @@ imul8 ctx val1 val2 = (newCtx, result)
 imul16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16, Uint16)
 imul16 ctx val1 val2 = (newCtx, resultH, resultL)
     where
-        result = ((fromIntegral val1) * (fromIntegral val2) :: Uint32)
+        op = (*) :: Int32 -> Int32 -> Int32
+        result = signedOp op (signExterndDoubleword32 val1) (signExterndDoubleword32 val2)
         resultH = fromIntegral $ shiftR result 16
         resultL = fromIntegral result
         signExt = resultH /= 0xFFFF && resultH /= 0

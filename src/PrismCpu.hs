@@ -480,6 +480,10 @@ signExterndDoubleword :: Uint16 -> (Uint16, Uint16)
 signExterndDoubleword val | val > 0x8000 = (0xFFFF, val)
 signExterndDoubleword val = (0x0000, val)
 
+signExterndDoubleword32 :: Uint16 -> Uint32
+signExterndDoubleword32 val | val > 0x8000 = (+0xFFFF0000) $ fromIntegral val
+signExterndDoubleword32 val = fromIntegral val
+
 toSignedCompl2 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => a -> b
 toSignedCompl2 val = valUnsigned - valSigned
     where
