@@ -2,6 +2,7 @@ import TestFlags
 
 import Test.Hspec
 import TestFlags
+import TestCpu
 
 main :: IO ()
 main = hspec $ do
@@ -11,3 +12,4 @@ main = hspec $ do
     testFlagsPF
     testFlagsAF
     testFlagsOF
+    testSign

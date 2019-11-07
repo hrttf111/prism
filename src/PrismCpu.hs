@@ -3,7 +3,7 @@
 
 module PrismCpu where
 
-import Data.Bits ((.&.), (.|.), shiftR, shiftL, popCount, testBit)
+import Data.Bits -- ((.&.), (.|.), shiftR, shiftL, popCount, testBit)
 import Data.Int
 
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -479,6 +479,28 @@ signExterndWord val = fromIntegral val
 signExterndDoubleword :: Uint16 -> (Uint16, Uint16)
 signExterndDoubleword val | val > 0x8000 = (0xFFFF, val)
 signExterndDoubleword val = (0x0000, val)
+
+toSignedCompl2 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => a -> b
+toSignedCompl2 val = valUnsigned - valSigned
+    where
+        upperBit = (finiteBitSize val) - 1
+        valUnsigned = fromIntegral $ clearBit val upperBit
+        valSigned = if testBit val upperBit then bit upperBit else 0
+
+toUnsignedComp2 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => a -> b
+toUnsignedComp2 = toSignedCompl2
+
+signedOp :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => (b -> b -> b) -> a -> a -> a
+signedOp func val1 val2 = toUnsignedComp2 $ func sVal1 sVal2
+    where
+        sVal1 = toSignedCompl2 val1
+        sVal2 = toSignedCompl2 val2
+
+signedOp1 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => (b -> b -> b) -> a -> a -> b
+signedOp1 func val1 val2 = func sVal1 sVal2
+    where
+        sVal1 = toSignedCompl2 val1
+        sVal2 = toSignedCompl2 val2
 
 -------------------------------------------------------------------------------
 
