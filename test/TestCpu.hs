@@ -3,9 +3,19 @@ module TestCpu where
 import Test.Hspec
 
 import Data.Int
+import Data.Tuple
+import Foreign.Ptr
 
 import Prism
 import PrismCpu
+
+import Instruction.Arithmetic
+
+testDiv = do
+    describe "DIV" $ do
+        let ctx = Ctx (MemReg nullPtr) (MemMain nullPtr) clearFlags clearEFlags Nothing
+        it "Unt8" $ do
+            (snd $ div8 ctx 1000 50) `shouldBe` 20
 
 testSign = do
     describe "Convert unsigned to singed (complement 2)" $ do

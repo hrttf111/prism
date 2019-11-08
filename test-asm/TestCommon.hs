@@ -88,6 +88,15 @@ flagsShouldEq flags memReg = do
     (flagsN, _) <- readFlags memReg
     flags `shouldBe` flagsN
 
+type RegEqFunc = MemReg -> Expectation
+
+execPrism :: (HasCallStack) => [RegEqFunc] -> TestEnv -> Text -> Expectation
+execPrism regs env cd = do
+    code16 <- (assembleNative16 env) cd
+    ctx <- (executePrism env) code16
+    let memRegP = ctxReg ctx
+    mapM_ (\f -> f memRegP) regs
+
 execAndCmp :: (HasCallStack, RegTest a) => [a] -> TestEnv -> Text -> Expectation
 execAndCmp regs env cd = do
     code <- (assembleNative env) cd

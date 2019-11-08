@@ -272,7 +272,7 @@ testArithMuldiv env = do
                 mov bl, 20
                 mul bl
             |]
-        {-it "16 no OF/CF" $ do
+        it "16 no OF/CF" $ do
             execAndCmpNF [ax, dx] env $ [text|
                 mov ax, 10
                 mov bx, 200
@@ -284,7 +284,6 @@ testArithMuldiv env = do
                 mov bx, 300
                 mul bx
             |]
-            -}
     describe "IMUL" $ do
         it "8 no OF/CF" $ do
             execAndCmpNF [ax] env $ [text|
@@ -309,4 +308,17 @@ testArithMuldiv env = do
                 mov al, -10
                 mov bl, -20
                 imul bl
+            |]
+    describe "DIV" $ do
+        it "8 (>= 1)" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov ax, 1000
+                mov bl, 50
+                div bl
+            |]
+        it "8 (< 1)" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov ax, 20
+                mov bl, 50
+                div bl
             |]

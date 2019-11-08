@@ -229,6 +229,9 @@ das ctx val = (newCtx, result)
 type MuldivFunc8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint16)
 type MuldivFunc16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16, Uint16)
 
+type DivFunc8 = Ctx -> Uint16 -> Uint8 -> (Ctx, Uint16)
+type DivFunc16 = Ctx -> Uint16 -> Uint16 -> Uint16 -> (Ctx, Uint16, Uint16)
+
 mul8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint16)
 mul8 ctx val1 val2 = (newCtx, result)
     where
@@ -272,14 +275,24 @@ imul16 ctx val1 val2 = (newCtx, resultH, resultL)
         of_ = cf_
         flags = Flags cf_ False False False False of_
         newCtx = ctx { ctxFlags = flags }
-{-
+
 div8 :: Ctx -> Uint16 -> Uint8 -> (Ctx, Uint16)
 div8 ctx val1 val2 = (ctx, result)
     where
-        resultL = div val1 val2 
-        resultH = mod val1 val2
-        result = 
-        -}
+        --todo: if val2 == 0 then DE
+        val216 = (fromIntegral val2) :: Uint16
+        resultL = div val1 val216
+        resultH = mod val1 val216
+        result = (resultL .&. 0x00FF) .|. (shiftL resultH 8)
+
+div16 :: Ctx -> Uint16 -> Uint16 -> Uint16 -> (Ctx, Uint16, Uint16)
+div16 ctx val1H val1L val2 = (ctx, resultH, resultL)
+    where
+        --todo: if val2 == 0 then DE
+        val132 = ((shiftL (fromIntegral val1H) 16) .|. (fromIntegral val1L) :: Uint32)
+        val232 = fromIntegral val2
+        resultL = fromIntegral $ div val132 val232
+        resultH = fromIntegral $ mod val132 $ fromIntegral val232
 
 muldivInstr8 :: MuldivFunc8 -> FuncNoVal8
 muldivInstr8 func ctx val = do
@@ -293,9 +306,29 @@ muldivInstr8 func ctx val = do
 muldivInstr16 :: MuldivFunc16 -> FuncNoVal16
 muldivInstr16 func ctx val = do
     axVal <- readReg16 memReg ax
-    let (newCtx, dxVal, axVal) = func ctx axVal val
-    writeReg16 memReg ax axVal
-    writeReg16 memReg dx dxVal
+    let (newCtx, dxValNew, axValNew) = func ctx axVal val
+    writeReg16 memReg ax axValNew
+    writeReg16 memReg dx dxValNew
+    return newCtx
+    where
+        memReg = ctxReg ctx
+
+divInstr8 :: DivFunc8 -> FuncNoVal8
+divInstr8 func ctx val = do
+    axVal <- readReg16 memReg ax
+    let (newCtx, axValNew) = func ctx axVal val
+    writeReg16 memReg ax axValNew
+    return newCtx
+    where
+        memReg = ctxReg ctx
+
+divInstr16 :: DivFunc16 -> FuncNoVal16
+divInstr16 func ctx val = do
+    axVal <- readReg16 memReg ax
+    dxVal <- readReg16 memReg dx
+    let (newCtx, dxValNew, axValNew) = func ctx dxVal axVal val
+    writeReg16 memReg ax axValNew
+    writeReg16 memReg dx dxValNew
     return newCtx
     where
         memReg = ctxReg ctx
@@ -396,6 +429,9 @@ arithmeticInstrList = [
         makeInstructionS 0xF7 (Just 4) (decodeN16 (instrRegNoVal16 $ muldivInstr16 mul16) (instrMemNoVal16 $ muldivInstr16 mul16)),
         makeInstructionS 0xF6 (Just 5) (decodeN8 (instrRegNoVal8 $ muldivInstr8 imul8) (instrMemNoVal8 $ muldivInstr8 imul8)),
         makeInstructionS 0xF7 (Just 5) (decodeN16 (instrRegNoVal16 $ muldivInstr16 imul16) (instrMemNoVal16 $ muldivInstr16 imul16)),
+        --DIV
+        makeInstructionS 0xF6 (Just 6) (decodeN8 (instrRegNoVal8 $ divInstr8 div8) (instrMemNoVal8 $ divInstr8 div8)),
+        makeInstructionS 0xF7 (Just 6) (decodeN16 (instrRegNoVal16 $ divInstr16 div16) (instrMemNoVal16 $ divInstr16 div16)),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)

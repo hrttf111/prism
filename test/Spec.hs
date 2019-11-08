@@ -13,3 +13,4 @@ main = hspec $ do
     testFlagsAF
     testFlagsOF
     testSign
+    testDiv
