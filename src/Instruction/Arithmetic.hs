@@ -294,6 +294,28 @@ div16 ctx val1H val1L val2 = (ctx, resultH, resultL)
         resultL = fromIntegral $ div val132 val232
         resultH = fromIntegral $ mod val132 $ fromIntegral val232
 
+idiv8 :: Ctx -> Uint16 -> Uint8 -> (Ctx, Uint16)
+idiv8 ctx val1 val2 = (ctx, result)
+    where
+        --todo: if val2 == 0 then DE
+        opMod = mod :: Int16 -> Int16 -> Int16
+        opDiv = div :: Int16 -> Int16 -> Int16
+        val216 = signExterndWord val2 :: Uint16
+        resultL = signedOp opDiv val1 val216
+        resultH = signedOp opMod val1 val216
+        result = (resultL .&. 0x00FF) .|. (shiftL resultH 8)
+
+idiv16 :: Ctx -> Uint16 -> Uint16 -> Uint16 -> (Ctx, Uint16, Uint16)
+idiv16 ctx val1H val1L val2 = (ctx, resultH, resultL)
+    where
+        --todo: if val2 == 0 then DE
+        opMod = mod :: Int32 -> Int32 -> Int32
+        opDiv = div :: Int32 -> Int32 -> Int32
+        val132 = ((shiftL (fromIntegral val1H) 16) .|. (fromIntegral val1L) :: Uint32)
+        val232 = signExterndDoubleword32 val2
+        resultL = fromIntegral $ signedOp opDiv val132 val232
+        resultH = fromIntegral $ signedOp opMod val132 val232
+
 muldivInstr8 :: MuldivFunc8 -> FuncNoVal8
 muldivInstr8 func ctx val = do
     alVal <- readReg8 memReg al
@@ -432,6 +454,8 @@ arithmeticInstrList = [
         --DIV
         makeInstructionS 0xF6 (Just 6) (decodeN8 (instrRegNoVal8 $ divInstr8 div8) (instrMemNoVal8 $ divInstr8 div8)),
         makeInstructionS 0xF7 (Just 6) (decodeN16 (instrRegNoVal16 $ divInstr16 div16) (instrMemNoVal16 $ divInstr16 div16)),
+        makeInstructionS 0xF6 (Just 7) (decodeN8 (instrRegNoVal8 $ divInstr8 idiv8) (instrMemNoVal8 $ divInstr8 idiv8)),
+        makeInstructionS 0xF7 (Just 7) (decodeN16 (instrRegNoVal16 $ divInstr16 idiv16) (instrMemNoVal16 $ divInstr16 idiv16)),
         --CBW/CWD
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)

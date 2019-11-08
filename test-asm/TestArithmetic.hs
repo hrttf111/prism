@@ -322,3 +322,15 @@ testArithMuldiv env = do
                 mov bl, 50
                 div bl
             |]
+        it "8 (>= 1) neg 1" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov ax, -1000
+                mov bl, 50
+                idiv bl
+            |]
+        it "8 (>= 1) neg 2" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov ax, -1000
+                mov bl, -50
+                idiv bl
+            |]
