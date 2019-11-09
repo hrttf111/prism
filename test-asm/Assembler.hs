@@ -18,6 +18,8 @@ import NeatInterpolation
 import Data.Text (Text, append, unpack, pack)
 import Data.Text.Encoding (encodeUtf8)
 
+import Control.Exception
+
 import System.Posix.Process (executeFile, forkProcess, getProcessStatus)
 import System.Posix.Temp(mkstemp)
 import qualified Control.Exception as E
@@ -131,9 +133,10 @@ makeAsmStr16 text = makeAsm $ encodeUtf8 text
 
 makeAsm :: BC.ByteString -> IO B.ByteString
 makeAsm input = 
-    E.bracket mkLibFile removeFile
+    E.bracket mkLibFile removeLib
         (\f1 -> E.bracket mkTempFile closeAndRemove $ m f1)
     where
+        removeLib path = catch (removeFile path) (\(ex :: IOException) -> return())
         closeAndRemove (f, h) = hClose h >> removeFile f
         mkLibFile = return "/tmp/asmhs_lib"
         mkTempFile = mkstemp "/tmp/asmhs_temp_"
