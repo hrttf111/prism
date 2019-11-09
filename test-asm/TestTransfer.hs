@@ -78,10 +78,7 @@ testMov env =
                 pop dx
             |]
         it "Test LEA" $ do
-            code <- (assembleNative16 env) $ [text|
+            execPrism [(ax `shouldEq` (0x2002 + 120))] env [text|
                 mov bx, 0x2002
                 lea ax, [bx + 120]
             |]
-            ctx <- (executePrism env) code
-            let memRegP = ctxReg ctx
-            ax `shouldEq` (0x2002 + 120) $ memRegP
