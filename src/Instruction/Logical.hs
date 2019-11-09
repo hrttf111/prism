@@ -2,6 +2,7 @@ module Instruction.Logical where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Bits
+import Data.Int
 
 import Prism
 import PrismDecoder
@@ -139,11 +140,11 @@ shr16 ctx val shVal = (newCtx, result)
         flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
         newCtx = ctx { ctxFlags = flags }
 
---todo: set 1`s for all rotated bits
 sar8 :: RotateFunc8
 sar8 ctx val shVal = (newCtx, result)
     where
-        result = shiftR val $ fromIntegral shVal
+        op = (flip shiftR $ fromIntegral shVal) :: Int8 -> Int8
+        result = signedOpS op val
         cf_ = lastBitShiftedR val $ fromIntegral shVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
@@ -152,7 +153,8 @@ sar8 ctx val shVal = (newCtx, result)
 sar16 :: RotateFunc16
 sar16 ctx val shVal = (newCtx, result)
     where
-        result = shiftR val $ fromIntegral shVal
+        op = (flip shiftR $ fromIntegral shVal) :: Int16 -> Int16
+        result = signedOpS op val
         cf_ = lastBitShiftedR val $ fromIntegral shVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_

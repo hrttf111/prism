@@ -506,6 +506,9 @@ signedOp1 func val1 val2 = func sVal1 sVal2
         sVal1 = toSignedCompl2 val1
         sVal2 = toSignedCompl2 val2
 
+signedOpS :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => (b -> b) -> a -> a
+signedOpS func val1 = toUnsignedComp2 $ func $ toSignedCompl2 val1
+
 -------------------------------------------------------------------------------
 
 type FuncImplicit = Ctx -> PrismM

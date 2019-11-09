@@ -93,6 +93,29 @@ testLog env = do
                 mov cl, 2
                 shr al, cl
             |]
+    describe "SAR" $ do
+        it "8" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 1
+                sar al, 1
+            |]
+        it "8 neg" $ do
+            execAndCmpNF [al] env $ [text|
+                mov al, 0xAF
+                mov cl, 2
+                sar al, cl
+            |]
+        it "16" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 0x101
+                sar ax, 1
+            |]
+        it "16 neg" $ do
+            execAndCmpNF [ax] env $ [text|
+                mov ax, 0xAFFF
+                mov cl, 12
+                sar ax, cl
+            |]
     describe "ROL" $ do
         it "8" $ do
             execAndCmpNF [al] env $ [text|
