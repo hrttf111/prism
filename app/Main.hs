@@ -38,7 +38,7 @@ runBinary instrList binPath_ = do
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     let ctx = Ctx (MemReg ptrReg) (MemMain ptrMem) clearFlags clearEFlags Nothing
     writeRegIP (ctxReg ctx) bootloaderStart
-    ctxNew <- runPrism $ decodeMemIp decoder 0x1000E ctx
+    ctxNew <- runPrism $ decodeMemIp decoder 0x10010 ctx
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
