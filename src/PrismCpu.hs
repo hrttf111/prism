@@ -3,7 +3,8 @@
 
 module PrismCpu where
 
-import Data.Bits -- ((.&.), (.|.), shiftR, shiftL, popCount, testBit)
+import Data.Maybe (fromMaybe)
+import Data.Bits
 import Data.Int
 
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -219,39 +220,50 @@ getMemReg1 memReg regSeg disp = do
     let disp32 = fromIntegral disp :: MemOffset
     return $ (shiftL valSeg 4) + disp32
 
---todo: EA for BP-based addresses is SS, not DS
-getMemOffset :: MonadIO m => MemReg -> RegSeg -> Mem -> m MemOffset
-getMemOffset memReg regSeg (MemBxSi disp) = getMemReg3 memReg bx si regSeg disp
-getMemOffset memReg regSeg (MemBxDi disp) = getMemReg3 memReg bx di regSeg disp
-getMemOffset memReg regSeg (MemBpSi disp) = getMemReg3 memReg bp si regSeg disp
-getMemOffset memReg regSeg (MemBpDi disp) = getMemReg3 memReg bp di regSeg disp
-getMemOffset memReg regSeg (MemSi disp) = getMemReg2 memReg si regSeg disp
-getMemOffset memReg regSeg (MemDi disp) = getMemReg2 memReg di regSeg disp
-getMemOffset memReg regSeg (MemBp disp) = getMemReg2 memReg bp regSeg disp
-getMemOffset memReg regSeg (MemBx disp) = getMemReg2 memReg bx regSeg disp
-getMemOffset memReg regSeg (MemDirect disp) = getMemReg1 memReg regSeg disp
+findRegSeg :: RegSeg -> Ctx -> RegSeg
+findRegSeg defaultRegSeg ctx = getRegSeg (ctxReplaceSeg ctx) 
+    where
+        getRegSeg Nothing = defaultRegSeg
+        getRegSeg (Just s) = s
 
-readMem8 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> m Uint8
+findRegSegData :: Ctx -> Maybe RegSeg
+findRegSegData = ctxReplaceSeg
+
+findRegSeg1 :: RegSeg -> Maybe RegSeg -> RegSeg
+findRegSeg1 = fromMaybe
+
+getMemOffset :: MonadIO m => MemReg -> Maybe RegSeg -> Mem -> m MemOffset
+getMemOffset memReg regSeg (MemBxSi disp) = getMemReg3 memReg bx si (findRegSeg1 ds regSeg) disp
+getMemOffset memReg regSeg (MemBxDi disp) = getMemReg3 memReg bx di (findRegSeg1 ds regSeg) disp
+getMemOffset memReg regSeg (MemBpSi disp) = getMemReg3 memReg bp si (findRegSeg1 ss regSeg) disp
+getMemOffset memReg regSeg (MemBpDi disp) = getMemReg3 memReg bp di (findRegSeg1 ss regSeg) disp
+getMemOffset memReg regSeg (MemSi disp) = getMemReg2 memReg si (findRegSeg1 ds regSeg) disp
+getMemOffset memReg regSeg (MemDi disp) = getMemReg2 memReg di (findRegSeg1 ds regSeg) disp
+getMemOffset memReg regSeg (MemBp disp) = getMemReg2 memReg bp (findRegSeg1 ss regSeg) disp
+getMemOffset memReg regSeg (MemBx disp) = getMemReg2 memReg bx (findRegSeg1 ds regSeg) disp
+getMemOffset memReg regSeg (MemDirect disp) = getMemReg1 memReg (findRegSeg1 ds regSeg) disp
+
+readMem8 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m Uint8
 readMem8 memReg (MemMain mm) regSeg mem = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ peekByteOff mm offset
 
-writeMem8 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> Uint8 -> m ()
+writeMem8 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> Uint8 -> m ()
 writeMem8 memReg (MemMain mm) regSeg mem val = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ pokeByteOff mm offset val
 
-readMem16 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> m Uint16
+readMem16 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m Uint16
 readMem16 memReg (MemMain mm) regSeg mem = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ peekByteOff mm offset
 
-writeMem16 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> Uint16 -> m ()
+writeMem16 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> Uint16 -> m ()
 writeMem16 memReg (MemMain mm) regSeg mem val = do
     offset <- getMemOffset memReg regSeg mem
     liftIO $ pokeByteOff mm offset val
 
-readMem32 :: MonadIO m => MemReg -> MemMain -> RegSeg -> Mem -> m (Uint16, Uint16)
+readMem32 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m (Uint16, Uint16)
 readMem32 memReg (MemMain mm) regSeg mem = do
     offset <- getMemOffset memReg regSeg mem
     val1 <- liftIO $ peekByteOff mm offset
@@ -277,15 +289,6 @@ readMemSp16 :: MonadIO m => MemReg -> MemMain -> m Uint16
 readMemSp16 memReg (MemMain mm) = do
     offset <- getMemReg2 memReg sp ss 0
     liftIO $ peekByteOff mm offset
-
-findRegSeg :: RegSeg -> Ctx -> RegSeg
-findRegSeg defaultRegSeg ctx = getRegSeg (ctxReplaceSeg ctx) 
-    where
-        getRegSeg Nothing = defaultRegSeg
-        getRegSeg (Just s) = s
-
-findRegSegData :: Ctx -> RegSeg
-findRegSegData = findRegSeg ds
 
 showMem3 :: Reg16 -> Reg16 -> RegSeg -> Disp -> String
 showMem3 reg1 reg2 regSeg@(RegSeg 3) 0 =
@@ -316,11 +319,11 @@ showMem1 regSeg disp =
 instance Show Mem where
     show (MemBxSi disp) = showMem3 bx si ds disp
     show (MemBxDi disp) = showMem3 bx di ds disp
-    show (MemBpSi disp) = showMem3 bp si ds disp
-    show (MemBpDi disp) = showMem3 bp di ds disp
+    show (MemBpSi disp) = showMem3 bp si ss disp
+    show (MemBpDi disp) = showMem3 bp di ss disp
     show (MemSi disp) = showMem2 si ds disp
     show (MemDi disp) = showMem2 di ds disp
-    show (MemBp disp) = showMem2 bp ds disp
+    show (MemBp disp) = showMem2 bp ss disp
     show (MemBx disp) = showMem2 bx ds disp
     show (MemDirect disp) = showMem1 ds disp
 
@@ -831,7 +834,7 @@ instrSegToMem16 func ctx mem regSeg = do
     valSeg <- readSeg memReg regSeg
     valMem <- readMem16 memReg memMain regSegM mem
     let (ctxNew, valMemNew) = func ctx valSeg valMem
-    writeMem16 memReg memMain regSeg mem valMemNew
+    writeMem16 memReg memMain (Just regSeg) mem valMemNew
     return ctxNew
     where
         memReg = ctxReg ctx
