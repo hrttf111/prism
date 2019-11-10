@@ -39,6 +39,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - prism
+    - optparse-applicative >= 0.14.2.0
 
 tests:
   prism-test:

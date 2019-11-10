@@ -411,9 +411,9 @@ decodeList dec ctx (x:xs) = do
 decodeMemIp :: PrismDecoder -> Int -> Ctx -> PrismCtx IO Ctx
 decodeMemIp dec len ctx = do
     ip <- readRegIP memReg 
-    if (fromIntegral ip) >= len then return ctx
+    offset <- getInstrAddress memReg cs ip
+    if (fromIntegral offset) >= len then return ctx
     else do
-        offset <- getInstrAddress memReg cs ip
         instr <- peekInstrBytes (ctxMem ctx) offset
         let (b1, _, _, _, _, _) = instr
             func = instrFunc $ (decInstr dec) ! b1
