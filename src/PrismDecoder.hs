@@ -207,10 +207,18 @@ decodeN16Imm freg fmem (b1, b2, b3, b4, b5, b6) ctx =
         in
     case mod of
         0x00 ->
-            let mem = decodeMem rm 0
-                imm16 = getImm16 b3 b4
-                in
-            fmem ctx mem imm16 >>= updateIP 4
+            case rm of
+                0x06 ->
+                    let disp16 = getDisp16 b3 b4
+                        imm16 = getImm16 b5 b6
+                        mem = MemDirect disp16
+                        in
+                    fmem ctx mem imm16 >>= updateIP 6
+                _ ->
+                    let mem = decodeMem rm 0
+                        imm16 = getImm16 b3 b4
+                        in
+                    fmem ctx mem imm16 >>= updateIP 4
         0x01 -> 
             let disp8 = getDisp8 b3
                 mem = decodeMem rm disp8
@@ -269,9 +277,16 @@ decodeN16 freg fmem (b1, b2, b3, b4, _, _) ctx =
         in
     case mod of
         0x00 ->
-            let mem = decodeMem rm 0
-                in
-            fmem ctx mem >>= updateIP 2
+            case rm of
+                0x06 ->
+                    let disp16 = getDisp16 b3 b4
+                        mem = MemDirect disp16
+                        in
+                    fmem ctx mem >>= updateIP 4
+                _ ->
+                    let mem = decodeMem rm 0
+                        in
+                    fmem ctx mem >>= updateIP 2
         0x01 -> 
             let disp8 = getDisp8 b3
                 mem = decodeMem rm disp8
@@ -352,9 +367,16 @@ decodeRm16 freg fmem (b1, b2, b3, b4, _, _) ctx =
         in
     case mod of
         0x00 ->
-            let mem = decodeMem rm 0
-                in
-            fmem ctx mem reg >>= updateIP 2
+            case rm of
+                0x06 ->
+                    let disp16 = getDisp16 b3 b4
+                        mem = MemDirect disp16
+                        in
+                    fmem ctx mem reg >>= updateIP 4
+                _ ->
+                    let mem = decodeMem rm 0
+                        in
+                    fmem ctx mem reg >>= updateIP 2
         0x01 -> 
             let disp8 = getDisp8 b3
                 mem = decodeMem rm disp8

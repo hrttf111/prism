@@ -34,6 +34,7 @@ main = do
     env <- createTestEnv2 instrList
     hspec $ do
         testMov env
+        testMovMem env
         testAdd env
         testSub env
         testInc env

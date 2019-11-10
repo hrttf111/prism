@@ -82,3 +82,47 @@ testMov env =
                 mov bx, 0x2002
                 lea ax, [bx + 120]
             |]
+
+testMovMem env = 
+    describe "MOV mem" $ do
+        it "Mem16 direct <- Imm16" $ do
+            execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xDDCC)] env [text|
+                mov [0x1000], WORD 0xFFAA
+                mov ax, [0x1000]
+                mov [0x1010], WORD 0xDDCC
+                mov bx, [0x1010]
+            |]
+        it "Mem16 bx/si/di <- Imm16" $ do
+            execPrism [(ax `shouldEq` 0xFFAA), (cx `shouldEq` 0xDDCC), (dx `shouldEq` 0x8877)] env [text|
+                mov bx, 0x1000
+                mov [bx], WORD 0xFFAA
+                mov ax, [bx]
+                mov si, 0x1010
+                mov [si], WORD 0xDDCC
+                mov cx, [si]
+                mov di, 0x1020
+                mov [di], WORD 0x8877
+                mov dx, [di]
+            |]
+        it "Mem16 bx/si/di + disp16 <- Imm16" $ do
+            execPrism [(ax `shouldEq` 0xFFAA), (cx `shouldEq` 0xDDCC), (dx `shouldEq` 0x8877)] env [text|
+                mov bx, 0
+                mov [bx + 0x1000], WORD 0xFFAA
+                mov ax, [bx + 0x1000]
+                mov si, 10
+                mov [si + 0x1000], WORD 0xDDCC
+                mov cx, [si + 0x1000]
+                mov di, 20
+                mov [di + 0x1000], WORD 0x8877
+                mov dx, [di + 0x1000]
+            |]
+        it "Mem16 bx+si/bx+di + disp16<- Imm16" $ do
+            execPrism [(ax `shouldEq` 0xFFAA), (cx `shouldEq` 0xDDCC)] env [text|
+                mov bx, 10
+                mov si, 10
+                mov [bx + si + 0x1000], WORD 0xFFAA
+                mov ax, [bx + si + 0x1000]
+                mov di, 20
+                mov [bx + di + 0x1000], WORD 0xDDCC
+                mov cx, [bx + di + 0x1000]
+            |]

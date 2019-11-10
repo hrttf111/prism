@@ -50,6 +50,7 @@ createTestEnv1 decoder = liftIO $ do
         execPrism decoder codeLen ctx = do
             writeSeg (ctxReg ctx) ss 1000
             writeReg16 (ctxReg ctx) sp 640
+            writeSeg (ctxReg ctx) ds 8000
             decodeMemIp decoder codeLen ctx
 
 createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
