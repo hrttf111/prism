@@ -1,0 +1,5 @@
+ - fix openning of "asmhs_lib", create random filename
+ - implement halt instruction, stop execution upon hitting it
+ - implement interrupt infra
+ - implement port infra
+ - implement generalized mem/reg instructions
