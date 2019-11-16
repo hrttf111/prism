@@ -56,6 +56,9 @@ wait = return
 lock :: Ctx -> PrismM
 lock = return
 
+nop :: Ctx -> PrismM
+nop = return
+
 -------------------------------------------------------------------------------
 
 segmentOverride :: (Ctx -> PrismM) -> RegSeg -> Ctx -> PrismM
@@ -78,6 +81,7 @@ segmentInstrList = getSegmentInstrList . decodeExecOne . makeDecoderList
 -------------------------------------------------------------------------------
 
 processorInstrList = [
+        makeInstructionS 0x90 Nothing (decodeImplicit $ nop),
         makeInstructionS 0x9B Nothing (decodeImplicit $ wait),
         makeInstructionS 0xF0 Nothing (decodeImplicit $ lock),
         makeInstructionS 0xF4 Nothing (decodeImplicit $ hlt),
