@@ -48,7 +48,7 @@ sti ctx = return $ ctx { ctxEFlags = flags }
 -------------------------------------------------------------------------------
 
 hlt :: Ctx -> PrismM
-hlt = return
+hlt ctx = return $ ctx {ctxStop = True}
 
 wait :: Ctx -> PrismM
 wait = return

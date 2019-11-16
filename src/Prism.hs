@@ -76,7 +76,8 @@ data Ctx = Ctx {
         ctxMem :: MemMain,
         ctxFlags :: Flags,
         ctxEFlags :: EFlags,
-        ctxReplaceSeg :: Maybe RegSeg
+        ctxReplaceSeg :: Maybe RegSeg,
+        ctxStop :: Bool
     } deriving (Show)
 
 newtype PrismCtx m a = PrismCtx {

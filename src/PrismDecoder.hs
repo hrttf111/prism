@@ -492,6 +492,20 @@ decodeMemIp dec len ctx = do
     where
         memReg = ctxReg ctx
 
+decodeHalt :: PrismDecoder -> Ctx -> PrismCtx IO Ctx
+decodeHalt dec ctx = do
+    ip <- readRegIP memReg 
+    offset <- getInstrAddress memReg cs ip
+    if (ctxStop ctx) then return ctx
+    else do
+        instr <- peekInstrBytes (ctxMem ctx) offset
+        let (b1, _, _, _, _, _) = instr
+            func = instrFunc $ (decInstr dec) ! b1
+        liftIO $ putStrLn (showHex b1 "")
+        func instr ctx >>= decodeHalt dec 
+    where
+        memReg = ctxReg ctx
+
 pokeTuple6 :: MonadIO m => Ptr Uint8 -> Int -> (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8) -> m (Ptr Uint8)
 pokeTuple6 ptr offset (b1, b2, b3, b4, b5, b6) = liftIO $ do
     pokeByteOff ptr offset b1
