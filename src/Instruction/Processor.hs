@@ -58,6 +58,25 @@ lock = return
 
 -------------------------------------------------------------------------------
 
+segmentOverride :: (Ctx -> PrismM) -> RegSeg -> Ctx -> PrismM
+segmentOverride execInstr regSeg ctx =
+    execInstr newCtx >>= \c -> return $ c { ctxReplaceSeg = Nothing }
+    where
+        newCtx = ctx { ctxReplaceSeg = Just regSeg }
+
+getSegmentInstrList :: (Ctx -> PrismM) -> [PrismInstruction]
+getSegmentInstrList execInstr = [
+        makeInstructionS 0x26 Nothing (decodeImplicit $ segmentOverride execInstr es),
+        makeInstructionS 0x2E Nothing (decodeImplicit $ segmentOverride execInstr cs),
+        makeInstructionS 0x36 Nothing (decodeImplicit $ segmentOverride execInstr ss),
+        makeInstructionS 0x3E Nothing (decodeImplicit $ segmentOverride execInstr ds)
+    ]
+
+segmentInstrList :: [PrismInstruction] -> [PrismInstruction]
+segmentInstrList = getSegmentInstrList . decodeExecOne . makeDecoderList
+
+-------------------------------------------------------------------------------
+
 processorInstrList = [
         makeInstructionS 0x9B Nothing (decodeImplicit $ wait),
         makeInstructionS 0xF0 Nothing (decodeImplicit $ lock),

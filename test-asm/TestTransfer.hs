@@ -156,3 +156,13 @@ testMovMem env = do
                 mov [bp + di + 0x1000], WORD 0x8877
                 mov dx, [bp + di + 0x1000]
             |]
+    describe "MOV segment replacement" $ do
+        it "Replace es" $ do
+            execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xFFAA)] env [text|
+                mov ax, ds
+                add ax, 1
+                mov es, ax
+                mov [es:0], WORD 0xFFAA
+                mov ax, [16]
+                mov bx, [ds:16]
+            |]

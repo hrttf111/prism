@@ -467,6 +467,17 @@ decodeList dec ctx (x:xs) = do
         (b1, _, _, _, _, _) = x
         instr = instrFunc $ (decInstr dec) ! b1
 
+decodeExecOne :: PrismDecoder -> Ctx -> PrismCtx IO Ctx 
+decodeExecOne dec ctx = do
+    offset <- getInstrAddress memReg cs =<< readRegIP memReg
+    instr <- peekInstrBytes (ctxMem ctx) offset
+    let (b1, _, _, _, _, _) = instr
+        func = instrFunc $ (decInstr dec) ! b1
+    liftIO $ putStrLn (showHex b1 "_One")
+    func instr ctx
+    where
+        memReg = ctxReg ctx
+
 decodeMemIp :: PrismDecoder -> Int -> Ctx -> PrismCtx IO Ctx
 decodeMemIp dec len ctx = do
     ip <- readRegIP memReg 

@@ -4,6 +4,8 @@ import Prism
 import PrismCpu
 import PrismDecoder
 
+import Instruction.Processor
+
 import Assembler
 
 import Test.Hspec
@@ -54,7 +56,9 @@ createTestEnv1 decoder = liftIO $ do
             decodeMemIp decoder codeLen ctx
 
 createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
-createTestEnv2 instrList = createTestEnv1 $ makeDecoderList instrList
+createTestEnv2 instrList = createTestEnv1 $ makeDecoderList combinedList
+    where
+        combinedList = instrList ++ (segmentInstrList instrList)
 
 createTestEnv :: MonadIO m => m CodeExecutor
 createTestEnv = liftIO $ do

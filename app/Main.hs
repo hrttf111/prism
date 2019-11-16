@@ -42,7 +42,8 @@ runBinary instrList binPath_ = do
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
-        decoder = makeDecoderList instrList
+        decoder = makeDecoderList combinedList
+        combinedList = instrList ++ (segmentInstrList instrList)
 
 instrList = transferInstrList 
     ++ arithmeticInstrList
