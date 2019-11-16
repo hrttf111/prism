@@ -1,10 +1,11 @@
- - fix openning of "asmhs_lib", create random filename
  - implement halt instruction, stop execution upon hitting it
  - implement interrupt infra
  - implement port infra
  - implement generalized mem/reg instructions
  - implement string operations and prefixes
  - implement replace segment prefix
+ - debugging
+    - gdb remote protocol?
 
 -------------------------------------------------------
 Interrupts

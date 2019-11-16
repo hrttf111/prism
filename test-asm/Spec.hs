@@ -1,6 +1,7 @@
 {-# LANGUAGE QuasiQuotes #-}
 
 import Test.Hspec
+import Test.Hspec.Core.Runner
 
 import Assembler
 import TestCommon
@@ -28,11 +29,7 @@ instrList = transferInstrList
     ++ logicalInstrList
     ++ controlInstrList
 
-main :: IO ()
-main = do
-    execC <- createTestEnv 
-    env <- createTestEnv2 instrList
-    hspec $ do
+doTests env = do
         testMov env
         testMovMem env
         testAdd env
@@ -42,3 +39,10 @@ main = do
         testArithOther env
         testLog env
         testControl env
+
+main :: IO ()
+main = do
+    execC <- createTestEnv 
+    env <- createTestEnv2 instrList
+    runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
+    return ()

@@ -13,6 +13,7 @@ module Assembler
 
 import Foreign.C.Types (CInt(..))
 import System.IO (hFlush, hClose, withFile, IOMode( ReadMode ) )
+import System.Exit
 
 import NeatInterpolation
 import Data.Text (Text, append, unpack, pack)
@@ -20,7 +21,7 @@ import Data.Text.Encoding (encodeUtf8)
 
 import Control.Exception
 
-import System.Posix.Process (executeFile, forkProcess, getProcessStatus)
+import System.Posix.Process (ProcessStatus( Exited ), executeFile, forkProcess, getProcessStatus)
 import System.Posix.Temp(mkstemp)
 import qualified Control.Exception as E
 import System.Directory (removeFile)
@@ -134,19 +135,26 @@ makeAsmStr16 text = makeAsm $ encodeUtf8 text
 makeAsm :: BC.ByteString -> IO B.ByteString
 makeAsm input = 
     E.bracket mkLibFile removeLib
-        (\f1 -> E.bracket mkTempFile closeAndRemove $ m f1)
+        (\f1 -> E.bracket mkTempFile closeAndRemove $ m 0 f1)
     where
         removeLib path = catch (removeFile path) (\(ex :: IOException) -> return())
         closeAndRemove (f, h) = hClose h >> removeFile f
         mkLibFile = return "/tmp/asmhs_lib"
         mkTempFile = mkstemp "/tmp/asmhs_temp_"
-        m pathLib (path, h) = do
+        m 10 _ _ = return B.empty
+        m n pathLib pathTemp = do
+            result <- execAsm pathLib pathTemp
+            case result of
+                Just code -> return code
+                Nothing -> m (n+1) pathLib pathTemp
+        execAsm pathLib (path, h) = do
             B.hPutStr h input >> hFlush h
             (forkProcess $ openAsm path pathLib)
                 >>= getProcessStatus True True
                 >>= processStatus pathLib
-        processStatus path (Just _) = withFile path ReadMode B.hGetContents
-        processStatus _ Nothing = return BC.empty
+        processStatus path (Just (Exited ExitSuccess)) =
+            Just <$> withFile path ReadMode B.hGetContents
+        processStatus _ _ = return Nothing
         openAsm path pathLib = executeFile "yasm" True (opts path pathLib) Nothing
         opts path pathLib = ["-f", "bin", "-p", "nasm", path, "-o", pathLib]
 
