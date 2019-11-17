@@ -10,6 +10,7 @@ import TestTransfer
 import TestArithmetic
 import TestLogical
 import TestControl
+import TestProcessor
 
 import PrismCpu
 import Instruction.Transfer
@@ -39,6 +40,7 @@ doTests env = do
         testArithOther env
         testLog env
         testControl env
+        testProcessor env
 
 main :: IO ()
 main = do

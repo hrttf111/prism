@@ -6,6 +6,7 @@ import Data.Bits (shiftR)
 import Prism
 import PrismDecoder
 import PrismCpu
+import PrismInterrupt
 
 -------------------------------------------------------------------------------
 
@@ -58,6 +59,16 @@ lock = return
 
 nop :: Ctx -> PrismM
 nop = return
+-------------------------------------------------------------------------------
+
+int :: Ctx -> Imm8 -> PrismM
+int ctx val = return $ ctx { ctxInterrupts = addInterruptInt (ctxInterrupts ctx) val }
+
+into :: Ctx -> PrismM
+into ctx = int ctx 4
+
+iret :: Ctx -> PrismM
+iret = loadInterruptCtx
 
 -------------------------------------------------------------------------------
 
@@ -91,5 +102,9 @@ processorInstrList = [
         makeInstructionS 0xFA Nothing (decodeImplicit $ cli),
         makeInstructionS 0xFB Nothing (decodeImplicit $ sti),
         makeInstructionS 0xFC Nothing (decodeImplicit $ cld),
-        makeInstructionS 0xFD Nothing (decodeImplicit $ std)
+        makeInstructionS 0xFD Nothing (decodeImplicit $ std),
+        makeInstructionS 0xCC Nothing (decodeImplicit $ flip int 3),
+        makeInstructionS 0xCD Nothing (decodeImm8 int),
+        makeInstructionS 0xCE Nothing (decodeImplicit into),
+        makeInstructionS 0xCF Nothing (decodeImplicit iret)
     ]

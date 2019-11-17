@@ -18,6 +18,7 @@ import qualified Data.ByteString as B
 import Control.Monad.Trans (MonadIO, liftIO)
 
 import Data.Word (Word8, Word16)
+import Foreign.Ptr (plusPtr)
 import Foreign.Marshal.Array (allocaArray, callocArray, pokeArray)
 import Foreign.Marshal.Alloc (callocBytes)
 import Foreign.Marshal.Utils (fillBytes)
@@ -39,6 +40,7 @@ createTestEnv1 decoder = liftIO $ do
     ptrA <- callocArray 64
     return $ TestEnv makeAsmStr makeAsmStr16 (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
     where
+        codeStart = 12000
         execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
         execP ptrReg ptrMem decoder mainCode = do
             let codeLen = B.length mainCode
@@ -47,13 +49,14 @@ createTestEnv1 decoder = liftIO $ do
                 f (MemMain p) = p
                 f1 (MemReg p) = p
             fillBytes (f1 $ ctxReg ctx) 0 64
-            pokeArray (f $ ctxMem ctx) array
+            pokeArray (flip plusPtr (fromIntegral codeStart) $ f $ ctxMem ctx) array
             runPrism $ execPrism decoder codeLen ctx
         execPrism decoder codeLen ctx = do
             writeSeg (ctxReg ctx) ss 1000
             writeReg16 (ctxReg ctx) sp 640
             writeSeg (ctxReg ctx) ds 8000
-            decodeMemIp decoder codeLen ctx
+            writeSeg (ctxReg ctx) cs (div codeStart 16)
+            decodeMemIp decoder (fromIntegral codeStart + codeLen) ctx
 
 createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
 createTestEnv2 instrList = createTestEnv1 $ makeDecoderList combinedList

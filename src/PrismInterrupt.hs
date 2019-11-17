@@ -12,6 +12,11 @@ addInterruptSingleStep interrupts = interrupts { intSingleStep = newList, intInt
     where
        newList = PrismInt 1 : intSingleStep interrupts
 
+addInterruptInt :: PrismInterrupts -> Uint8 -> PrismInterrupts
+addInterruptInt interrupts val = interrupts { intListHigh = newList, intInterruptUp = True }
+    where
+       newList = PrismInt val : intListHigh interrupts
+
 execTF :: Ctx -> Ctx
 execTF ctx = if tf then ctx { ctxInterrupts = addInterruptSingleStep $ ctxInterrupts ctx} else ctx
     where
@@ -57,6 +62,17 @@ saveInterruptCtx ctx = do
         val = flagsToVal (ctxFlags ctx) $ eflagsToVal (ctxEFlags ctx) 0
         memReg = ctxReg ctx
 
+loadInterruptCtx :: MonadIO m => Ctx -> m Ctx
+loadInterruptCtx ctx = do
+    popInt ctx >>= writeRegIP memReg
+    popInt ctx >>= writeSeg memReg cs
+    val <- popInt ctx
+    let flags = valToFlags val
+        eflags = valToEFlags val
+    return $ ctx { ctxFlags = flags, ctxEFlags = eflags }
+    where
+        memReg = ctxReg ctx
+
 jmpInterrupt :: MonadIO m => Ctx -> Imm16 -> Imm16 -> m Ctx
 jmpInterrupt ctx ipVal csVal = do
     writeSeg memReg cs csVal
@@ -72,6 +88,17 @@ pushInt ctx val = do
     writeReg16 memReg sp valNewSp
     writeMemSp16 memReg memMain val
     return ctx
+    where
+        memReg = ctxReg ctx
+        memMain = ctxMem ctx
+
+popInt :: MonadIO m => Ctx -> m Uint16
+popInt ctx = do
+    val <- readMemSp16 memReg memMain
+    valSp <- readReg16 memReg sp
+    let valNewSp = valSp + 2
+    writeReg16 memReg sp valNewSp
+    return val 
     where
         memReg = ctxReg ctx
         memMain = ctxMem ctx
