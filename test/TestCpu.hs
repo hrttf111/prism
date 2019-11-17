@@ -13,7 +13,7 @@ import Instruction.Arithmetic
 
 testDiv = do
     describe "DIV" $ do
-        let ctx = Ctx (MemReg nullPtr) (MemMain nullPtr) clearFlags clearEFlags Nothing False
+        let ctx = makePrismCtx (MemReg nullPtr) (MemMain nullPtr)
         it "Unt8" $ do
             (snd $ div8 ctx 1000 50) `shouldBe` 20
 

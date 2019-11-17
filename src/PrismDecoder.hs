@@ -11,7 +11,7 @@ import Numeric (showHex)
 import Data.Maybe (fromJust)
 import Data.Array (Array, array, accumArray, (!), bounds)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
-import Control.Monad (foldM)
+import Control.Monad (foldM, liftM)
 
 import Data.Either (fromRight)
 
@@ -20,6 +20,7 @@ import Foreign.Storable (peekByteOff, pokeByteOff)
 
 import Prism
 import PrismCpu
+import PrismInterrupt
 
 -------------------------------------------------------------------------------
 
@@ -480,29 +481,31 @@ decodeExecOne dec ctx = do
 
 decodeMemIp :: PrismDecoder -> Int -> Ctx -> PrismCtx IO Ctx
 decodeMemIp dec len ctx = do
-    ip <- readRegIP memReg 
-    offset <- getInstrAddress memReg cs ip
+    offset <- getInstrAddress memReg cs =<< readRegIP memReg
     if (fromIntegral offset) >= len then return ctx
     else do
-        instr <- peekInstrBytes (ctxMem ctx) offset
-        let (b1, _, _, _, _, _) = instr
-            func = instrFunc $ (decInstr dec) ! b1
-        liftIO $ putStrLn (showHex b1 "")
-        func instr ctx >>= decodeMemIp dec len
+        if interruptActive ctx then processInterrupts ctx >>= decodeMemIp dec len
+        else do
+            instr <- peekInstrBytes (ctxMem ctx) offset
+            let (b1, _, _, _, _, _) = instr
+                func = instrFunc $ (decInstr dec) ! b1
+            liftIO $ putStrLn (showHex b1 "")
+            execTF <$> func instr ctx >>= decodeMemIp dec len
     where
         memReg = ctxReg ctx
 
 decodeHalt :: PrismDecoder -> Ctx -> PrismCtx IO Ctx
 decodeHalt dec ctx = do
-    ip <- readRegIP memReg 
-    offset <- getInstrAddress memReg cs ip
-    if (ctxStop ctx) then return ctx
+    if ctxStop ctx then return ctx
     else do
-        instr <- peekInstrBytes (ctxMem ctx) offset
-        let (b1, _, _, _, _, _) = instr
-            func = instrFunc $ (decInstr dec) ! b1
-        liftIO $ putStrLn (showHex b1 "")
-        func instr ctx >>= decodeHalt dec 
+        if interruptActive ctx then processInterrupts ctx >>= decodeHalt dec
+        else do
+            offset <- getInstrAddress memReg cs =<< readRegIP memReg
+            instr <- peekInstrBytes (ctxMem ctx) offset
+            let (b1, _, _, _, _, _) = instr
+                func = instrFunc $ (decInstr dec) ! b1
+            liftIO $ putStrLn (showHex b1 "")
+            execTF <$> func instr ctx >>= decodeHalt dec 
     where
         memReg = ctxReg ctx
 

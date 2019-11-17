@@ -71,13 +71,35 @@ instance Show RegSeg where
     show (RegSeg 2) = "SS"
     show (RegSeg 3) = "DS"
 
+newtype PrismInt = PrismInt Uint8
+
+instance Show PrismInt where
+    show (PrismInt val) = "Int " ++ (show val)
+
+data PrismInterrupts = PrismInterrupts {
+        intListHigh :: [PrismInt],
+        intListNmi :: [PrismInt],
+        intListIntr :: [PrismInt],
+        intSingleStep :: [PrismInt],
+        intInterruptUp :: Bool
+    } deriving (Show)
+
+emptyPrismInterrupts = PrismInterrupts [] [] [] [] False
+makePrismCtx memReg memMain = Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop emptyPrismInterrupts
+
+noReplaceSeg ::  Maybe RegSeg
+noReplaceSeg = Nothing
+
+noStop = False
+
 data Ctx = Ctx {
         ctxReg :: MemReg,
         ctxMem :: MemMain,
         ctxFlags :: Flags,
         ctxEFlags :: EFlags,
         ctxReplaceSeg :: Maybe RegSeg,
-        ctxStop :: Bool
+        ctxStop :: Bool,
+        ctxInterrupts :: PrismInterrupts
     } deriving (Show)
 
 newtype PrismCtx m a = PrismCtx {

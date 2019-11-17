@@ -36,7 +36,7 @@ runBinary instrList binPath_ = do
     ptrReg <- callocBytes regSize
     ptrMem <- callocBytes maxMemorySize
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
-    let ctx = Ctx (MemReg ptrReg) (MemMain ptrMem) clearFlags clearEFlags Nothing False
+    let ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem)
     writeRegIP (ctxReg ctx) bootloaderStart
     ctxNew <- runPrism $ decodeHalt decoder ctx
     liftIO . putStrLn . show $ ctxNew
