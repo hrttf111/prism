@@ -3,6 +3,12 @@ module PrismInterrupt where
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 
 import Data.List
+import Data.Word
+import Data.Bits ((.&.), (.|.), shiftR, shiftL)
+import qualified Data.Map.Strict (Map, lookup)
+
+import Foreign.Ptr
+import Foreign.Storable (poke, pokeByteOff)
 
 import Prism
 import PrismCpu
@@ -41,11 +47,53 @@ processInterrupts :: MonadIO m => Ctx -> m Ctx
 processInterrupts ctx =
     case (getNextInterrupt $ ctxInterrupts ctx) of
         Just (newInterrupts, (PrismInt val)) -> do
-            (ipVal, csVal) <- readMemDirect32 (ctxReg ctx) (ctxMem ctx) (4 * (fromIntegral val))
+            (ipVal, csVal) <- readMemDirect32 (ctxMem ctx) (4 * (fromIntegral val))
             saveInterruptCtx ctx
             let newCtx = clearIntFlags $ ctx { ctxInterrupts = newInterrupts }
             jmpInterrupt newCtx ipVal csVal
         Nothing -> return $ ctx { ctxInterrupts = (ctxInterrupts $ ctx) { intInterruptUp = False } }
+
+-------------------------------------------------------------------------------
+
+type InterruptHandler = Ctx -> Uint8 -> PrismM
+type InterruptMap = Data.Map.Strict.Map Uint8 InterruptHandler
+
+emptyInterruptHandler :: InterruptHandler
+emptyInterruptHandler ctx _ = return ctx
+
+intInternal :: InterruptMap -> Ctx -> Uint8 -> PrismM
+intInternal mp ctx intType = handler ctx intType
+    where
+        handler = maybe emptyInterruptHandler id $ Data.Map.Strict.lookup intType mp
+
+writeHandler :: MonadIO m => Ptr Word8 -> Uint8 -> Int -> m ()
+writeHandler ptr int addr = liftIO $ (
+    pokeByteOff ptr addr (0xF1 :: Word8) >>
+    pokeByteOff ptr (addr+1) int >>
+    pokeByteOff ptr (addr+2) (0xCF :: Word8) >>
+    pokeByteOff ptr (addr+3) (0x00 :: Word8) )
+
+writeInternalInterruptHandlers :: MonadIO m => MemMain -> Int -> [Uint8] -> m [(Uint8, Uint32)]
+writeInternalInterruptHandlers (MemMain ptr) address intList = do
+    mapM_ (\(int, addr) -> writeHandler ptr int addr) addrList
+    return $ map (\(int, addr) -> (int, fromIntegral addr)) addrList
+    where
+        handlerSize = 4 -- 2 bytes 0xF1, 1 byte iret and 1 byte padding
+        (addrList, _) = foldl (\(lst, n) int -> ((int, n) : lst, n + 4)) ([], address) intList
+
+setInterruptsToMemory :: MonadIO m => MemMain -> [(Uint8, Uint32)] -> m ()
+setInterruptsToMemory (MemMain ptr) intList =
+    liftIO $ mapM_ setHandler intList
+    where
+        setHandler (int, addr) =
+            let cs_ = fromIntegral $ shiftR (addr .&. 0xFFFF0000) 4 :: Uint16
+                ip_ = fromIntegral $ addr .&. 0x0000FFFF :: Uint16
+                ptrIp = plusPtr ptr ((*4) $ fromIntegral int)
+                ptrCs = plusPtr ptrIp 2
+            in
+            poke ptrCs cs_ >> poke ptrIp ip_
+
+-------------------------------------------------------------------------------
 
 clearIntFlags :: Ctx -> Ctx
 clearIntFlags ctx = ctx { ctxEFlags = newEFlags }
@@ -72,8 +120,7 @@ loadInterruptCtx ctx = do
     return $ ctx { ctxFlags = flags, ctxEFlags = eflags }
     where
         memReg = ctxReg ctx
-
-jmpInterrupt :: MonadIO m => Ctx -> Imm16 -> Imm16 -> m Ctx
+jmpInterrupt :: MonadIO m => Ctx -> Imm16 -> Imm16 -> m Ctx 
 jmpInterrupt ctx ipVal csVal = do
     writeSeg memReg cs csVal
     writeRegIP memReg ipVal

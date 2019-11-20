@@ -270,8 +270,8 @@ readMem32 memReg (MemMain mm) regSeg mem = do
     val2 <- liftIO $ peekByteOff mm (offset + 2)
     return (val1, val2)
 
-readMemDirect32 :: MonadIO m => MemReg -> MemMain -> MemOffset -> m (Uint16, Uint16)
-readMemDirect32 memReg (MemMain mm) offset = do
+readMemDirect32 :: MonadIO m => MemMain -> MemOffset -> m (Uint16, Uint16)
+readMemDirect32 (MemMain mm) offset = do
     val1 <- liftIO $ peekByteOff mm offset
     val2 <- liftIO $ peekByteOff mm (offset + 2)
     return (val1, val2)

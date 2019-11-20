@@ -4,7 +4,6 @@
 module PrismIO where
 
 import Foreign.Ptr
---import Foreign.Storable (peekByteOff, pokeByteOff)
 import Foreign.Marshal.Array (pokeArray)
 
 import Data.Word (Word8)

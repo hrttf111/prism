@@ -542,3 +542,7 @@ makeDecoderList instrList = fromRight emptyDecoder $ makeDecoder <$> mergedInstr
         mergedInstr :: Either String [PrismInstruction]
         mergedInstr = map (uncurry mergeInstruction) <$> listResult
         emptyDecoder = makeDecoder []
+
+internalInstrList mp = [
+        makeInstructionS 0xF1 Nothing (decodeImm8 $ intInternal mp)
+    ]
