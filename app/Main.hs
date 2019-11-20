@@ -33,14 +33,27 @@ regSize = 64
 maxMemorySize = 1024 * 1024
 bootloaderStart = 0x7C00
 
-internalHandler :: InterruptHandler
-internalHandler ctx val = liftIO $ do
-    case val of
-        0x1 -> putStrLn "Video interrupt"
-        _ -> putStrLn $ "Unknown interrupt: " ++ (show val)
+writeTtyChar :: MonadIO m => Ctx -> m Ctx
+writeTtyChar ctx = do
+    valAl <- readReg8 memReg al
+    liftIO $ putStrLn $ show $ ((toEnum . fromEnum) $ valAl :: Char)
     return ctx
+    where
+        memReg = ctxReg ctx
 
-interruptMap = Data.Map.Strict.fromList [(1, internalHandler)]
+videoInterrupt :: InterruptHandler
+videoInterrupt ctx _ = do
+    valAh <- readReg8 memReg ah
+    case valAh of
+        14 -> writeTtyChar ctx
+        v -> do
+            liftIO $ putStrLn $ "Unknown video function " ++ (show v)
+            return ctx
+    return ctx
+    where
+        memReg = ctxReg ctx
+
+interruptMap = Data.Map.Strict.fromList [(1, videoInterrupt)]
 configureInterrups mem addr intList = 
     (mapHandlersToInts <$> writeInternalInterruptHandlers mem addr intInternalList)
         >>= setInterruptsToMemory mem
