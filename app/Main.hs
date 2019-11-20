@@ -36,7 +36,7 @@ bootloaderStart = 0x7C00
 writeTtyChar :: MonadIO m => Ctx -> m Ctx
 writeTtyChar ctx = do
     valAl <- readReg8 memReg al
-    liftIO $ putStrLn $ show $ ((toEnum . fromEnum) $ valAl :: Char)
+    liftIO $ putStrLn $ [((toEnum . fromEnum) $ valAl :: Char)]
     return ctx
     where
         memReg = ctxReg ctx
