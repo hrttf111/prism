@@ -1,6 +1,8 @@
  - implement port infra
+ - memory mapped infra
  - implement generalized mem/reg instructions
  - implement string operations and prefixes
+ - prism BIOS
  - debugging
     - gdb remote protocol?
 

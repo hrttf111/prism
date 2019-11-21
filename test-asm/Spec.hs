@@ -11,6 +11,7 @@ import TestArithmetic
 import TestLogical
 import TestControl
 import TestProcessor
+import TestString
 
 import PrismCpu
 import Instruction.Transfer
@@ -18,6 +19,7 @@ import Instruction.Arithmetic
 import Instruction.Processor
 import Instruction.Logical
 import Instruction.Control
+import Instruction.String
 
 import NeatInterpolation
 import Data.Text (Text)
@@ -29,6 +31,7 @@ instrList = transferInstrList
     ++ processorInstrList
     ++ logicalInstrList
     ++ controlInstrList
+    ++ stringInstrList
 
 doTests env = do
         testMov env
@@ -41,6 +44,7 @@ doTests env = do
         testLog env
         testControl env
         testProcessor env
+        testString env
 
 main :: IO ()
 main = do

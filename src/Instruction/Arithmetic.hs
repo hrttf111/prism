@@ -1,6 +1,6 @@
 module Instruction.Arithmetic where
 
-import Control.Monad.Trans (lift, liftIO, MonadIO)
+import Control.Monad.Trans (liftIO, MonadIO)
 import Data.Bits (shiftR, shiftL, (.|.), (.&.))
 import Data.Int
 
