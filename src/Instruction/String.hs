@@ -16,6 +16,7 @@ movs8 ctx = do
     writeMem8 memReg memMain (Just es) (MemDirect valDi) valMemSi
     writeReg16 memReg di (advance valDi)
     writeReg16 memReg si (advance valSi)
+    liftIO $ putStrLn $ " val = " ++ (show valMemSi)
     return ctx
     where
         df = (eflagDF . ctxEFlags $ ctx)
@@ -173,6 +174,45 @@ stos16 ctx = do
         advance val = if df then val-2 else val+2
         memReg = ctxReg ctx
         memMain = ctxMem ctx
+
+-------------------------------------------------------------------------------
+
+rep :: (Ctx -> PrismM) -> Bool -> Ctx -> PrismM
+rep execInstr zfOne ctx = do
+    cxVal <- readReg16 memReg cx
+    ip <- readRegIP memReg
+    if cxVal == 0 then doExit ctx
+    else do
+        writeReg16 memReg cx (cxVal - 1)
+        newCtx <- execInstr ctx
+        writeRegIP memReg ip
+        instr <- peekFirstByte (ctxMem ctx) =<< getInstrAddress memReg cs ip
+        case instr of
+            0xA6 -> processZf newCtx
+            0xA7 -> processZf newCtx
+            0xAE -> processZf newCtx
+            0xAF -> processZf newCtx
+            _ -> doNext newCtx
+    where
+        memReg = ctxReg ctx
+        doExit = updateIP 1
+        doNext = rep execInstr zfOne
+        processZf newCtx =
+            if (flagZF . ctxFlags $ newCtx) then
+                if zfOne then doNext newCtx
+                    else doExit newCtx
+            else
+                if zfOne then doExit newCtx
+                    else doNext newCtx
+
+getRepInstrList :: (Ctx -> PrismM) -> [PrismInstruction]
+getRepInstrList execInstr = [
+        makeInstructionS 0xF2 Nothing (decodeImplicit $ rep execInstr False),
+        makeInstructionS 0xF3 Nothing (decodeImplicit $ rep execInstr True)
+    ]
+
+repInstrList :: [PrismInstruction] -> [PrismInstruction]
+repInstrList = getRepInstrList . decodeExecOne . makeDecoderList
 
 -------------------------------------------------------------------------------
 

@@ -32,6 +32,7 @@ instrList = transferInstrList
     ++ logicalInstrList
     ++ controlInstrList
     ++ stringInstrList
+    ++ repInstrList stringInstrList
 
 doTests env = do
         testMov env

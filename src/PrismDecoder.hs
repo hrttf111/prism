@@ -529,6 +529,9 @@ peekTuple6 ptr offset = liftIO $ do
     b6 <- peekByteOff ptr (offset + 5)
     return (b1, b2, b3, b4, b5, b6)
 
+peekFirstByte :: MonadIO m => MemMain -> Int -> m Uint8
+peekFirstByte (MemMain ptr) offset = liftIO $ peekByteOff ptr offset
+
 pokeInstrBytes :: MonadIO m => MemMain -> Int -> InstrBytes -> m (Ptr Uint8)
 pokeInstrBytes (MemMain ptr) offset instr = pokeTuple6 ptr offset instr
 

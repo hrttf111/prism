@@ -117,3 +117,39 @@ testString env = do
                 mov bl, [es:49]
                 mov al, [es:48]
             |]
+    describe "Rep" $ do
+        it "MOVS8 DF=0" $ do
+            execPrism [(al `shouldEq` 0xFF), (bl `shouldEq` 0xAA), (di `shouldEq` 2), (si `shouldEq` 102)] env [text|
+                mov di, 0
+                mov si, 100
+                mov [si], BYTE 0xFF
+                mov [si+1], BYTE 0xAA
+                mov cx, 2
+                rep movsb
+                mov al, [es:0]
+                mov bl, [es:1]
+            |]
+        it "SCAS8 NE" $ do
+            execPrism [(di `shouldEq` 5)] env [text|
+                mov di, 0
+                mov [di], BYTE 0xFF
+                mov [di+1], BYTE 0xAB
+                mov [di+2], BYTE 0xAC
+                mov [di+3], BYTE 0xAF
+                mov [di+4], BYTE 0
+                mov cx, 5
+                mov al, 0xDD
+                repne scasb
+            |]
+        it "SCAS8 NE found" $ do
+            execPrism [(di `shouldEq` 3)] env [text|
+                mov di, 0
+                mov [es:di], BYTE 0xFF
+                mov [es:di+1], BYTE 0xAB
+                mov [es:di+2], BYTE 0xDD
+                mov [es:di+3], BYTE 0xAF
+                mov [es:di+4], BYTE 0
+                mov cx, 5
+                mov al, 0xDD
+                repne scasb
+            |]
