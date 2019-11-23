@@ -1,9 +1,24 @@
  - implement port infra
  - memory mapped infra
  - implement generalized mem/reg instructions
+    - how to handle mem? Same mem can work with 8/16 bit values
  - prism BIOS
+    - set internal interrupts
+    - main app writes indexes of medias in main mem, BIOS reads them
+    - set correct modes to peripheral
+    - find bootable media
+    - start bootloader
+    - initial CPU test
+    - test timers/video/keyboard
  - debugging
     - gdb remote protocol?
+ - peripheral
+    - video
+    - keyboard
+    - flopy
+    - HDD
+    - PIC
+    - PIT
 
 -------------------------------------------------------
 Ports
