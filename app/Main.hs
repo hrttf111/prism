@@ -12,6 +12,7 @@ import Instruction.Arithmetic
 import Instruction.Processor
 import Instruction.Logical
 import Instruction.Control
+import Instruction.String
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Semigroup ((<>))
@@ -85,6 +86,8 @@ instrList = transferInstrList
     ++ processorInstrList
     ++ logicalInstrList
     ++ controlInstrList
+    ++ stringInstrList
+    ++ repInstrList stringInstrList
 
 main :: IO ()
 main = do
