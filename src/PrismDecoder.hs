@@ -21,6 +21,7 @@ import Foreign.Storable (peekByteOff, pokeByteOff)
 import Prism
 import PrismCpu
 import PrismInterrupt
+import PrismCommand
 
 -------------------------------------------------------------------------------
 
@@ -506,6 +507,25 @@ decodeHalt dec ctx = do
                 func = instrFunc $ (decInstr dec) ! b1
             liftIO $ putStrLn (showHex b1 "")
             execTF <$> func instr ctx >>= decodeHalt dec 
+    where
+        memReg = ctxReg ctx
+
+decodeHaltCpu :: PrismDecoder -> PrismComm -> Ctx -> PrismCtx IO Ctx
+decodeHaltCpu dec comm ctx = do
+    m <- processComm comm ctx
+    case m of
+        Just (comm_, ctx_) -> decodeHaltCpu dec comm_ ctx_
+        Nothing -> 
+            if ctxStop ctx then return ctx
+            else do
+                if interruptActive ctx then processInterrupts ctx >>= decodeHaltCpu dec comm
+                else do
+                    offset <- getInstrAddress memReg cs =<< readRegIP memReg
+                    instr <- peekInstrBytes (ctxMem ctx) offset
+                    let (b1, _, _, _, _, _) = instr
+                        func = instrFunc $ (decInstr dec) ! b1
+                    liftIO $ putStrLn (showHex b1 "")
+                    execTF <$> func instr ctx >>= decodeHaltCpu dec comm
     where
         memReg = ctxReg ctx
 

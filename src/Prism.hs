@@ -71,7 +71,7 @@ instance Show RegSeg where
     show (RegSeg 2) = "SS"
     show (RegSeg 3) = "DS"
 
-newtype PrismInt = PrismInt Uint8
+newtype PrismInt = PrismInt Uint8 deriving (Eq)
 
 instance Show PrismInt where
     show (PrismInt val) = "Int " ++ (show val)

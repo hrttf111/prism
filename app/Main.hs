@@ -6,6 +6,7 @@ import PrismCpu
 import PrismIO
 import PrismShow
 import PrismInterrupt
+import PrismCommand
 
 import Instruction.Transfer
 import Instruction.Arithmetic
@@ -72,7 +73,8 @@ runBinary instrList binPath_ = do
     let ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem)
     configureInterrups (ctxMem ctx) 0xFF000 [(1, PrismInt 0x10)]
     writeRegIP (ctxReg ctx) bootloaderStart
-    ctxNew <- runPrism $ decodeHalt decoder ctx
+    comm <- newPrismComm
+    ctxNew <- runPrism $ decodeHaltCpu decoder comm ctx
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
