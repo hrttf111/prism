@@ -24,6 +24,8 @@ import Text.Parsec
 import Text.Parsec.Text
 import qualified Data.Text as T
 
+import PrismCommand
+
 -------------------------------------------------------------------------------
 
 data CpuCmdReq = CpuReadRegsReq 
@@ -47,17 +49,9 @@ type CmdQueue = TQueue CpuMessage
 data GDBState = GDBState {
     gdbAckEnabled :: Bool,
     gdbPacketSize :: Int,
-    gdbCmdQueueReq :: CmdQueue,
-    gdbCmdQueueRes :: CmdQueue
+    gdbCmdQueue :: PrismCmdQueue,
+    gdbRspQueue :: PrismRspQueue
 }
-
-sendQueue :: MonadIO m => GDBState -> CpuMessage -> m ()
-sendQueue state msg = liftIO . atomically $ writeTQueue (gdbCmdQueueReq state) msg
-
-sendQueueAndWait :: MonadIO m => GDBState -> CpuMessage -> m CpuMessage
-sendQueueAndWait state msg = liftIO $ do
-    atomically $ writeTQueue (gdbCmdQueueReq state) msg
-    atomically $ readTQueue (gdbCmdQueueRes state)
 
 -------------------------------------------------------------------------------
 

@@ -6,7 +6,6 @@ module GDB.Server where
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import qualified Control.Monad.State.Class as SC
---import Control.Monad.Logger
 import Control.Monad.Logger.CallStack
 
 import Control.Exception.Lifted (bracket)
@@ -27,6 +26,10 @@ import GHC.Stack (HasCallStack, callStack)
 
 import GDB.GDB
 import GDB.Protocol
+
+import Prism
+import PrismCommand
+import PrismCpu (readReg16, readRegIP, readSeg)
 
 -------------------------------------------------------------------------------
 
@@ -67,6 +70,16 @@ parsePacket buffer =
 sendPacketString :: MonadIO m => Socket -> GDBState -> String -> m ()
 sendPacketString sock state packet = sendPacket sock state $ BC.pack packet
 
+sendQueueAndWait :: MonadIO m => GDBState -> PrismCpuCommand -> m PrismCpuResponse
+sendQueueAndWait state cmd = sendAndWaitCpuMsg (gdbCmdQueue state) (gdbRspQueue state) cmd
+
+-------------------------------------------------------------------------------
+{-
+regsToString :: MonadIO m => MemReg -> Flags -> EFlags -> m String
+regsToString memReg flags eflags = do
+    lst <- ((return []) 
+            >>= readReg16 memReg ax)
+-}
 -------------------------------------------------------------------------------
 
 emptyO = GDBState True 1000
@@ -98,41 +111,43 @@ processCommand command commandText sock = do
         GMustReplyEmpty ->
             replyEmpty sock state
         GReadGRegs -> do
-            res <- sendQueueAndWait state $ CpuReq CpuReadRegsReq
+            res <- sendQueueAndWait state PCmdReadCtx
             case res of
-                CpuResp (CpuReadRegRes regs) -> 
-                    sendPacketString sock state $ foldl (\l i -> l ++ (toHex i)) "" regs
+                PRspCtx ctx -> 
+                    --sendPacketString sock state $ foldl (\l i -> l ++ (toHex i)) "" regs
+                    sendPacketString sock state "E00"
                 r -> do
                     logErrorSH r
                     sendPacketString sock state "E00"
         GReadMem (addr, len) -> do
-            res <- sendQueueAndWait state $ CpuReq (CpuReadMem addr len)
+            res <- sendQueueAndWait state PCmdReadCtx
             case res of
-                CpuResp (CpuReadMemRes mem) -> 
-                    sendPacketString sock state $ foldl (\l i -> l ++ (toHex i)) "" mem
+                PRspCtx ctx ->
+                    --sendPacketString sock state $ foldl (\l i -> l ++ (toHex i)) "" mem
+                    sendPacketString sock state "E00"
                 r -> do
                     logErrorSH r
                     sendPacketString sock state "E00"
         GReadReg reg ->
             sendPacketString sock state $ take 8 $ cycle (show reg)
         GWriteReg (reg, val) -> do
-            sendQueue state $ CpuReq (CpuWriteReg reg val)
+            --sendQueue state $ CpuReq (CpuWriteReg reg val)
             replyOk sock state
         GWriteMem (addr, val) -> do
-            sendQueue state $ CpuReq (CpuWriteMem addr val)
+            --sendQueue state $ CpuReq (CpuWriteMem addr val)
             replyOk sock state
         GStep -> do
-            res <- sendQueueAndWait state $ CpuReq CpuStepReq
+            res <- sendQueueAndWait state PCmdStep
             case res of
-                CpuResp CpuStepRes -> 
+                PRspStep -> 
                     sendPacketString sock state "S05"
                 r -> do
                     logErrorSH r
                     sendPacketString sock state "E00"
         GCont _ -> do
-            res <- sendQueueAndWait state $ CpuReq CpuContReq
+            res <- sendQueueAndWait state PCmdCont
             case res of
-                CpuResp CpuContRes -> 
+                PRspCont ->
                     sendPacketString sock state "S05"
                 r -> do
                     logErrorSH r
@@ -140,14 +155,8 @@ processCommand command commandText sock = do
         GBreakPoint (addr, type_) -> do
             logInfoN $ T.pack $ "Breakpoint " ++ (show addr) ++ " " ++ (show type_)
             replyOk sock state
-            res <- sendQueueAndWait state $ CpuReq $ CpuBreakReq addr
-            case res of
-                CpuResp CpuTrapRes -> 
-                    --sendPacketString sock state "S05"
-                    return ()
-                r -> do
-                    logErrorSH r
-                    sendPacketString sock state "E00"
+            sendCpuMsgIO (gdbCmdQueue state) $ PCmdBreak addr
+            return ()
         GHaltReason ->
             sendPacketString sock state "S05"
         GThreadOp ->

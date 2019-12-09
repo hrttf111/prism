@@ -24,9 +24,12 @@ data PrismCpuCommand = PCmdInterrupt PrismInt
                        | PCmdPause
                        | PCmdStep
                        | PCmdCont
+                       | PCmdBreak Int
+                       -- | PCmdWriteMem Int [Word8]
                        | PCmdReadCtx deriving (Show, Eq)
 
 data PrismCpuResponse = PRspCtx Ctx
+                        | PRspCont
                         | PRspStep deriving (Show)
 
 newtype PrismCmdQueue = PrismCmdQueue (TQueue PrismCpuCommand)
@@ -67,6 +70,7 @@ processComm comm ctx = do
     msg <- tryRecvCpuMsgIO (commCmdQueue comm)
     case msg of
         Just m -> case m of
+            PCmdBreak addr -> cpuProcessBreak comm ctx addr
             PCmdInterrupt _ -> return Nothing
             PCmdPause -> cpuProcessPause comm ctx
             PCmdStep -> cpuProcessStep comm ctx
@@ -76,16 +80,22 @@ processComm comm ctx = do
             if commWaitResponse comm then processComm comm ctx
                 else return Nothing
 
+cpuProcessBreak :: PrismComm -> Ctx -> Int -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuProcessBreak comm ctx _ = return Nothing
+
 cpuProcessPause :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessPause comm ctx = return $ Just (comm {commWaitResponse = True}, ctx)
 
 cpuProcessStep :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessStep comm ctx =
     sendCpuMsgIO (commCmdQueue comm) PCmdPause
+    >> sendCpuMsgIO (commRspQueue comm) PRspStep
     >> return Nothing
 
 cpuProcessCont :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
-cpuProcessCont comm ctx = return $ Just (comm {commWaitResponse = False}, ctx)
+cpuProcessCont comm ctx = do
+    sendCpuMsgIO (commRspQueue comm) PRspCont
+    return $ Just (comm {commWaitResponse = False}, ctx)
 
 cpuProcessReadCtx :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessReadCtx comm ctx = do
