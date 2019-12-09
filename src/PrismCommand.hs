@@ -64,7 +64,7 @@ newPrismComm = do
 
 processComm :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 processComm comm ctx = do
-    msg <- if (commWaitResponse comm) then Just <$> recvCpuMsgIO (commCmdQueue comm) else tryRecvCpuMsgIO (commCmdQueue comm)
+    msg <- tryRecvCpuMsgIO (commCmdQueue comm)
     case msg of
         Just m -> case m of
             PCmdInterrupt _ -> return Nothing
@@ -72,7 +72,9 @@ processComm comm ctx = do
             PCmdStep -> cpuProcessStep comm ctx
             PCmdCont -> cpuProcessCont comm ctx
             PCmdReadCtx -> cpuProcessReadCtx comm ctx
-        Nothing -> return Nothing
+        Nothing ->
+            if commWaitResponse comm then processComm comm ctx
+                else return Nothing
 
 cpuProcessPause :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessPause comm ctx = return $ Just (comm {commWaitResponse = True}, ctx)
