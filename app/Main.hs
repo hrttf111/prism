@@ -19,6 +19,9 @@ import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Semigroup ((<>))
 import qualified Data.Map.Strict (fromList)
 
+import Control.Monad.Trans.State
+import Control.Concurrent
+
 import Options.Applicative
 import Options.Applicative.Types
 
@@ -26,6 +29,15 @@ import Foreign.Storable (peekByteOff, pokeByteOff)
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
 
+import GDB.GDB
+import GDB.Server
+import GDB.Protocol
+import GDB.Logger
+
+gdbThread :: GDBState -> IO ()
+gdbThread state = do
+    runStateT (runMyLoggingT (runGDB $ runServer "127.0.0.1" 20001)) state
+    return ()
 
 data AppOpts = AppOpts {
         binPath :: !FilePath
@@ -67,13 +79,14 @@ configureInterrups mem addr intList =
 
 runBinary :: [PrismInstruction] -> FilePath -> IO ()
 runBinary instrList binPath_ = do
+    comm <- newPrismComm
+    forkIO . gdbThread $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)
     ptrReg <- callocBytes regSize
     ptrMem <- callocBytes maxMemorySize
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     let ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem)
     configureInterrups (ctxMem ctx) 0xFF000 [(1, PrismInt 0x10)]
     writeRegIP (ctxReg ctx) bootloaderStart
-    comm <- newPrismComm
     ctxNew <- runPrism $ decodeHaltCpu decoder comm ctx
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew

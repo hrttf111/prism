@@ -54,8 +54,17 @@ assembleHex val shiftV = (if byte > 0x0F then showHex byte else ('0':) . showHex
     where
         byte = val .&. 0xFF
 
+assembleHex1 :: (FiniteBits a, Integral a, Show a) => a -> String -> Int -> String
+assembleHex1 val s shiftV | (finiteBitSize val) <= shiftV = s
+assembleHex1 val s shiftV = (if byte > 0x0F then showHex byte else ('0':) . showHex byte) $ assembleHex1 (shiftR val 8) s (shiftV + 8)
+    where
+        byte = val .&. 0xFF
+
 toHex :: (FiniteBits a, Integral a, Show a) => a -> String
 toHex val = assembleHex val 0
+
+toHex1 :: (FiniteBits a, Integral a, Show a) => a -> String -> String
+toHex1 val s = assembleHex1 val s 0
 
 fromHex :: (FiniteBits a, Integral a, Show a) => [Word8] -> a
 fromHex bytes = assembleVal bytes 0 0

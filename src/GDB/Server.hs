@@ -13,7 +13,11 @@ import Control.Exception.Lifted (bracket)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.Maybe (maybe)
+import Data.Word (Word32, Word8)
 import Numeric (showHex)
+
+import Foreign.Marshal.Array
+import Foreign.Ptr
 
 import Network.Socket(Socket, close, bind, accept, listen, socket, defaultProtocol, Family(..), connect, inet_addr, SockAddr(..), SocketType(..))
 import qualified Network.Socket.ByteString as SocketB
@@ -29,7 +33,7 @@ import GDB.Protocol
 
 import Prism
 import PrismCommand
-import PrismCpu (readReg16, readRegIP, readSeg)
+import PrismCpu
 
 -------------------------------------------------------------------------------
 
@@ -74,12 +78,33 @@ sendQueueAndWait :: MonadIO m => GDBState -> PrismCpuCommand -> m PrismCpuRespon
 sendQueueAndWait state cmd = sendAndWaitCpuMsg (gdbCmdQueue state) (gdbRspQueue state) cmd
 
 -------------------------------------------------------------------------------
-{-
+
 regsToString :: MonadIO m => MemReg -> Flags -> EFlags -> m String
 regsToString memReg flags eflags = do
-    lst <- ((return []) 
-            >>= readReg16 memReg ax)
--}
+    {- l <- mapM (readReg16 memReg) [ax, cx, dx, bx, sp, bp, si, di]
+         >>= (\vals -> (:vals) <$> readRegIP memReg)
+         >>= (\vals -> return . 
+         >>= mapMF (readSeg memReg) [cs, ss, ds, es]
+    return $ foldl (++) "" $ map uint16ToHex l
+    -}
+    l <- mapM (readSeg memReg) [es, ds, ss, cs]
+         >>= (return . (++[allFlags]))
+         >>= (\vals -> ((vals++).return) <$> readRegIP memReg)
+         >>= mapMF (readReg16 memReg) [di, si, bp, sp, bx, dx, cx, ax]
+    return $ foldl uint16ToHex emptyRegs l
+    where
+        allFlags = flagsToVal flags $ eflagsToVal eflags 0
+        uint16ToHex s v = toHex1 (fromIntegral v :: Word32) s
+        --emptyRegs = "XXXXXXXXXXXXXXXX"
+        emptyRegs = "0000000000000000"
+        mapMF func regs vals = 
+            (++vals) <$> mapM func regs
+
+memToString :: MonadIO m => MemMain -> Int -> Int -> m String
+memToString (MemMain ptr) addr len = do
+    arr <- liftIO $ (peekArray len $ plusPtr ptr addr :: IO [Word8])
+    return $ foldl (flip toHex1) "" $ reverse arr
+
 -------------------------------------------------------------------------------
 
 emptyO = GDBState True 1000
@@ -113,18 +138,20 @@ processCommand command commandText sock = do
         GReadGRegs -> do
             res <- sendQueueAndWait state PCmdReadCtx
             case res of
-                PRspCtx ctx -> 
-                    --sendPacketString sock state $ foldl (\l i -> l ++ (toHex i)) "" regs
-                    sendPacketString sock state "E00"
+                PRspCtx ctx -> do
+                    str <- regsToString (ctxReg ctx) (ctxFlags ctx) (ctxEFlags ctx)
+                    logDebug $ T.pack str
+                    sendPacketString sock state str
                 r -> do
                     logErrorSH r
                     sendPacketString sock state "E00"
         GReadMem (addr, len) -> do
             res <- sendQueueAndWait state PCmdReadCtx
             case res of
-                PRspCtx ctx ->
-                    --sendPacketString sock state $ foldl (\l i -> l ++ (toHex i)) "" mem
-                    sendPacketString sock state "E00"
+                PRspCtx ctx -> do
+                    str <- memToString (ctxMem ctx) addr len
+                    logDebug $ T.pack str
+                    sendPacketString sock state str
                 r -> do
                     logErrorSH r
                     sendPacketString sock state "E00"
