@@ -13,7 +13,7 @@ import Control.Exception.Lifted (bracket)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.Maybe (maybe)
-import Data.Word (Word32, Word8)
+import Data.Word (Word32, Word16, Word8)
 import Numeric (showHex)
 
 import Foreign.Marshal.Array
@@ -81,21 +81,16 @@ sendQueueAndWait state cmd = sendAndWaitCpuMsg (gdbCmdQueue state) (gdbRspQueue 
 
 regsToString :: MonadIO m => MemReg -> Flags -> EFlags -> m String
 regsToString memReg flags eflags = do
-    {- l <- mapM (readReg16 memReg) [ax, cx, dx, bx, sp, bp, si, di]
-         >>= (\vals -> (:vals) <$> readRegIP memReg)
-         >>= (\vals -> return . 
-         >>= mapMF (readSeg memReg) [cs, ss, ds, es]
-    return $ foldl (++) "" $ map uint16ToHex l
-    -}
-    l <- mapM (readSeg memReg) [es, ds, ss, cs]
-         >>= (return . (++[allFlags]))
-         >>= (\vals -> ((vals++).return) <$> readRegIP memReg)
-         >>= mapMF (readReg16 memReg) [di, si, bp, sp, bx, dx, cx, ax]
+    l <- mapM (conv . readReg16 memReg) [di, si, bp, sp, bx, dx, cx, ax]
+         >>= (\v -> (:v) <$> (makeEIP))
+         >>= return . (allFlags:)
+         >>= mapMF (conv . readSeg memReg) [es, ds, ss, cs]
     return $ foldl uint16ToHex emptyRegs l
     where
-        allFlags = flagsToVal flags $ eflagsToVal eflags 0
-        uint16ToHex s v = toHex1 (fromIntegral v :: Word32) s
-        --emptyRegs = "XXXXXXXXXXXXXXXX"
+        conv = fmap (fromIntegral :: Word16 -> Word32)
+        allFlags = fromIntegral $ flagsToVal flags $ eflagsToVal eflags 0
+        uint16ToHex s v = toHex1 v s
+        makeEIP = fromIntegral <$> (getInstrAddress memReg cs =<< readRegIP memReg)
         emptyRegs = "0000000000000000"
         mapMF func regs vals = 
             (++vals) <$> mapM func regs
