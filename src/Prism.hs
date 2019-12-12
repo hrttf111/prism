@@ -24,9 +24,9 @@ type Disp = Word16
 type EA = Uint16
 type MemOffset = Int
 
-newtype Reg8 = Reg8 Word8
-newtype Reg16 = Reg16 Word8
-newtype RegSeg = RegSeg Word8
+newtype Reg8 = Reg8 Word8 deriving (Eq)
+newtype Reg16 = Reg16 Word8 deriving (Eq)
+newtype RegSeg = RegSeg Word8 deriving (Eq)
 
 data Mem = MemBxSi Disp |
            MemBxDi Disp |

@@ -153,10 +153,23 @@ processCommand command commandText sock = do
         GReadReg reg ->
             sendPacketString sock state $ take 8 $ cycle (show reg)
         GWriteReg (reg, val) -> do
-            --sendQueue state $ CpuReq (CpuWriteReg reg val)
+            logInfoN $ T.pack $ "Write reg " ++ (show reg) ++ " " ++ (show val)
+            if reg < 8 then
+                sendCpuMsgIO (gdbCmdQueue state) $ PCmdWriteReg16 (Reg16 . fromIntegral $ reg) (fromIntegral val)
+                else if reg >= 10 then
+                    let regSeg = case reg of
+                            10 -> cs
+                            11 -> ss
+                            12 -> ds
+                            13 -> es
+                            _ -> cs
+                            in
+                    sendCpuMsgIO (gdbCmdQueue state) $ PCmdWriteRegSeg regSeg (fromIntegral val)
+                    else
+                        return ()
             replyOk sock state
         GWriteMem (addr, val) -> do
-            --sendQueue state $ CpuReq (CpuWriteMem addr val)
+            sendCpuMsgIO (gdbCmdQueue state) $ PCmdWriteMem addr val
             replyOk sock state
         GStep -> do
             res <- sendQueueAndWait state PCmdStep

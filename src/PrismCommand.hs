@@ -10,6 +10,9 @@ import Control.Concurrent.STM
 
 import Data.Word (Word32, Word16, Word8)
 
+import Foreign.Ptr
+import Foreign.Marshal.Array (pokeArray)
+
 import Prism 
 import PrismCpu
 
@@ -25,7 +28,10 @@ data PrismCpuCommand = PCmdInterrupt PrismInt
                        | PCmdStep
                        | PCmdCont
                        | PCmdBreak Int
-                       -- | PCmdWriteMem Int [Word8]
+                       | PCmdWriteMem Int [Word8]
+                       | PCmdWriteReg8 Reg8 Uint8
+                       | PCmdWriteReg16 Reg16 Uint16
+                       | PCmdWriteRegSeg RegSeg Uint16
                        | PCmdReadCtx deriving (Show, Eq)
 
 data PrismCpuResponse = PRspCtx Ctx
@@ -75,6 +81,10 @@ processComm comm ctx = do
             PCmdPause -> cpuProcessPause comm ctx
             PCmdStep -> cpuProcessStep comm ctx
             PCmdCont -> cpuProcessCont comm ctx
+            PCmdWriteMem addr bytes -> cpuProcessMemWrite comm ctx addr bytes
+            PCmdWriteReg8 reg val -> cpuProcessWriteReg8 comm ctx reg val
+            PCmdWriteReg16 reg val -> cpuProcessWriteReg16 comm ctx reg val
+            PCmdWriteRegSeg reg val -> cpuProcessWriteRegSeg comm ctx reg val
             PCmdReadCtx -> cpuProcessReadCtx comm ctx
         Nothing ->
             if commWaitResponse comm then processComm comm ctx
@@ -96,6 +106,28 @@ cpuProcessCont :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessCont comm ctx = do
     sendCpuMsgIO (commRspQueue comm) PRspCont
     return $ Just (comm {commWaitResponse = False}, ctx)
+
+cpuProcessMemWrite :: PrismComm -> Ctx -> Int -> [Word8] -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuProcessMemWrite comm ctx addr bytes = do
+    liftIO $ pokeArray (ptrMem $ ctxMem ctx) bytes
+    return $ Just (comm, ctx)
+    where
+        ptrMem (MemMain ptr) = plusPtr ptr addr
+
+cpuProcessWriteReg8 :: PrismComm -> Ctx -> Reg8 -> Word8 -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuProcessWriteReg8 comm ctx reg val = do
+    writeReg8 (ctxReg ctx) reg val
+    return $ Just (comm, ctx)
+
+cpuProcessWriteReg16 :: PrismComm -> Ctx -> Reg16 -> Word16 -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuProcessWriteReg16 comm ctx reg val = do
+    writeReg16 (ctxReg ctx) reg val
+    return $ Just (comm, ctx)
+
+cpuProcessWriteRegSeg :: PrismComm -> Ctx -> RegSeg -> Word16 -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuProcessWriteRegSeg comm ctx reg val = do
+    writeSeg (ctxReg ctx) reg val
+    return $ Just (comm, ctx)
 
 cpuProcessReadCtx :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessReadCtx comm ctx = do
