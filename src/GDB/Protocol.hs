@@ -114,7 +114,6 @@ gdbQueryParser = choice [
                  , anyToken >> return (GQuery GQUknownQuery)
                  ]
 
---gdbParser :: GenParser T.Text GDBPacket 
 gdbParser :: GDBParser GDBPacket 
 gdbParser = choice [
               char '?' >> return GHaltReason

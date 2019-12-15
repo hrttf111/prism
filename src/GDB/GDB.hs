@@ -28,24 +28,6 @@ import PrismCommand
 
 -------------------------------------------------------------------------------
 
-data CpuCmdReq = CpuReadRegsReq 
-                 | CpuWriteReg Int Int
-                 | CpuWriteMem Int [Word8]
-                 | CpuStepReq
-                 | CpuContReq
-                 | CpuBreakReq Int
-                 | CpuReadMem Int Int deriving (Show, Eq)
-data CpuCmdRes = CpuReadRegRes [Word32] 
-                 | CpuStepRes
-                 | CpuContRes
-                 | CpuTrapRes
-                 | CpuReadMemRes [Word8] deriving (Show, Eq)
-
-data CpuMessage = CpuReq CpuCmdReq
-                  | CpuResp CpuCmdRes deriving (Show, Eq)
-
-type CmdQueue = TQueue CpuMessage
-
 data GDBState = GDBState {
     gdbAckEnabled :: Bool,
     gdbPacketSize :: Int,

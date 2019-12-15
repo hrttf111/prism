@@ -9,6 +9,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Concurrent.STM
 
 import Data.Word (Word32, Word16, Word8)
+import Data.Set
 
 import Foreign.Ptr
 import Foreign.Marshal.Array (pokeArray)
@@ -27,7 +28,8 @@ data PrismCpuCommand = PCmdInterrupt PrismInt
                        | PCmdPause
                        | PCmdStep
                        | PCmdCont
-                       | PCmdBreak Int
+                       | PCmdBreak MemOffset
+                       | PCmdBreakRemove MemOffset
                        | PCmdWriteMem Int [Word8]
                        | PCmdWriteReg8 Reg8 Uint8
                        | PCmdWriteReg16 Reg16 Uint16
@@ -44,6 +46,7 @@ newtype PrismRspQueue = PrismRspQueue (TQueue PrismCpuResponse)
 data PrismComm = PrismComm {
         commCmdQueue :: PrismCmdQueue,
         commRspQueue :: PrismRspQueue,
+        commBreakpoints :: Set MemOffset,
         commWaitResponse :: Bool
     }
 
@@ -69,7 +72,18 @@ sendAndWaitCpuMsg queue1 queue2 msg1 = sendCpuMsgIO queue1 msg1 >> recvCpuMsgIO 
 newPrismComm = do
     queueCmd <- newTQueueIO :: IO (TQueue PrismCpuCommand)
     queueRsp <- newTQueueIO :: IO (TQueue PrismCpuResponse)
-    return $ PrismComm (PrismCmdQueue queueCmd) (PrismRspQueue queueRsp) True
+    return $ PrismComm (PrismCmdQueue queueCmd) (PrismRspQueue queueRsp) empty True
+
+processPrismCommand :: PrismComm -> Ctx -> MemOffset -> PrismCtx IO (Maybe (PrismComm, Ctx))
+processPrismCommand comm ctx offset =
+    if member offset (commBreakpoints comm) then do
+            if commWaitResponse comm then processComm comm ctx
+                else do
+                    liftIO $ putStrLn $ "Break " ++ (show offset)
+                    sendCpuMsgIO (commRspQueue comm) PRspCont
+                    cpuProcessPause comm ctx
+        else
+            processComm comm ctx
 
 processComm :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 processComm comm ctx = do
@@ -77,6 +91,7 @@ processComm comm ctx = do
     case msg of
         Just m -> case m of
             PCmdBreak addr -> cpuProcessBreak comm ctx addr
+            PCmdBreakRemove addr -> cpuProcessBreakRemove comm ctx addr
             PCmdInterrupt _ -> return Nothing
             PCmdPause -> cpuProcessPause comm ctx
             PCmdStep -> cpuProcessStep comm ctx
@@ -91,7 +106,12 @@ processComm comm ctx = do
                 else return Nothing
 
 cpuProcessBreak :: PrismComm -> Ctx -> Int -> PrismCtx IO (Maybe (PrismComm, Ctx))
-cpuProcessBreak comm ctx _ = return Nothing
+cpuProcessBreak comm ctx b = 
+    return $ Just (comm {commBreakpoints = insert b (commBreakpoints comm)}, ctx)
+
+cpuProcessBreakRemove :: PrismComm -> Ctx -> Int -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuProcessBreakRemove comm ctx b =
+    return $ Just (comm {commBreakpoints = delete b (commBreakpoints comm)}, ctx)
 
 cpuProcessPause :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessPause comm ctx = return $ Just (comm {commWaitResponse = True}, ctx)
@@ -104,7 +124,6 @@ cpuProcessStep comm ctx =
 
 cpuProcessCont :: PrismComm -> Ctx -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessCont comm ctx = do
-    sendCpuMsgIO (commRspQueue comm) PRspCont
     return $ Just (comm {commWaitResponse = False}, ctx)
 
 cpuProcessMemWrite :: PrismComm -> Ctx -> Int -> [Word8] -> PrismCtx IO (Maybe (PrismComm, Ctx))

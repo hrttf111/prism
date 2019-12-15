@@ -117,7 +117,6 @@ processCommand command commandText sock = do
         GQuery GQSupported ->
             sendPacketString sock state $ 
                 "PacketSize=" ++ (show $ gdbPacketSize state)
-                --"PacketSize=" ++ (show $ gdbPacketSize state) ++ ";hwbreak+"
         GQuery GQTStatus ->
             sendPacketString sock state "T1"
         GQuery GQAttached ->
@@ -192,6 +191,11 @@ processCommand command commandText sock = do
             replyOk sock state
             sendCpuMsgIO (gdbCmdQueue state) $ PCmdBreak addr
             return ()
+        GBreakPointRemove (addr, type_) -> do
+            logInfoN $ T.pack $ "Breakpoint remove " ++ (show addr) ++ " " ++ (show type_)
+            replyOk sock state
+            sendCpuMsgIO (gdbCmdQueue state) $ PCmdBreakRemove addr
+            return ()
         GHaltReason ->
             sendPacketString sock state "S05"
         GThreadOp ->
@@ -201,8 +205,6 @@ processCommand command commandText sock = do
         GDetach ->
             replyOk sock state
         GKill ->
-            replyOk sock state
-        GBreakPointRemove _ ->
             replyOk sock state
         _ -> do
             logInfoN . T.pack $ "Unknown command - " ++ commandText

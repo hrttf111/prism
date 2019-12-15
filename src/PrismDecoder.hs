@@ -512,7 +512,8 @@ decodeHalt dec ctx = do
 
 decodeHaltCpu :: PrismDecoder -> PrismComm -> Ctx -> PrismCtx IO Ctx
 decodeHaltCpu dec comm ctx = do
-    m <- processComm comm ctx
+    offset <- getInstrAddress memReg cs =<< readRegIP memReg
+    m <- processPrismCommand comm ctx offset
     case m of
         Just (comm_, ctx_) -> decodeHaltCpu dec comm_ ctx_
         Nothing -> 
@@ -520,7 +521,6 @@ decodeHaltCpu dec comm ctx = do
             else do
                 if interruptActive ctx then processInterrupts ctx >>= decodeHaltCpu dec comm
                 else do
-                    offset <- getInstrAddress memReg cs =<< readRegIP memReg
                     instr <- peekInstrBytes (ctxMem ctx) offset
                     let (b1, _, _, _, _, _) = instr
                         func = instrFunc $ (decInstr dec) ! b1
