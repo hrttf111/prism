@@ -40,7 +40,8 @@ gdbThread state = do
     return ()
 
 data AppOpts = AppOpts {
-        binPath :: !FilePath
+        binPath :: !FilePath,
+        enableGDB :: !Bool
     }
 
 regSize = 64
@@ -77,10 +78,13 @@ configureInterrups mem addr intList =
         func lst (internalInt, addr) = 
             lst ++ (map (\(_, PrismInt i) -> (i, addr)) $ filter ((==internalInt) . fst) intList)
 
-runBinary :: [PrismInstruction] -> FilePath -> IO ()
-runBinary instrList binPath_ = do
-    comm <- newPrismComm
-    forkIO . gdbThread $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)
+runBinary :: [PrismInstruction] -> FilePath -> Bool -> IO ()
+runBinary instrList binPath_  enableGDB_ = do
+    comm <- newPrismComm enableGDB_
+    if enableGDB_ then
+        (forkIO . gdbThread $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)) >> return ()
+        else
+            return ()
     ptrReg <- callocBytes regSize
     ptrMem <- callocBytes maxMemorySize
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
@@ -107,10 +111,11 @@ instrList = transferInstrList
 main :: IO ()
 main = do
     opts <- execParser optsParser
-    runBinary instrList $ binPath opts
+    runBinary instrList (binPath opts) (enableGDB opts)
     return ()
     where
         optsParser = info
             (helper <*> mainOpts)
             (fullDesc <> progDesc "Prism 8086 emulator" <> header "Prism")
-        mainOpts = AppOpts <$> strArgument (metavar "BIN" <> help "Binary executable path") 
+        mainOpts = AppOpts <$> strArgument (metavar "BIN" <> help "Binary executable path") <*>
+                    switch (long "gdb" <> help "Enable GDB server and stop on first instruction")

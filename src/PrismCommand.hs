@@ -69,10 +69,10 @@ sendAndWaitCpuMsg queue1 queue2 msg1 = sendCpuMsgIO queue1 msg1 >> recvCpuMsgIO 
 
 -------------------------------------------------------------------------------
 
-newPrismComm = do
+newPrismComm stopCPU = do
     queueCmd <- newTQueueIO :: IO (TQueue PrismCpuCommand)
     queueRsp <- newTQueueIO :: IO (TQueue PrismCpuResponse)
-    return $ PrismComm (PrismCmdQueue queueCmd) (PrismRspQueue queueRsp) empty True
+    return $ PrismComm (PrismCmdQueue queueCmd) (PrismRspQueue queueRsp) empty stopCPU
 
 processPrismCommand :: PrismComm -> Ctx -> MemOffset -> PrismCtx IO (Maybe (PrismComm, Ctx))
 processPrismCommand comm ctx offset =

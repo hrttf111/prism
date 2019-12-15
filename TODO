@@ -10,8 +10,6 @@
     - start bootloader
     - initial CPU test
     - test timers/video/keyboard
- - debugging
-    - gdb remote protocol?
  - peripheral
     - video
     - keyboard
