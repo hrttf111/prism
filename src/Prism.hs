@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Prism where
 
@@ -11,6 +13,8 @@ import Foreign.Ptr
 import Control.Monad.Trans
 
 import GHC.Generics
+
+-------------------------------------------------------------------------------
 
 type Imm8 = Uint8
 type Imm16 = Uint16
@@ -24,9 +28,21 @@ type Disp = Word16
 type EA = Uint16
 type MemOffset = Int
 
+class Operand a b | a -> b where
+    readOp :: MonadIO m => Ctx -> a -> m b
+    writeOp :: MonadIO m => Ctx -> a -> b -> m ()
+
 newtype Reg8 = Reg8 Word8 deriving (Eq)
 newtype Reg16 = Reg16 Word8 deriving (Eq)
 newtype RegSeg = RegSeg Word8 deriving (Eq)
+
+instance Show RegSeg where
+    show (RegSeg 0) = "ES"
+    show (RegSeg 1) = "CS"
+    show (RegSeg 2) = "SS"
+    show (RegSeg 3) = "DS"
+
+-------------------------------------------------------------------------------
 
 data Mem = MemBxSi Disp |
            MemBxDi Disp |
@@ -36,7 +52,10 @@ data Mem = MemBxSi Disp |
            MemDi Disp |
            MemBp Disp |
            MemBx Disp |
-           MemDirect Disp
+           MemDirect Disp deriving (Eq)
+
+newtype Mem8 = Mem8 Mem deriving (Eq)
+newtype Mem16 = Mem16 Mem deriving (Eq)
 
 -- Note: Max size of instruction is 6 bytes
 type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
@@ -64,12 +83,6 @@ clearFlags = Flags False False False False False False
 
 clearEFlags :: EFlags
 clearEFlags = EFlags False False False
-
-instance Show RegSeg where
-    show (RegSeg 0) = "ES"
-    show (RegSeg 1) = "CS"
-    show (RegSeg 2) = "SS"
-    show (RegSeg 3) = "DS"
 
 newtype PrismInt = PrismInt Uint8 deriving (Eq)
 

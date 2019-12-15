@@ -1,8 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module PrismCpu where
 
+import Data.Word (Word8, Word16, Word32)
 import Data.Maybe (fromMaybe)
 import Data.Bits
 import Data.Int
@@ -59,6 +62,28 @@ es = RegSeg 0
 cs = RegSeg 1
 ss = RegSeg 2
 ds = RegSeg 3
+
+-------------------------------------------------------------------------------
+
+instance Operand Reg8 Word8 where
+    readOp ctx reg = readReg8 (ctxReg ctx) reg
+    writeOp ctx reg val = writeReg8 (ctxReg ctx) reg val
+
+instance Operand Reg16 Word16 where
+    readOp ctx reg = readReg16 (ctxReg ctx) reg
+    writeOp ctx reg val = writeReg16 (ctxReg ctx) reg val
+
+instance Operand RegSeg Word16 where
+    readOp ctx reg = readSeg (ctxReg ctx) reg
+    writeOp ctx reg val = writeSeg (ctxReg ctx) reg val
+
+instance Operand Mem8 Word8 where
+    readOp ctx (Mem8 mem) = readMem8 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
+    writeOp ctx (Mem8 mem) val = writeMem8 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
+
+instance Operand Mem16 Word16 where
+    readOp ctx (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
+    writeOp ctx (Mem16 mem) val = writeMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
 
 -------------------------------------------------------------------------------
 
