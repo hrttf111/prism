@@ -2,6 +2,8 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RankNTypes #-}
 
+{-# LANGUAGE TypeSynonymInstances #-}
+
 module PrismDecoder where
 
 import Data.Bits ((.&.), (.|.), shiftR, shiftL)
@@ -169,6 +171,48 @@ decodeAccMem16 reg freg (_, b2, b3, _, _, _) ctx =
     let mem = MemDirect $ getDisp16 b2 b3
         in
     freg ctx mem reg >>= updateIP 3
+
+decodeNI :: (ImmDecoder b, OperandVal b, OperandReg a1 b, OperandMem a2 b) => 
+    FuncOI1M a1 b -> FuncOI1M a2 b -> PrismInstrFunc
+decodeNI freg fmem (b1, b2, b3, b4, b5, b6) ctx = 
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        in
+    case mod of
+        0x00 ->
+            case rm of
+                0x06 ->
+                    let disp16 = getDisp16 b3 b4
+                        imm = decodeImm b5 b6
+                        mem = decodeMemDirect disp16
+                        in
+                    fmem ctx mem imm >>= updateIP 5
+                _ ->
+                    let mem = decodeMem1 rm 0
+                        imm = decodeImm b3 b4
+                        in
+                    fmem ctx mem imm >>= updateIP 3
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem1 rm disp8
+                imm = decodeImm b4 b5
+                in
+            fmem ctx mem imm >>= updateIP 4
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem1 rm disp16
+                imm = decodeImm b5 b6
+                in
+            fmem ctx mem imm >>= updateIP 5
+        0x03 ->
+            let reg = decodeReg rm
+                imm = decodeImm b3 b4
+                in
+            freg ctx reg imm >>= updateIP 3
+
+{-# SPECIALISE decodeNI :: FuncOI1M Reg8 Uint8 -> FuncOI1M Mem8 Uint8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeNI :: FuncOI1M Reg16 Uint16 -> FuncOI1M Mem16 Uint16 -> PrismInstrFunc #-}
 
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 

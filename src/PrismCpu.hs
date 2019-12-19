@@ -7,6 +7,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module PrismCpu where
 
@@ -67,6 +68,14 @@ es = RegSeg 0
 cs = RegSeg 1
 ss = RegSeg 2
 ds = RegSeg 3
+
+-------------------------------------------------------------------------------
+
+instance ImmDecoder Imm8 where
+    decodeImm b1 _ = getImm8 b1
+
+instance ImmDecoder Imm16 where
+    decodeImm = getImm16
 
 -------------------------------------------------------------------------------
 
