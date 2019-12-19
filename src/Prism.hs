@@ -3,9 +3,15 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
+
 module Prism where
 
 import Data.Word (Word8, Word16, Word32)
+import Data.Bits (FiniteBits, Bits)
 import Data.Maybe (Maybe)
 
 import Foreign.Ptr
@@ -32,9 +38,18 @@ class Operand a b | a -> b where
     readOp :: MonadIO m => Ctx -> a -> m b
     writeOp :: MonadIO m => Ctx -> a -> b -> m ()
 
+type OperandVal a = (Integral a, FiniteBits a, Num a, Bits a)
+
+-------------------------------------------------------------------------------
+
 newtype Reg8 = Reg8 Word8 deriving (Eq)
 newtype Reg16 = Reg16 Word8 deriving (Eq)
 newtype RegSeg = RegSeg Word8 deriving (Eq)
+
+class RegDecoder a where
+    decodeReg :: Word8 -> a
+
+type OperandReg a b = (RegDecoder a, Operand a b)
 
 instance Show RegSeg where
     show (RegSeg 0) = "ES"
@@ -56,6 +71,14 @@ data Mem = MemBxSi Disp |
 
 newtype Mem8 = Mem8 Mem deriving (Eq)
 newtype Mem16 = Mem16 Mem deriving (Eq)
+
+class MemDecoder a where
+    decodeMem1 :: Word8 -> Disp -> a
+    decodeMemDirect :: Disp -> a
+
+type OperandMem a b = (MemDecoder a, Operand a b)
+
+-------------------------------------------------------------------------------
 
 -- Note: Max size of instruction is 6 bytes
 type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)

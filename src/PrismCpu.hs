@@ -3,6 +3,11 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
+{-# LANGUAGE LiberalTypeSynonyms #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
+
 module PrismCpu where
 
 import Data.Word (Word8, Word16, Word32)
@@ -69,21 +74,40 @@ instance Operand Reg8 Word8 where
     readOp ctx reg = readReg8 (ctxReg ctx) reg
     writeOp ctx reg val = writeReg8 (ctxReg ctx) reg val
 
+instance RegDecoder Reg8 where
+    decodeReg = Reg8
+
 instance Operand Reg16 Word16 where
     readOp ctx reg = readReg16 (ctxReg ctx) reg
     writeOp ctx reg val = writeReg16 (ctxReg ctx) reg val
+
+instance RegDecoder Reg16 where
+    decodeReg = Reg16
 
 instance Operand RegSeg Word16 where
     readOp ctx reg = readSeg (ctxReg ctx) reg
     writeOp ctx reg val = writeSeg (ctxReg ctx) reg val
 
+instance RegDecoder RegSeg where
+    decodeReg = RegSeg
+
+-------------------------------------------------------------------------------
+
 instance Operand Mem8 Word8 where
     readOp ctx (Mem8 mem) = readMem8 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
     writeOp ctx (Mem8 mem) val = writeMem8 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
 
+instance MemDecoder Mem8 where
+    decodeMem1 v off = Mem8 $ decodeMem v off
+    decodeMemDirect = Mem8 . MemDirect
+
 instance Operand Mem16 Word16 where
     readOp ctx (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
     writeOp ctx (Mem16 mem) val = writeMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
+
+instance MemDecoder Mem16 where
+    decodeMem1 v off = Mem16 $ decodeMem v off
+    decodeMemDirect = Mem16 . MemDirect
 
 -------------------------------------------------------------------------------
 
@@ -518,29 +542,29 @@ signExterndDoubleword32 :: Uint16 -> Uint32
 signExterndDoubleword32 val | val > 0x8000 = (+0xFFFF0000) $ fromIntegral val
 signExterndDoubleword32 val = fromIntegral val
 
-toSignedCompl2 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => a -> b
+toSignedCompl2 :: (OperandVal a, OperandVal b) => a -> b
 toSignedCompl2 val = valUnsigned - valSigned
     where
         upperBit = (finiteBitSize val) - 1
         valUnsigned = fromIntegral $ clearBit val upperBit
         valSigned = if testBit val upperBit then bit upperBit else 0
 
-toUnsignedComp2 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => a -> b
+toUnsignedComp2 :: (OperandVal a, OperandVal b) => a -> b
 toUnsignedComp2 = toSignedCompl2
 
-signedOp :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => (b -> b -> b) -> a -> a -> a
+signedOp :: (OperandVal a, OperandVal b) => (b -> b -> b) -> a -> a -> a
 signedOp func val1 val2 = toUnsignedComp2 $ func sVal1 sVal2
     where
         sVal1 = toSignedCompl2 val1
         sVal2 = toSignedCompl2 val2
 
-signedOp1 :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => (b -> b -> b) -> a -> a -> b
+signedOp1 :: (OperandVal a, OperandVal b) => (b -> b -> b) -> a -> a -> b
 signedOp1 func val1 val2 = func sVal1 sVal2
     where
         sVal1 = toSignedCompl2 val1
         sVal2 = toSignedCompl2 val2
 
-signedOpS :: (Bits a, FiniteBits a, Num a, Integral a, Bits b, FiniteBits b, Num b, Integral b) => (b -> b) -> a -> a
+signedOpS :: (OperandVal a, OperandVal b) => (b -> b) -> a -> a
 signedOpS func val1 = toUnsignedComp2 $ func $ toSignedCompl2 val1
 
 -------------------------------------------------------------------------------
@@ -580,75 +604,119 @@ emptySingle ctx _ = return ctx
 
 -------------------------------------------------------------------------------
 
+type OperandFunc1 a b = (OperandVal b, Operand a b)
+type OperandFunc2 a1 a2 b = (OperandVal b, Operand a1 b, Operand a2 b)
+
+type FuncO1M a = Ctx -> a -> PrismM
+type FuncO2M a1 a2 = Ctx -> a1 -> a2 -> PrismM
+
+type FuncOI1M a b = Ctx -> a -> b -> PrismM
+
+type FuncV1M b = Ctx -> b -> PrismCtx IO (Ctx, b)
+type FuncNV1M b = Ctx -> b -> PrismM
+
+type FuncV1 b = Ctx -> b -> (Ctx, b)
+type FuncV2 b = Ctx -> b -> b -> (Ctx, b)
+
+instrOV1 :: OperandFunc1 a b => FuncV1M b -> FuncO1M a
+instrOV1 func ctx op = do
+    val <- readOp ctx op
+    (ctxNew, valNew) <- func ctx val
+    writeOp ctxNew op valNew
+    return ctxNew
+
+{-# SPECIALISE instrOV1 :: FuncV1M Word8 -> FuncO1M Reg8 #-}
+{-# SPECIALISE instrOV1 :: FuncV1M Word16 -> FuncO1M Reg16 #-}
+{-# SPECIALISE instrOV1 :: FuncV1M Word16 -> FuncO1M RegSeg #-}
+{-# SPECIALISE instrOV1 :: FuncV1M Word8 -> FuncO1M Mem8 #-}
+{-# SPECIALISE instrOV1 :: FuncV1M Word16 -> FuncO1M Mem16 #-}
+
+instrON1 :: OperandFunc1 a b => FuncNV1M b -> FuncO1M a
+instrON1 func ctx op =
+    readOp ctx op >>= func ctx
+
+{-# SPECIALISE instrON1 :: FuncNV1M Word8 -> FuncO1M Reg8 #-}
+{-# SPECIALISE instrON1 :: FuncNV1M Word16 -> FuncO1M Reg16 #-}
+{-# SPECIALISE instrON1 :: FuncNV1M Word16 -> FuncO1M RegSeg #-}
+{-# SPECIALISE instrON1 :: FuncNV1M Word8 -> FuncO1M Mem8 #-}
+{-# SPECIALISE instrON1 :: FuncNV1M Word16 -> FuncO1M Mem16 #-}
+
+instrO1 :: OperandFunc1 a b => FuncV1 b -> FuncO1M a
+instrO1 func ctx op = do
+    val <- readOp ctx op
+    let (ctxNew, valNew) = func ctx val
+    writeOp ctxNew op valNew
+    return ctxNew
+
+{-# SPECIALISE instrO1 :: FuncV1 Word8 -> FuncO1M Reg8 #-}
+{-# SPECIALISE instrO1 :: FuncV1 Word16 -> FuncO1M Reg16 #-}
+{-# SPECIALISE instrO1 :: FuncV1 Word16 -> FuncO1M RegSeg #-}
+{-# SPECIALISE instrO1 :: FuncV1 Word8 -> FuncO1M Mem8 #-}
+{-# SPECIALISE instrO1 :: FuncV1 Word16 -> FuncO1M Mem16 #-}
+
+instrOI1 :: OperandFunc1 a b => FuncV2 b -> FuncOI1M a b
+instrOI1 func ctx op imm = do
+    val <- readOp ctx op
+    let (ctxNew, valNew) = func ctx imm val
+    writeOp ctxNew op valNew
+    return ctxNew
+
+{-# SPECIALISE instrOI1 :: FuncV2 Word8 -> FuncOI1M Reg8 Word8 #-}
+{-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M Reg16 Word16 #-}
+{-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M RegSeg Word16 #-}
+{-# SPECIALISE instrOI1 :: FuncV2 Word8 -> FuncOI1M Mem8 Word8 #-}
+{-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M Mem16 Word16 #-}
+
+instrO2 :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrO2 func ctx op1 op2 = do
+    val1 <- readOp ctx op1
+    val2 <- readOp ctx op2
+    let (ctxNew, valNew) = func ctx val1 val2
+    writeOp ctx op2 valNew
+    return ctxNew
+
+{-# SPECIALISE instrO2 :: FuncV2 Word8 -> FuncO2M Reg8 Reg8 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Reg16 Reg16 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word8 -> FuncO2M Mem8 Reg8 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word8 -> FuncO2M Reg8 Mem8#-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Reg16 Mem16 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Mem16 Reg16 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M RegSeg Reg16 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Reg16 RegSeg #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M RegSeg Mem16 #-}
+{-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Mem16 RegSeg #-}
+
+-------------------------------------------------------------------------------
+
 type FuncVal8 = Ctx -> Uint8 -> PrismCtx IO (Ctx, Uint8)
 type FuncVal16 = Ctx -> Uint16 -> PrismCtx IO (Ctx, Uint16)
 
 instrRegVal8 :: FuncVal8 -> FuncReg8
-instrRegVal8 func ctx reg = do
-    valReg <- readReg8 (ctxReg ctx) reg
-    (ctxNew, valRegNew) <- func ctx valReg
-    writeReg8 (ctxReg ctxNew) reg valRegNew
-    return ctxNew
+instrRegVal8 = instrOV1
 
 instrRegVal16 :: FuncVal16 -> FuncReg16
-instrRegVal16 func ctx reg = do
-    valReg <- readReg16 (ctxReg ctx) reg
-    (ctxNew, valRegNew) <- func ctx valReg
-    writeReg16 (ctxReg ctxNew) reg valRegNew
-    return ctxNew
+instrRegVal16 = instrOV1
 
 instrMemVal8 :: FuncVal8 -> FuncMem
-instrMemVal8 func ctx mem = do
-    valMem <- readMem8 memReg memMain regSeg mem
-    (ctxNew, valMemNew) <- func ctx valMem
-    writeMem8 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemVal8 func ctx mem = instrOV1 func ctx $ Mem8 mem
 
 instrMemVal16 :: FuncVal16 -> FuncMem
-instrMemVal16 func ctx mem = do
-    valMem <- readMem16 memReg memMain regSeg mem
-    (ctxNew, valMemNew) <- func ctx valMem
-    writeMem16 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemVal16 func ctx mem = instrOV1 func ctx $ Mem16 mem
 
 type FuncNoVal8 = Ctx -> Uint8 -> PrismM
 type FuncNoVal16 = Ctx -> Uint16 -> PrismM
 
 instrRegNoVal8 :: FuncNoVal8 -> FuncReg8
-instrRegNoVal8 func ctx reg = do
-    valReg <- readReg8 (ctxReg ctx) reg
-    func ctx valReg
+instrRegNoVal8 = instrON1
 
 instrRegNoVal16 :: FuncNoVal16 -> FuncReg16
-instrRegNoVal16 func ctx reg = do
-    valReg <- readReg16 (ctxReg ctx) reg
-    func ctx valReg
+instrRegNoVal16 = instrON1
 
 instrMemNoVal8 :: FuncNoVal8 -> FuncMem
-instrMemNoVal8 func ctx mem = do
-    valMem <- readMem8 memReg memMain regSeg mem
-    func ctx valMem
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemNoVal8 func ctx mem = instrON1 func ctx $ Mem8 mem
 
 instrMemNoVal16 :: FuncNoVal16 -> FuncMem
-instrMemNoVal16 func ctx mem = do
-    valMem <- readMem16 memReg memMain regSeg mem
-    func ctx valMem
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemNoVal16 func ctx mem = instrON1 func ctx $ Mem16 mem
 
 -------------------------------------------------------------------------------
 
@@ -660,72 +728,25 @@ type Func8 = Ctx -> Uint8 -> (Ctx, Uint8)
 type Func16 = Ctx -> Uint16 -> (Ctx, Uint16)
 
 instrReg8 :: Func8 -> FuncReg8
-instrReg8 func ctx reg = do
-    valReg <- readReg8 memReg reg
-    let (ctxNew, valRegNew) = func ctx valReg
-    writeReg8 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrReg8 func ctx reg = instrO1 func ctx reg
 
 instrReg16 :: Func16 -> FuncReg16
-instrReg16 func ctx reg = do
-    valReg <- readReg16 memReg reg
-    let (ctxNew, valRegNew) = func ctx valReg
-    writeReg16 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrReg16 func ctx reg = instrO1 func ctx reg
 
 instrMem8 :: Func8 -> FuncMem
-instrMem8 func ctx mem = do
-    valMem <- readMem8 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx valMem
-    writeMem8 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMem8 func ctx mem = instrO1 func ctx $ Mem8 mem
 
 instrMem16 :: Func16 -> FuncMem
-instrMem16 func ctx mem = do
-    valMem <- readMem16 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx valMem
-    writeMem16 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMem16 func ctx mem = instrO1 func ctx $ Mem16 mem
 
 instrRegImm8 :: Func8To8 -> FuncRegImm8
-instrRegImm8 func ctx reg imm = do
-    valReg <- readReg8 memReg reg
-    let (ctxNew, valRegNew) = func ctx imm valReg
-    writeReg8 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrRegImm8 = instrOI1
 
 instrRegImm16 :: Func16To16 -> FuncRegImm16
-instrRegImm16 func ctx reg imm = do
-    valReg <- readReg16 memReg reg
-    let (ctxNew, valRegNew) = func ctx imm valReg
-    writeReg16 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrRegImm16 = instrOI1
 
 instrRegToReg8 :: Func8To8 -> FuncRegReg8
-instrRegToReg8 func ctx reg1 reg2 = do
-    valReg1 <- readReg8 memReg reg1
-    valReg2 <- readReg8 memReg reg2
-    let (ctxNew, valRegNew) = func ctx valReg1 valReg2
-    writeReg8 memReg reg2 valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrRegToReg8 = instrO2
 
 instrRegToReg8RmToReg :: Func8To8 -> FuncRegReg8
 instrRegToReg8RmToReg func ctx reg1 reg2 = instrRegToReg8 func ctx reg1 reg2
@@ -734,140 +755,43 @@ instrRegToReg8RegToRm :: Func8To8 -> FuncRegReg8
 instrRegToReg8RegToRm func ctx reg1 reg2 = instrRegToReg8 func ctx reg2 reg1
 
 instrRegToReg16 :: Func16To16 -> FuncRegReg16
-instrRegToReg16 func ctx reg1 reg2 = do
-    valReg1 <- readReg16 memReg reg1
-    valReg2 <- readReg16 memReg reg2
-    let (ctxNew, valRegNew) = func ctx valReg1 valReg2
-    writeReg16 memReg reg2 valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrRegToReg16 = instrO2
 
 instrRegToReg16RmToReg :: Func16To16 -> FuncRegReg16
 instrRegToReg16RmToReg func ctx reg1 reg2 = instrRegToReg16 func ctx reg1 reg2
 
 instrRegToReg16RegToRm :: Func16To16 -> FuncRegReg16
 instrRegToReg16RegToRm func ctx reg1 reg2 = instrRegToReg16 func ctx reg2 reg1
-        
+
 instrMemImm8 :: Func8To8 -> FuncMemImm8
-instrMemImm8 func ctx mem imm = do
-    valMem <- readMem8 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx imm valMem
-    writeMem8 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemImm8 func ctx mem imm = instrOI1 func ctx (Mem8 mem) imm
 
 instrMemImm16 :: Func16To16 -> FuncMemImm16
-instrMemImm16 func ctx mem imm = do
-    valMem <- readMem16 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx imm valMem
-    writeMem16 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemImm16 func ctx mem imm = instrOI1 func ctx (Mem16 mem) imm
 
 instrRegToMem8 :: Func8To8 -> FuncMemReg8
-instrRegToMem8 func ctx mem reg = do
-    valReg <- readReg8 memReg reg
-    valMem <- readMem8 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx valReg valMem
-    writeMem8 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrRegToMem8 func ctx mem reg = instrO2 func ctx reg (Mem8 mem)
 
 instrRegToMem16 :: Func16To16 -> FuncMemReg16
-instrRegToMem16 func ctx mem reg = do
-    valReg <- readReg16 memReg reg
-    valMem <- readMem16 memReg memMain regSeg mem
-    let (ctxNew, valMemNew) = func ctx valReg valMem
-    writeMem16 memReg memMain regSeg mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrRegToMem16 func ctx mem reg = instrO2 func ctx reg (Mem16 mem)
 
 instrMemToReg8 :: Func8To8 -> FuncMemReg8
-instrMemToReg8 func ctx mem reg = do
-    valReg <- readReg8 memReg reg
-    valMem <- readMem8 memReg memMain regSeg mem
-    let (ctxNew, valRegNew) = func ctx valMem valReg
-    writeReg8 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemToReg8 func ctx mem reg = instrO2 func ctx (Mem8 mem) reg
 
 instrMemToReg16 :: Func16To16 -> FuncMemReg16
-instrMemToReg16 func ctx mem reg = do
-    valReg <- readReg16 memReg reg
-    valMem <- readMem16 memReg memMain regSeg mem
-    let (ctxNew, valRegNew) = func ctx valMem valReg
-    writeReg16 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+instrMemToReg16 func ctx mem reg = instrO2 func ctx (Mem16 mem) reg
 
 instrSegImm16 :: Func16To16 -> FuncSegImm16
-instrSegImm16 func ctx regSeg imm = do
-    valSeg <- readSeg memReg regSeg
-    let (ctxNew, valSegNew) = func ctx imm valSeg
-    writeSeg memReg regSeg valSegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrSegImm16 = instrOI1
 
 instrRegToSeg16 :: Func16To16 -> FuncSegReg16
-instrRegToSeg16 func ctx reg regSeg = do
-    valReg <- readReg16 memReg reg
-    valSeg <- readSeg memReg regSeg
-    let (ctxNew, valSegNew) = func ctx valReg valSeg
-    writeSeg memReg regSeg valSegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrRegToSeg16 func ctx reg regSeg = instrO2 func ctx reg regSeg
 
 instrSegToReg16 :: Func16To16 -> FuncSegReg16
-instrSegToReg16 func ctx reg regSeg = do
-    valReg <- readReg16 memReg reg
-    valSeg <- readSeg memReg regSeg
-    let (ctxNew, valRegNew) = func ctx valSeg valReg
-    writeReg16 memReg reg valRegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
+instrSegToReg16 func ctx reg regSeg = instrO2 func ctx regSeg reg
 
 instrMemToSeg16 :: Func16To16 -> FuncMemSeg16
-instrMemToSeg16 func ctx mem regSeg = do
-    valSeg <- readSeg memReg regSeg
-    valMem <- readMem16 memReg memMain regSegM mem
-    let (ctxNew, valSegNew) = func ctx valMem valSeg
-    writeSeg memReg regSeg valSegNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSegM = findRegSegData ctx
+instrMemToSeg16 func ctx mem regSeg = instrO2 func ctx (Mem16 mem) regSeg
 
 instrSegToMem16 :: Func16To16 -> FuncMemSeg16
-instrSegToMem16 func ctx mem regSeg = do
-    valSeg <- readSeg memReg regSeg
-    valMem <- readMem16 memReg memMain regSegM mem
-    let (ctxNew, valMemNew) = func ctx valSeg valMem
-    writeMem16 memReg memMain (Just regSeg) mem valMemNew
-    return ctxNew
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSegM = findRegSegData ctx
+instrSegToMem16 func ctx mem regSeg = instrO2 func ctx regSeg (Mem16 mem)
