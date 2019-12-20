@@ -42,6 +42,7 @@ type OperandVal a = (Integral a, FiniteBits a, Num a, Bits a)
 
 class ImmDecoder a where
     decodeImm :: Uint8 -> Uint8 -> a
+    immLength :: a -> Uint16
 
 -------------------------------------------------------------------------------
 

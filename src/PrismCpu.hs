@@ -73,9 +73,11 @@ ds = RegSeg 3
 
 instance ImmDecoder Imm8 where
     decodeImm b1 _ = getImm8 b1
+    immLength _ = 1
 
 instance ImmDecoder Imm16 where
     decodeImm = getImm16
+    immLength _ = 2
 
 -------------------------------------------------------------------------------
 

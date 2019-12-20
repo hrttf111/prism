@@ -9,6 +9,12 @@ import PrismCpu
 
 -------------------------------------------------------------------------------
 
+movI :: OperandVal b => FuncV2 b
+movI ctx source _ = (ctx, source)
+
+{-# SPECIALISE movI :: FuncV2 Uint8 #-}
+{-# SPECIALISE movI :: FuncV2 Uint16 #-}
+
 mov8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
 mov8 ctx source _ = (ctx, source)
 
@@ -369,8 +375,8 @@ transferInstrList = [
         makeInstructionS 0xBD Nothing (decodeAcc16 bp movRegImm16),
         makeInstructionS 0xBE Nothing (decodeAcc16 si movRegImm16),
         makeInstructionS 0xBF Nothing (decodeAcc16 di movRegImm16),
-        makeInstructionS 0xC6 (Just 0) (decodeN8Imm8 movRegImm8 movMemImm8),
-        makeInstructionS 0xC7 (Just 0) (decodeN16Imm movRegImm16 movMemImm16),
+        makeInstructionS 0xC6 (Just 0) (decodeNI8 (instrOI1 movI) (instrOI1 movI)),
+        makeInstructionS 0xC7 (Just 0) (decodeNI16 (instrOI1 movI) (instrOI1 movI)),
         --XCHG
         makeInstructionS 0x86 Nothing (decodeRm8 xchgRegReg8 xchgMemReg8),
         makeInstructionS 0x87 Nothing (decodeRm16 xchgRegReg16 xchgMemReg16),
