@@ -111,23 +111,35 @@ decodeImplicit :: FuncImplicit -> PrismInstrFunc
 decodeImplicit freg _ ctx =
     updateIP 1 ctx >>= freg
 
+decodeReg1 :: (OperandVal b, OperandReg a b) =>
+    a -> FuncO1M a -> PrismInstrFunc 
+decodeReg1 reg func _ ctx =
+    func ctx reg >>= updateIP 1
+
+{-# SPECIALISE decodeReg1 :: Reg8 -> FuncO1M Reg8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeReg1 :: Reg16 -> FuncO1M Reg16 -> PrismInstrFunc #-}
+
 decodeReg8 :: Reg8 -> FuncReg8 -> PrismInstrFunc
-decodeReg8 reg freg _ ctx =
-    freg ctx reg >>= updateIP 1
+decodeReg8 = decodeReg1
 
 decodeReg16 :: Reg16 -> FuncReg16 -> PrismInstrFunc
-decodeReg16 reg freg _ ctx =
-    freg ctx reg >>= updateIP 1
+decodeReg16 = decodeReg1
+
+decodeImm1 :: (ImmDecoder b, OperandVal b) =>
+    FuncImm1 b -> PrismInstrFunc
+decodeImm1 func (_, b2, b3, _, _, _) ctx =
+    let imm = decodeImm b2 b3
+        in
+    updateIP (1 + immLength imm) ctx >>= flip func imm
+
+{-# SPECIALISE decodeImm1 :: FuncImm1 Imm8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeImm1 :: FuncImm1 Imm16 -> PrismInstrFunc #-}
 
 decodeImm8 :: FuncImm8 -> PrismInstrFunc
-decodeImm8 freg (_, b2, _, _, _, _) ctx =
-    updateIP 2 ctx >>= flip freg (b2 :: Imm8) 
+decodeImm8 = decodeImm1
 
 decodeImm16 :: FuncImm16 -> PrismInstrFunc
-decodeImm16 freg (_, b2, b3, _, _, _) ctx =
-    let imm16 = getImm16 b2 b3
-        in
-    updateIP 3 ctx >>= flip freg imm16 
+decodeImm16 = decodeImm1
 
 decodeImm32 :: FuncImm32 -> PrismInstrFunc
 decodeImm32 freg (_, b2, b3, b4, b5, _) ctx =
@@ -136,29 +148,39 @@ decodeImm32 freg (_, b2, b3, b4, b5, _) ctx =
         in
     updateIP 5 ctx >>= \c -> freg c imm1 imm2
 
+decodeAcc :: (ImmDecoder b, OperandVal b, OperandReg a b) =>
+    a -> FuncOI1M a b -> PrismInstrFunc
+decodeAcc reg func (_, b2, b3, _, _, _) ctx =
+    let imm = decodeImm b2 b3 
+        in
+    func ctx reg imm >>= updateIP (1 + immLength imm)
+
+{-# SPECIALISE decodeAcc :: Reg8 -> FuncOI1M Reg8 Uint8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeAcc :: Reg16 -> FuncOI1M Reg16 Uint16 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeAcc :: RegSeg -> FuncOI1M RegSeg Uint16 -> PrismInstrFunc #-}
+
 decodeAcc8 :: Reg8 -> FuncRegImm8 -> PrismInstrFunc
-decodeAcc8 reg freg (_, b2, _, _, _, _) ctx =
-    freg ctx reg (b2 :: Imm8) >>= updateIP 2
+decodeAcc8 = decodeAcc
 
 decodeAcc16 :: Reg16 -> FuncRegImm16 -> PrismInstrFunc
-decodeAcc16 reg freg (_, b2, b3, _, _, _) ctx =
-    let imm16 = getImm16 b2 b3
-        in
-    freg ctx reg imm16 >>= updateIP 3
-
-decodeAccReg8 :: Reg8 -> Reg8 -> FuncRegReg8 -> PrismInstrFunc
-decodeAccReg8 reg1 reg2 freg _ ctx =
-    freg ctx reg1 reg2 >>= updateIP 1 
-
-decodeAccReg16 :: Reg16 -> Reg16 -> FuncRegReg16 -> PrismInstrFunc
-decodeAccReg16 reg1 reg2 freg _ ctx =
-    freg ctx reg1 reg2 >>= updateIP 1 
+decodeAcc16 = decodeAcc
 
 decodeAccSeg :: RegSeg -> FuncSegImm16 -> PrismInstrFunc
-decodeAccSeg reg freg (_, b2, b3, _, _, _) ctx =
-    let imm16 = getImm16 b2 b3
-        in
-    freg ctx reg imm16 >>= updateIP 3
+decodeAccSeg = decodeAcc
+
+decodeAccReg :: (OperandVal b, OperandReg a b) =>
+    a -> a -> FuncO2M a a -> PrismInstrFunc
+decodeAccReg reg1 reg2 func _ ctx =
+    func ctx reg1 reg2 >>= updateIP 1
+
+{-# SPECIALISE decodeAccReg :: Reg8 -> Reg8 -> FuncO2M Reg8 Reg8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeAccReg :: Reg16 -> Reg16 -> FuncO2M Reg16 Reg16 -> PrismInstrFunc #-}
+
+decodeAccReg8 :: Reg8 -> Reg8 -> FuncRegReg8 -> PrismInstrFunc
+decodeAccReg8 = decodeAccReg
+
+decodeAccReg16 :: Reg16 -> Reg16 -> FuncRegReg16 -> PrismInstrFunc
+decodeAccReg16 = decodeAccReg
 
 decodeAccMem :: (OperandVal b, OperandMem a1 b, OperandReg a2 b) =>
     a2 -> FuncO2M a1 a2 -> PrismInstrFunc

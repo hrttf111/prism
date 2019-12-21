@@ -618,6 +618,9 @@ emptySingle ctx _ = return ctx
 type OperandFunc1 a b = (OperandVal b, Operand a b)
 type OperandFunc2 a1 a2 b = (OperandVal b, Operand a1 b, Operand a2 b)
 
+type FuncImm1 i = Ctx -> i -> PrismM
+type FuncImm2 i = Ctx -> i -> i -> PrismM
+
 type FuncO1M a = Ctx -> a -> PrismM
 type FuncO2M a1 a2 = Ctx -> a1 -> a2 -> PrismM
 
