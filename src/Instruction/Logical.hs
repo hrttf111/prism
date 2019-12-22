@@ -87,35 +87,24 @@ shr ctx val shVal = (newCtx, result)
         flags = Flags cf_ (calcPF result) (flagAF . ctxFlags $ ctx) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
-sar :: OperandVal b => RotateFunc b
-sar ctx val shVal = (newCtx, result)
+sar :: (OperandVal a, OperandVal b) => (Uint8 -> a -> a) -> RotateFunc b
+sar op ctx val shVal = (newCtx, result)
     where
-        op = (flip shiftR $ fromIntegral shVal) :: Int8 -> Int8
-        result = signedOpS op val
+        result = signedOpS (op shVal) val
         cf_ = lastBitShiftedR val $ fromIntegral shVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
         flags = Flags cf_ (calcPF result) (flagAF . ctxFlags $ ctx) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
 sar8 :: RotateFunc8
-sar8 ctx val shVal = (newCtx, result)
+sar8 ctx val shVal = sar op1 ctx val shVal
     where
-        op = (flip shiftR $ fromIntegral shVal) :: Int8 -> Int8
-        result = signedOpS op val
-        cf_ = lastBitShiftedR val $ fromIntegral shVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
-        flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
-        newCtx = ctx { ctxFlags = flags }
+        op1 sh1 = (flip shiftR $ fromIntegral sh1) :: Int8 -> Int8
 
 sar16 :: RotateFunc16
-sar16 ctx val shVal = (newCtx, result)
+sar16 ctx val shVal = sar op1 ctx val shVal
     where
-        op = (flip shiftR $ fromIntegral shVal) :: Int16 -> Int16
-        result = signedOpS op val
-        cf_ = lastBitShiftedR val $ fromIntegral shVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
-        flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
-        newCtx = ctx { ctxFlags = flags }
+        op1 sh1 = (flip shiftR $ fromIntegral sh1) :: Int16 -> Int16
 
 -------------------------------------------------------------------------------
 
