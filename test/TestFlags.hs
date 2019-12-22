@@ -70,6 +70,8 @@ testFlagsPF =
             (calcPF16 0x31) `shouldBe` False
             (calcPF16 0xFF00) `shouldBe` True
             (calcPF16 0xFF01) `shouldBe` False
+            (calcPF16 0x0101) `shouldBe` False
+            (calcPF16 0x1101) `shouldBe` False
 
 testFlagsAF =
     describe "Flags AF" $ do

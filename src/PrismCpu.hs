@@ -398,46 +398,46 @@ instance Show Mem where
 -------------------------------------------------------------------------------
 
 calcCFCarry8 :: Uint8 -> Uint8 -> Bool
-calcCFCarry8 before after = after < before
+calcCFCarry8 = calcCFCarry
 
 calcCFBorrow8 :: Uint8 -> Uint8 -> Bool
-calcCFBorrow8 before after = after > before
+calcCFBorrow8 = calcCFBorrow
 
 calcCFCarry16 :: Uint16 -> Uint16 -> Bool
-calcCFCarry16 before after = after < before
+calcCFCarry16 = calcCFCarry
 
 calcCFBorrow16 :: Uint16 -> Uint16 -> Bool
-calcCFBorrow16 before after = after > before
+calcCFBorrow16 = calcCFBorrow
 
 calcPF8 :: Uint8 -> Bool
-calcPF8 = even . popCount
+calcPF8 = calcPF
 
 calcPF16 :: Uint16 -> Bool
-calcPF16 = calcPF8 . fromIntegral
+calcPF16 = calcPF
 
 calcAFCarry8 :: Uint8 -> Uint8 -> Bool
-calcAFCarry8 before after = (after .&. 0x0F) < (before .&. 0x0F)
+calcAFCarry8 = calcAFCarry
 
 calcAFBorrow8 :: Uint8 -> Uint8 -> Bool
-calcAFBorrow8 before after = (after .&. 0x0F) > (before .&. 0x0F)
+calcAFBorrow8 = calcAFBorrow
 
 calcAFCarry16 :: Uint16 -> Uint16 -> Bool
-calcAFCarry16 before after = (after .&. 0x0F) < (before .&. 0x0F)
+calcAFCarry16 = calcAFCarry
 
 calcAFBorrow16 :: Uint16 -> Uint16 -> Bool
-calcAFBorrow16 before after = (after .&. 0x0F) > (before .&. 0x0F)
+calcAFBorrow16 = calcAFBorrow
 
 calcZF8 :: Uint8 -> Bool
-calcZF8 = (==0)
+calcZF8 = calcZF
 
 calcZF16 :: Uint16 -> Bool
-calcZF16 = (==0)
+calcZF16 = calcZF
 
 calcSF8 :: Uint8 -> Bool
-calcSF8 = (==0x80) . (.&. 0x80) 
+calcSF8 = calcSF
 
 calcSF16 :: Uint16 -> Bool
-calcSF16 = (==0x8000) . (.&. 0x8000) 
+calcSF16 = calcSF
 
 calcOFAdd8i :: Int8 -> Int8 -> Int8 -> Bool
 calcOFAdd8i before val after | before >= 0 =
@@ -524,6 +524,29 @@ readFlags :: MonadIO m => MemReg -> m (Flags, EFlags)
 readFlags (MemReg mr) = do
     val <- liftIO $ peekByteOff mr 42
     return $ (valToFlags val, valToEFlags val)
+
+-------------------------------------------------------------------------------
+
+calcCFCarry :: (OperandVal b) => b -> b -> Bool
+calcCFCarry before after = after < before
+
+calcCFBorrow :: (OperandVal b) => b -> b -> Bool
+calcCFBorrow before after = after > before
+
+calcAFCarry :: (OperandVal b) => b -> b -> Bool
+calcAFCarry before after = (after .&. 0x0F) < (before .&. 0x0F)
+
+calcAFBorrow :: (OperandVal b) => b -> b -> Bool
+calcAFBorrow before after = (after .&. 0x0F) > (before .&. 0x0F)
+
+calcPF :: (OperandVal b) => b -> Bool
+calcPF = even . popCount . (.&. 0xFF)
+
+calcZF :: (OperandVal b) => b -> Bool
+calcZF = (==0)
+
+calcSF :: (OperandVal b) => b -> Bool
+calcSF val = testBit val ((finiteBitSize val) - 1)
 
 -------------------------------------------------------------------------------
 

@@ -306,6 +306,49 @@ decodeRM16 = decodeRM
 decodeRMS16 :: FuncO2M Reg16 RegSeg -> FuncO2M Mem16 RegSeg -> PrismInstrFunc
 decodeRMS16 = decodeRM
 
+decodeN :: (OperandVal b, OperandReg a1 b, OperandMem a2 b) =>
+    FuncO1M a1 -> FuncO1M a2 -> PrismInstrFunc
+decodeN freg fmem (b1, b2, b3, b4, _, _) ctx =
+    let modrm = b2
+        mod = shiftR (modrm .&. 0xE0) 6
+        rm = modrm .&. 0x07
+        in
+    case mod of
+        0x00 ->
+            case rm of
+                0x06 ->
+                    let disp16 = getDisp16 b3 b4
+                        mem = decodeMemDirect disp16
+                        in
+                    fmem ctx mem >>= updateIP 4
+                _ ->
+                    let mem = decodeMem1 rm 0
+                        in
+                    fmem ctx mem >>= updateIP 2
+        0x01 -> 
+            let disp8 = getDisp8 b3
+                mem = decodeMem1 rm disp8
+                in
+            fmem ctx mem >>= updateIP 3
+        0x02 ->
+            let disp16 = getDisp16 b3 b4 
+                mem = decodeMem1 rm disp16
+                in
+            fmem ctx mem >>= updateIP 4
+        0x03 ->
+            let reg = decodeReg rm
+                in
+            freg ctx reg >>= updateIP 2
+
+{-# SPECIALISE decodeN :: FuncO1M Reg8 -> FuncO1M Mem8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeN :: FuncO1M Reg16 -> FuncO1M Mem16 -> PrismInstrFunc #-}
+
+decodeN8_ :: FuncO1M Reg8 -> FuncO1M Mem8 -> PrismInstrFunc
+decodeN8_ = decodeN
+
+decodeN16_ :: FuncO1M Reg16 -> FuncO1M Mem16 -> PrismInstrFunc
+decodeN16_ = decodeN
+
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 
     let modrm = b2

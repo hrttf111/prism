@@ -10,134 +10,91 @@ import PrismCpu
 
 -------------------------------------------------------------------------------
 
-not8 :: Ctx -> Uint8 -> (Ctx, Uint8)
-not8 ctx val = (ctx, complement val)
+notI :: OperandVal b => FuncV1 b
+notI ctx val = (ctx, complement val)
 
-not16 :: Ctx -> Uint16 -> (Ctx, Uint16)
-not16 ctx val = (ctx, complement val)
-
--------------------------------------------------------------------------------
-
-logicalUpdateFlags8 :: Ctx -> Uint8 -> Ctx
-logicalUpdateFlags8 ctx val = newCtx
-    where
-        flags = Flags False (calcPF8 val) (flagAF . ctxFlags $ ctx) (calcZF8 val) (calcSF8 val) False
-        newCtx = ctx { ctxFlags = flags }
-
-logicalUpdateFlags16 :: Ctx -> Uint16 -> Ctx
-logicalUpdateFlags16 ctx val = newCtx
-    where
-        flags = Flags False (calcPF16 val) (flagAF . ctxFlags $ ctx) (calcZF16 val) (calcSF16 val) False
-        newCtx = ctx { ctxFlags = flags }
-
-and8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-and8 ctx source dest = (logicalUpdateFlags8 ctx result, result)
-    where
-        result = source .&. dest
-
-and16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-and16 ctx source dest = (logicalUpdateFlags16 ctx result, result)
-    where
-        result = source .&. dest
-
-or8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-or8 ctx source dest = (logicalUpdateFlags8 ctx result, result)
-    where
-        result = source .|. dest
-
-or16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-or16 ctx source dest = (logicalUpdateFlags16 ctx result, result)
-    where
-        result = source .|. dest
-
-xor8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-xor8 ctx source dest = (logicalUpdateFlags8 ctx result, result)
-    where
-        result = xor source dest
-
-xor16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-xor16 ctx source dest = (logicalUpdateFlags16 ctx result, result)
-    where
-        result = xor source dest
-
-test8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-test8 ctx source dest = (logicalUpdateFlags8 ctx result, dest)
-    where
-        result = source .&. dest
-
-test16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-test16 ctx source dest = (logicalUpdateFlags16 ctx result, dest)
-    where
-        result = source .&. dest
+{-# SPECIALISE notI :: FuncV1 Uint8 #-}
+{-# SPECIALISE notI :: FuncV1 Uint16 #-}
 
 -------------------------------------------------------------------------------
 
-signRetained :: (Bits a, FiniteBits a) => a -> a -> Bool
+logicalFunc :: OperandVal b => FuncV1 b
+logicalFunc ctx val = (newCtx, val)
+    where
+        flags = Flags False (calcPF val) (flagAF . ctxFlags $ ctx) (calcZF val) (calcSF val) False
+        newCtx = ctx { ctxFlags = flags }
+
+andI :: OperandVal b => FuncV2 b
+andI ctx source dest = logicalFunc ctx $ source .&. dest
+
+orI :: OperandVal b => FuncV2 b
+orI ctx source dest = logicalFunc ctx $ source .|. dest
+
+xorI :: OperandVal b => FuncV2 b
+xorI ctx source dest = logicalFunc ctx $ xor source dest
+
+testI :: OperandVal b => FuncV2 b
+testI ctx source dest = logicalFunc ctx $ source .&. dest
+
+-------------------------------------------------------------------------------
+
+signRetained :: (OperandVal a) => a -> a -> Bool
 signRetained before after = testBit before bit == testBit after bit
     where
         bit = (finiteBitSize before) - 1
 
-lastBitNumShiftedL :: (Bits a, FiniteBits a) => a -> Int -> Int
+lastBitNumShiftedL :: (OperandVal a) => a -> Int -> Int
 lastBitNumShiftedL val shVal = (finiteBitSize val) - shVal
 
-lastBitNumShiftedR :: (Bits a, FiniteBits a) => a -> Int -> Int
+lastBitNumShiftedR :: (OperandVal a) => a -> Int -> Int
 lastBitNumShiftedR _ shVal | shVal == 0 = 0
 lastBitNumShiftedR _ shVal = shVal - 1
 
 --Get last bit shifted/rotated left
-lastBitShiftedL :: (Bits a, FiniteBits a) => a -> Int -> Bool
+lastBitShiftedL :: (OperandVal a) => a -> Int -> Bool
 lastBitShiftedL val shVal = testBit val $ lastBitNumShiftedL val shVal
 
 --Get last bit shifted/rotated right
-lastBitShiftedR :: (Bits a, FiniteBits a) => a -> Int -> Bool
+lastBitShiftedR :: (OperandVal a) => a -> Int -> Bool
 lastBitShiftedR val shVal = testBit val $ lastBitNumShiftedR val shVal
 
-rotateFlagsOF :: (Bits a, FiniteBits a, Integral b, Num b, Ord b) => Bool -> a -> a -> b -> Bool
+rotateFlagsOF :: (OperandVal a, OperandVal b) => Bool -> a -> a -> b -> Bool
 rotateFlagsOF of_ _ _ shVal | shVal > 1 = of_
 rotateFlagsOF _ val result _ = not $ signRetained val result
 
 --todo: specialize
 
+type RotateFunc b = Ctx -> b -> Uint8 -> (Ctx, b)
+
 type RotateFunc8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
 type RotateFunc16 = Ctx -> Uint16 -> Uint8 -> (Ctx, Uint16)
 
-shl8 :: RotateFunc8
-shl8 ctx val shVal = (newCtx, result)
+shl :: OperandVal b => RotateFunc b
+shl ctx val shVal = (newCtx, result)
     where
         result = shiftL val $ fromIntegral shVal
         cf_ = lastBitShiftedL val $ fromIntegral shVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
-        flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
+        flags = Flags cf_ (calcPF result) (flagAF . ctxFlags $ ctx) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
-shl16 :: RotateFunc16
-shl16 ctx val shVal = (newCtx, result)
-    where
-        result = shiftL val $ fromIntegral shVal
-        cf_ = lastBitShiftedL val $ fromIntegral shVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
-        flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
-        newCtx = ctx { ctxFlags = flags }
-
-sal8 = shl8
-sal16 = shl16
-
-shr8 :: RotateFunc8
-shr8 ctx val shVal = (newCtx, result)
+shr :: OperandVal b => RotateFunc b
+shr ctx val shVal = (newCtx, result)
     where
         result = shiftR val $ fromIntegral shVal
         cf_ = lastBitShiftedR val $ fromIntegral shVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
-        flags = Flags cf_ (calcPF8 result) (flagAF . ctxFlags $ ctx) (calcZF8 result) (calcSF8 result) of_
+        flags = Flags cf_ (calcPF result) (flagAF . ctxFlags $ ctx) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
-shr16 :: RotateFunc16
-shr16 ctx val shVal = (newCtx, result)
+sar :: OperandVal b => RotateFunc b
+sar ctx val shVal = (newCtx, result)
     where
-        result = shiftR val $ fromIntegral shVal
+        op = (flip shiftR $ fromIntegral shVal) :: Int8 -> Int8
+        result = signedOpS op val
         cf_ = lastBitShiftedR val $ fromIntegral shVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result shVal
-        flags = Flags cf_ (calcPF16 result) (flagAF . ctxFlags $ ctx) (calcZF16 result) (calcSF16 result) of_
+        flags = Flags cf_ (calcPF result) (flagAF . ctxFlags $ ctx) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
 sar8 :: RotateFunc8
@@ -184,88 +141,48 @@ rotateFuncOne16 func ctx val = func ctx val 1
 
 -------------------------------------------------------------------------------
 
-rol8 :: RotateFunc8
-rol8 ctx val rotVal = (newCtx, result)
-    where
-        result = rotateL val $ fromIntegral rotVal
-        cf_ = lastBitShiftedL val $ fromIntegral rotVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
-        flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
-        newCtx = ctx { ctxFlags = flags }
-        
-rol16 :: RotateFunc16
-rol16 ctx val rotVal = (newCtx, result)
-    where
-        result = rotateL val $ fromIntegral rotVal
-        cf_ = lastBitShiftedL val $ fromIntegral rotVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
-        flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
-        newCtx = ctx { ctxFlags = flags }
-
-ror8 :: RotateFunc8
-ror8 ctx val rotVal = (newCtx, result)
-    where
-        result = rotateR val $ fromIntegral rotVal
-        cf_ = lastBitShiftedR val $ fromIntegral rotVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
-        flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
-        newCtx = ctx { ctxFlags = flags }
-
-ror16 :: RotateFunc16
-ror16 ctx val rotVal = (newCtx, result)
-    where
-        result = rotateR val $ fromIntegral rotVal
-        cf_ = lastBitShiftedR val $ fromIntegral rotVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
-        flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
-        newCtx = ctx { ctxFlags = flags }
-
-writeBit :: (Bits a, FiniteBits a, Integral a, Num a, Ord a) => a -> Int -> Bool -> a
+writeBit :: OperandVal a => a -> Int -> Bool -> a
 writeBit val num True = setBit val num
 writeBit val num False = clearBit val num
 
-rcl8 :: RotateFunc8
-rcl8 ctx val rotVal = (newCtx, result)
+rol :: OperandVal b => RotateFunc b
+rol ctx val rotVal = (newCtx, result)
     where
-        lastBit = lastBitNumShiftedR val $ fromIntegral rotVal
-        part1 = shiftL val $ fromIntegral rotVal
-        part2 = shiftR val $ fromIntegral (8 - rotVal + 1)
-        result = writeBit (part1 .|. part2) lastBit (flagCF . ctxFlags $ ctx)
+        result = rotateL val $ fromIntegral rotVal
         cf_ = lastBitShiftedL val $ fromIntegral rotVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
         flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
         newCtx = ctx { ctxFlags = flags }
 
-rcl16 :: RotateFunc16
-rcl16 ctx val rotVal = (newCtx, result)
+ror :: OperandVal b => RotateFunc b
+ror ctx val rotVal = (newCtx, result)
     where
-        lastBit = lastBitNumShiftedR val $ fromIntegral rotVal
-        part1 = shiftL val $ fromIntegral rotVal
-        part2 = shiftR val $ fromIntegral (16 - rotVal + 1)
-        result = writeBit (part1 .|. part2) lastBit (flagCF . ctxFlags $ ctx)
-        cf_ = lastBitShiftedL val $ fromIntegral rotVal
-        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
-        flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
-        newCtx = ctx { ctxFlags = flags }
-
-rcr8 :: RotateFunc8
-rcr8 ctx val rotVal = (newCtx, result)
-    where
-        lastBit = lastBitNumShiftedL val $ fromIntegral rotVal
-        part1 = shiftR val $ fromIntegral rotVal
-        part2 = shiftL val $ fromIntegral (8 - rotVal + 1)
-        result = writeBit (part1 .|. part2) lastBit (flagCF . ctxFlags $ ctx)
+        result = rotateR val $ fromIntegral rotVal
         cf_ = lastBitShiftedR val $ fromIntegral rotVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
         flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
         newCtx = ctx { ctxFlags = flags }
 
-rcr16 :: RotateFunc16
-rcr16 ctx val rotVal = (newCtx, result)
+rcl :: OperandVal b => RotateFunc b
+rcl ctx val rotVal = (newCtx, result)
     where
+        bitSize = fromIntegral (finiteBitSize val)
+        lastBit = lastBitNumShiftedR val $ fromIntegral rotVal
+        part1 = shiftL val $ fromIntegral rotVal
+        part2 = shiftR val $ fromIntegral (bitSize - rotVal + 1)
+        result = writeBit (part1 .|. part2) lastBit (flagCF . ctxFlags $ ctx)
+        cf_ = lastBitShiftedL val $ fromIntegral rotVal
+        of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
+        flags = (ctxFlags ctx) { flagCF = cf_, flagOF = of_ }
+        newCtx = ctx { ctxFlags = flags }
+
+rcr :: OperandVal b => RotateFunc b
+rcr ctx val rotVal = (newCtx, result)
+    where
+        bitSize = fromIntegral (finiteBitSize val)
         lastBit = lastBitNumShiftedL val $ fromIntegral rotVal
         part1 = shiftR val $ fromIntegral rotVal
-        part2 = shiftL val $ fromIntegral (16 - rotVal + 1)
+        part2 = shiftL val $ fromIntegral (bitSize - rotVal + 1)
         result = writeBit (part1 .|. part2) lastBit (flagCF . ctxFlags $ ctx)
         cf_ = lastBitShiftedR val $ fromIntegral rotVal
         of_ = rotateFlagsOF (flagOF . ctxFlags $ ctx) val result rotVal
@@ -276,81 +193,81 @@ rcr16 ctx val rotVal = (newCtx, result)
 
 logicalInstrList = [
         --OR
-        makeInstructionS 0x08 Nothing (decodeRm8 (instrRegToReg8RegToRm or8) (instrRegToMem8 or8)),
-        makeInstructionS 0x09 Nothing (decodeRm16 (instrRegToReg16RegToRm or16) (instrRegToMem16 or16)),
-        makeInstructionS 0x0A Nothing (decodeRm8 (instrRegToReg8RmToReg or8) (instrMemToReg8 or8)),
-        makeInstructionS 0x0B Nothing (decodeRm16 (instrRegToReg16RmToReg or16) (instrMemToReg16 or16)),
-        makeInstructionS 0x0C Nothing (decodeAcc8 al $ instrRegImm8 or8),
-        makeInstructionS 0x0D Nothing (decodeAcc16 ax $ instrRegImm16 or16),
-        makeInstructionS 0x80 (Just 1) (decodeN8Imm8 (instrRegImm8 or8) (instrMemImm8 or8)),
-        makeInstructionS 0x81 (Just 1) (decodeN16Imm (instrRegImm16 or16) (instrMemImm16 or16)),
-        makeInstructionS 0x82 (Just 1) (decodeN8Imm8 (instrRegImm8 or8) (instrMemImm8 or8)),
-        makeInstructionS 0x83 (Just 1) (decodeN16Imm8 (instrRegImm16 or16) (instrMemImm16 or16)),
+        makeInstructionS 0x08 Nothing (decodeRm8 (instrRegToReg8RegToRm orI) (instrRegToMem8 orI)),
+        makeInstructionS 0x09 Nothing (decodeRm16 (instrRegToReg16RegToRm orI) (instrRegToMem16 orI)),
+        makeInstructionS 0x0A Nothing (decodeRm8 (instrRegToReg8RmToReg orI) (instrMemToReg8 orI)),
+        makeInstructionS 0x0B Nothing (decodeRm16 (instrRegToReg16RmToReg orI) (instrMemToReg16 orI)),
+        makeInstructionS 0x0C Nothing (decodeAcc8 al $ instrRegImm8 orI),
+        makeInstructionS 0x0D Nothing (decodeAcc16 ax $ instrRegImm16 orI),
+        makeInstructionS 0x80 (Just 1) (decodeN8Imm8 (instrRegImm8 orI) (instrMemImm8 orI)),
+        makeInstructionS 0x81 (Just 1) (decodeN16Imm (instrRegImm16 orI) (instrMemImm16 orI)),
+        makeInstructionS 0x82 (Just 1) (decodeN8Imm8 (instrRegImm8 orI) (instrMemImm8 orI)),
+        makeInstructionS 0x83 (Just 1) (decodeN16Imm8 (instrRegImm16 orI) (instrMemImm16 orI)),
         --AND
-        makeInstructionS 0x20 Nothing (decodeRm8 (instrRegToReg8RegToRm and8) (instrRegToMem8 and8)),
-        makeInstructionS 0x21 Nothing (decodeRm16 (instrRegToReg16RegToRm and16) (instrRegToMem16 and16)),
-        makeInstructionS 0x22 Nothing (decodeRm8 (instrRegToReg8RmToReg and8) (instrMemToReg8 and8)),
-        makeInstructionS 0x23 Nothing (decodeRm16 (instrRegToReg16RmToReg and16) (instrMemToReg16 and16)),
-        makeInstructionS 0x24 Nothing (decodeAcc8 al $ instrRegImm8 and8),
-        makeInstructionS 0x25 Nothing (decodeAcc16 ax $ instrRegImm16 and16),
-        makeInstructionS 0x80 (Just 4) (decodeN8Imm8 (instrRegImm8 and8) (instrMemImm8 and8)),
-        makeInstructionS 0x81 (Just 4) (decodeN16Imm (instrRegImm16 and16) (instrMemImm16 and16)),
-        makeInstructionS 0x82 (Just 4) (decodeN8Imm8 (instrRegImm8 and8) (instrMemImm8 and8)),
-        makeInstructionS 0x83 (Just 4) (decodeN16Imm8 (instrRegImm16 and16) (instrMemImm16 and16)),
+        makeInstructionS 0x20 Nothing (decodeRm8 (instrRegToReg8RegToRm andI) (instrRegToMem8 andI)),
+        makeInstructionS 0x21 Nothing (decodeRm16 (instrRegToReg16RegToRm andI) (instrRegToMem16 andI)),
+        makeInstructionS 0x22 Nothing (decodeRm8 (instrRegToReg8RmToReg andI) (instrMemToReg8 andI)),
+        makeInstructionS 0x23 Nothing (decodeRm16 (instrRegToReg16RmToReg andI) (instrMemToReg16 andI)),
+        makeInstructionS 0x24 Nothing (decodeAcc8 al $ instrRegImm8 andI),
+        makeInstructionS 0x25 Nothing (decodeAcc16 ax $ instrRegImm16 andI),
+        makeInstructionS 0x80 (Just 4) (decodeN8Imm8 (instrRegImm8 andI) (instrMemImm8 andI)),
+        makeInstructionS 0x81 (Just 4) (decodeN16Imm (instrRegImm16 andI) (instrMemImm16 andI)),
+        makeInstructionS 0x82 (Just 4) (decodeN8Imm8 (instrRegImm8 andI) (instrMemImm8 andI)),
+        makeInstructionS 0x83 (Just 4) (decodeN16Imm8 (instrRegImm16 andI) (instrMemImm16 andI)),
         --XOR
-        makeInstructionS 0x30 Nothing (decodeRm8 (instrRegToReg8RegToRm xor8) (instrRegToMem8 xor8)),
-        makeInstructionS 0x31 Nothing (decodeRm16 (instrRegToReg16RegToRm xor16) (instrRegToMem16 xor16)),
-        makeInstructionS 0x32 Nothing (decodeRm8 (instrRegToReg8RmToReg xor8) (instrMemToReg8 xor8)),
-        makeInstructionS 0x33 Nothing (decodeRm16 (instrRegToReg16RmToReg xor16) (instrMemToReg16 xor16)),
-        makeInstructionS 0x34 Nothing (decodeAcc8 al $ instrRegImm8 xor8),
-        makeInstructionS 0x35 Nothing (decodeAcc16 ax $ instrRegImm16 xor16),
-        makeInstructionS 0x80 (Just 6) (decodeN8Imm8 (instrRegImm8 xor8) (instrMemImm8 xor8)),
-        makeInstructionS 0x81 (Just 6) (decodeN16Imm (instrRegImm16 xor16) (instrMemImm16 xor16)),
-        makeInstructionS 0x82 (Just 6) (decodeN8Imm8 (instrRegImm8 xor8) (instrMemImm8 xor8)),
-        makeInstructionS 0x83 (Just 6) (decodeN16Imm8 (instrRegImm16 xor16) (instrMemImm16 xor16)),
+        makeInstructionS 0x30 Nothing (decodeRm8 (instrRegToReg8RegToRm xorI) (instrRegToMem8 xorI)),
+        makeInstructionS 0x31 Nothing (decodeRm16 (instrRegToReg16RegToRm xorI) (instrRegToMem16 xorI)),
+        makeInstructionS 0x32 Nothing (decodeRm8 (instrRegToReg8RmToReg xorI) (instrMemToReg8 xorI)),
+        makeInstructionS 0x33 Nothing (decodeRm16 (instrRegToReg16RmToReg xorI) (instrMemToReg16 xorI)),
+        makeInstructionS 0x34 Nothing (decodeAcc8 al $ instrRegImm8 xorI),
+        makeInstructionS 0x35 Nothing (decodeAcc16 ax $ instrRegImm16 xorI),
+        makeInstructionS 0x80 (Just 6) (decodeN8Imm8 (instrRegImm8 xorI) (instrMemImm8 xorI)),
+        makeInstructionS 0x81 (Just 6) (decodeN16Imm (instrRegImm16 xorI) (instrMemImm16 xorI)),
+        makeInstructionS 0x82 (Just 6) (decodeN8Imm8 (instrRegImm8 xorI) (instrMemImm8 xorI)),
+        makeInstructionS 0x83 (Just 6) (decodeN16Imm8 (instrRegImm16 xorI) (instrMemImm16 xorI)),
         --TEST
-        makeInstructionS 0x84 Nothing (decodeRm8 (instrRegToReg8RegToRm test8) (instrRegToMem8 test8)),
-        makeInstructionS 0x85 Nothing (decodeRm16 (instrRegToReg16RegToRm test16) (instrRegToMem16 test16)),
-        makeInstructionS 0xA8 Nothing (decodeAcc8 al $ instrRegImm8 test8),
-        makeInstructionS 0xA9 Nothing (decodeAcc16 ax $ instrRegImm16 test16),
-        makeInstructionS 0xF6 (Just 0) (decodeN8Imm8 (instrRegImm8 test8) (instrMemImm8 test8)),
-        makeInstructionS 0xF7 (Just 0) (decodeN16Imm (instrRegImm16 test16) (instrMemImm16 test16)),
+        makeInstructionS 0x84 Nothing (decodeRm8 (instrRegToReg8RegToRm testI) (instrRegToMem8 testI)),
+        makeInstructionS 0x85 Nothing (decodeRm16 (instrRegToReg16RegToRm testI) (instrRegToMem16 testI)),
+        makeInstructionS 0xA8 Nothing (decodeAcc8 al $ instrRegImm8 testI),
+        makeInstructionS 0xA9 Nothing (decodeAcc16 ax $ instrRegImm16 testI),
+        makeInstructionS 0xF6 (Just 0) (decodeN8Imm8 (instrRegImm8 testI) (instrMemImm8 testI)),
+        makeInstructionS 0xF7 (Just 0) (decodeN16Imm (instrRegImm16 testI) (instrMemImm16 testI)),
         --SHL/SAL
-        makeInstructionS 0xD0 (Just 4) (decodeN8 (instrReg8 $ rotateFuncOne8 shl8) (instrMem8 $ rotateFuncOne8 shl8)),
-        makeInstructionS 0xD1 (Just 4) (decodeN16 (instrReg16 $ rotateFuncOne16 shl16) (instrMem16 $ rotateFuncOne16 shl16)),
-        makeInstructionS 0xD2 (Just 4) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shl8) (instrMemVal8 $ rotateFuncCl8 shl8)),
-        makeInstructionS 0xD3 (Just 4) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shl16) (instrMemVal16 $ rotateFuncCl16 shl16)),
+        makeInstructionS 0xD0 (Just 4) (decodeN8 (instrReg8 $ rotateFuncOne8 shl) (instrMem8 $ rotateFuncOne8 shl)),
+        makeInstructionS 0xD1 (Just 4) (decodeN16 (instrReg16 $ rotateFuncOne16 shl) (instrMem16 $ rotateFuncOne16 shl)),
+        makeInstructionS 0xD2 (Just 4) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shl) (instrMemVal8 $ rotateFuncCl8 shl)),
+        makeInstructionS 0xD3 (Just 4) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shl) (instrMemVal16 $ rotateFuncCl16 shl)),
         --SHR
-        makeInstructionS 0xD0 (Just 5) (decodeN8 (instrReg8 $ rotateFuncOne8 shr8) (instrMem8 $ rotateFuncOne8 shr8)),
-        makeInstructionS 0xD1 (Just 5) (decodeN16 (instrReg16 $ rotateFuncOne16 shr16) (instrMem16 $ rotateFuncOne16 shr16)),
-        makeInstructionS 0xD2 (Just 5) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shr8) (instrMemVal8 $ rotateFuncCl8 shr8)),
-        makeInstructionS 0xD3 (Just 5) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shr16) (instrMemVal16 $ rotateFuncCl16 shr16)),
+        makeInstructionS 0xD0 (Just 5) (decodeN8 (instrReg8 $ rotateFuncOne8 shr) (instrMem8 $ rotateFuncOne8 shr)),
+        makeInstructionS 0xD1 (Just 5) (decodeN16 (instrReg16 $ rotateFuncOne16 shr) (instrMem16 $ rotateFuncOne16 shr)),
+        makeInstructionS 0xD2 (Just 5) (decodeN8 (instrRegVal8 $ rotateFuncCl8 shr) (instrMemVal8 $ rotateFuncCl8 shr)),
+        makeInstructionS 0xD3 (Just 5) (decodeN16 (instrRegVal16 $ rotateFuncCl16 shr) (instrMemVal16 $ rotateFuncCl16 shr)),
         --SAR
         makeInstructionS 0xD0 (Just 7) (decodeN8 (instrReg8 $ rotateFuncOne8 sar8) (instrMem8 $ rotateFuncOne8 sar8)),
         makeInstructionS 0xD1 (Just 7) (decodeN16 (instrReg16 $ rotateFuncOne16 sar16) (instrMem16 $ rotateFuncOne16 sar16)),
         makeInstructionS 0xD2 (Just 7) (decodeN8 (instrRegVal8 $ rotateFuncCl8 sar8) (instrMemVal8 $ rotateFuncCl8 sar8)),
         makeInstructionS 0xD3 (Just 7) (decodeN16 (instrRegVal16 $ rotateFuncCl16 sar16) (instrMemVal16 $ rotateFuncCl16 sar16)),
         --ROL
-        makeInstructionS 0xD0 (Just 0) (decodeN8 (instrReg8 $ rotateFuncOne8 rol8) (instrMem8 $ rotateFuncOne8 rol8)),
-        makeInstructionS 0xD1 (Just 0) (decodeN16 (instrReg16 $ rotateFuncOne16 rol16) (instrMem16 $ rotateFuncOne16 rol16)),
-        makeInstructionS 0xD2 (Just 0) (decodeN8 (instrRegVal8 $ rotateFuncCl8 rol8) (instrMemVal8 $ rotateFuncCl8 rol8)),
-        makeInstructionS 0xD3 (Just 0) (decodeN16 (instrRegVal16 $ rotateFuncCl16 rol16) (instrMemVal16 $ rotateFuncCl16 rol16)),
+        makeInstructionS 0xD0 (Just 0) (decodeN8 (instrReg8 $ rotateFuncOne8 rol) (instrMem8 $ rotateFuncOne8 rol)),
+        makeInstructionS 0xD1 (Just 0) (decodeN16 (instrReg16 $ rotateFuncOne16 rol) (instrMem16 $ rotateFuncOne16 rol)),
+        makeInstructionS 0xD2 (Just 0) (decodeN8 (instrRegVal8 $ rotateFuncCl8 rol) (instrMemVal8 $ rotateFuncCl8 rol)),
+        makeInstructionS 0xD3 (Just 0) (decodeN16 (instrRegVal16 $ rotateFuncCl16 rol) (instrMemVal16 $ rotateFuncCl16 rol)),
         --ROR
-        makeInstructionS 0xD0 (Just 1) (decodeN8 (instrReg8 $ rotateFuncOne8 ror8) (instrMem8 $ rotateFuncOne8 ror8)),
-        makeInstructionS 0xD1 (Just 1) (decodeN16 (instrReg16 $ rotateFuncOne16 ror16) (instrMem16 $ rotateFuncOne16 ror16)),
-        makeInstructionS 0xD2 (Just 1) (decodeN8 (instrRegVal8 $ rotateFuncCl8 ror8) (instrMemVal8 $ rotateFuncCl8 ror8)),
-        makeInstructionS 0xD3 (Just 1) (decodeN16 (instrRegVal16 $ rotateFuncCl16 ror16) (instrMemVal16 $ rotateFuncCl16 ror16)),
+        makeInstructionS 0xD0 (Just 1) (decodeN8 (instrReg8 $ rotateFuncOne8 ror) (instrMem8 $ rotateFuncOne8 ror)),
+        makeInstructionS 0xD1 (Just 1) (decodeN16 (instrReg16 $ rotateFuncOne16 ror) (instrMem16 $ rotateFuncOne16 ror)),
+        makeInstructionS 0xD2 (Just 1) (decodeN8 (instrRegVal8 $ rotateFuncCl8 ror) (instrMemVal8 $ rotateFuncCl8 ror)),
+        makeInstructionS 0xD3 (Just 1) (decodeN16 (instrRegVal16 $ rotateFuncCl16 ror) (instrMemVal16 $ rotateFuncCl16 ror)),
         --RCL
-        makeInstructionS 0xD0 (Just 2) (decodeN8 (instrReg8 $ rotateFuncOne8 rcl8) (instrMem8 $ rotateFuncOne8 rcl8)),
-        makeInstructionS 0xD1 (Just 2) (decodeN16 (instrReg16 $ rotateFuncOne16 rcl16) (instrMem16 $ rotateFuncOne16 rcl16)),
-        makeInstructionS 0xD2 (Just 2) (decodeN8 (instrRegVal8 $ rotateFuncCl8 rcl8) (instrMemVal8 $ rotateFuncCl8 rcl8)),
-        makeInstructionS 0xD3 (Just 2) (decodeN16 (instrRegVal16 $ rotateFuncCl16 rcl16) (instrMemVal16 $ rotateFuncCl16 rcl16)),
+        makeInstructionS 0xD0 (Just 2) (decodeN8 (instrReg8 $ rotateFuncOne8 rcl) (instrMem8 $ rotateFuncOne8 rcl)),
+        makeInstructionS 0xD1 (Just 2) (decodeN16 (instrReg16 $ rotateFuncOne16 rcl) (instrMem16 $ rotateFuncOne16 rcl)),
+        makeInstructionS 0xD2 (Just 2) (decodeN8 (instrRegVal8 $ rotateFuncCl8 rcl) (instrMemVal8 $ rotateFuncCl8 rcl)),
+        makeInstructionS 0xD3 (Just 2) (decodeN16 (instrRegVal16 $ rotateFuncCl16 rcl) (instrMemVal16 $ rotateFuncCl16 rcl)),
         --RCR
-        makeInstructionS 0xD0 (Just 3) (decodeN8 (instrReg8 $ rotateFuncOne8 rcr8) (instrMem8 $ rotateFuncOne8 rcr8)),
-        makeInstructionS 0xD1 (Just 3) (decodeN16 (instrReg16 $ rotateFuncOne16 rcr16) (instrMem16 $ rotateFuncOne16 rcr16)),
-        makeInstructionS 0xD2 (Just 3) (decodeN8 (instrRegVal8 $ rotateFuncCl8 rcr8) (instrMemVal8 $ rotateFuncCl8 rcr8)),
-        makeInstructionS 0xD3 (Just 3) (decodeN16 (instrRegVal16 $ rotateFuncCl16 rcr16) (instrMemVal16 $ rotateFuncCl16 rcr16)),
+        makeInstructionS 0xD0 (Just 3) (decodeN8 (instrReg8 $ rotateFuncOne8 rcr) (instrMem8 $ rotateFuncOne8 rcr)),
+        makeInstructionS 0xD1 (Just 3) (decodeN16 (instrReg16 $ rotateFuncOne16 rcr) (instrMem16 $ rotateFuncOne16 rcr)),
+        makeInstructionS 0xD2 (Just 3) (decodeN8 (instrRegVal8 $ rotateFuncCl8 rcr) (instrMemVal8 $ rotateFuncCl8 rcr)),
+        makeInstructionS 0xD3 (Just 3) (decodeN16 (instrRegVal16 $ rotateFuncCl16 rcr) (instrMemVal16 $ rotateFuncCl16 rcr)),
         --NOT
-        makeInstructionS 0xF6 (Just 2) (decodeN8 (instrReg8 not8) (instrMem8 not8)),
-        makeInstructionS 0xF7 (Just 2) (decodeN16 (instrReg16 not16) (instrMem16 not16))
+        makeInstructionS 0xF6 (Just 2) (decodeN8 (instrReg8 notI) (instrMem8 notI)),
+        makeInstructionS 0xF7 (Just 2) (decodeN16 (instrReg16 notI) (instrMem16 notI))
     ]

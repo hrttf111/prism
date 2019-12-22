@@ -41,17 +41,15 @@ type FuncJInter = Ctx -> Imm16 -> Imm16 -> PrismM
 
 instrJReg :: FuncJ -> Ctx -> Reg16 -> PrismM
 instrJReg func ctx reg =
-    readReg16 (ctxReg ctx) reg >>= func ctx
+    readOp ctx reg >>= func ctx
 
-instrJMem16 :: FuncJ -> Ctx -> Mem -> PrismM
+instrJMem16 :: FuncJ -> Ctx -> Mem16 -> PrismM
 instrJMem16 func ctx mem =
-    readMem16 (ctxReg ctx) (ctxMem ctx) seg mem >>= func ctx
-    where
-        seg = findRegSegData ctx
+    readOp ctx mem >>= func ctx
 
-instrJMem32 :: FuncJInter -> Ctx -> Mem -> PrismM
+instrJMem32 :: FuncJInter -> Ctx -> Mem16 -> PrismM
 instrJMem32 func ctx mem = do
-    (val1, val2) <- readMem32 (ctxReg ctx) (ctxMem ctx) seg mem
+    (val1, val2) <- readMem32 (ctxReg ctx) (ctxMem ctx) seg (unwrapMem mem)
     func ctx val1 val2
     where
         seg = findRegSegData ctx
@@ -251,13 +249,13 @@ controlInstrList = [
         makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
         makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
         makeInstructionS 0xEB Nothing (decodeImm8 jmpShort),
-        makeInstructionS 0xFF (Just 4) (decodeN16 (instrJReg jmpIntra) (instrJMem16 jmpIntra)),
-        makeInstructionS 0xFF (Just 5) (decodeN16 emptySingle (instrJMem32 jmpInter)),
+        makeInstructionS 0xFF (Just 4) (decodeN16_ (instrJReg jmpIntra) (instrJMem16 jmpIntra)),
+        makeInstructionS 0xFF (Just 5) (decodeN16_ emptySingle (instrJMem32 jmpInter)),
         --CALL
         makeInstructionS 0xE8 Nothing (decodeImm16 callNear),
         makeInstructionS 0x9A Nothing (decodeImm32 callInter),
-        makeInstructionS 0xFF (Just 2) (decodeN16 (instrJReg callIntra) (instrJMem16 callIntra)),
-        makeInstructionS 0xFF (Just 3) (decodeN16 emptySingle (instrJMem32 callInter)),
+        makeInstructionS 0xFF (Just 2) (decodeN16_ (instrJReg callIntra) (instrJMem16 callIntra)),
+        makeInstructionS 0xFF (Just 3) (decodeN16_ emptySingle (instrJMem32 callInter)),
         --RET
         makeInstructionS 0xC2 Nothing (decodeImm16 retIntra),
         makeInstructionS 0xC3 Nothing (decodeImplicit $ flip retIntra 0),
