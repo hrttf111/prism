@@ -54,7 +54,7 @@ makeShowFunctionAcc name opcode rm func =
     makeInstructionS opcode rm $ func (showAny3 name)
 
 -------------------------------------------------------------------------------
-
+{-
 instructionShow = [
         makeShowFunctionN "ADD" 0x00 Nothing decodeRm8,
         makeShowFunctionN "ADD" 0x01 Nothing decodeRm16,
@@ -77,3 +77,4 @@ makeShowDecoder = fromRight emptyDecoder $ makeDecoder <$> mergedInstr
         mergedInstr :: Either String [PrismInstruction]
         mergedInstr = map (uncurry mergeInstruction) <$> listResult
         emptyDecoder = makeDecoder []
+        -}

@@ -632,6 +632,13 @@ type FuncSegImm16 = Ctx -> RegSeg -> Imm16 -> PrismM
 type FuncSegReg16 = Ctx -> Reg16 -> RegSeg -> PrismM
 type FuncMemSeg16 = Ctx -> Mem -> RegSeg -> PrismM
 
+type FuncNoVal8 = Ctx -> Uint8 -> PrismM
+type FuncNoVal16 = Ctx -> Uint16 -> PrismM
+
+-- ctx -> source -> dest -> (ctx, result)
+type Func16 = Ctx -> Uint16 -> (Ctx, Uint16)
+type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
+
 emptyRegReg :: Ctx -> a -> a -> PrismM
 emptyRegReg ctx _ _ = return ctx
 
@@ -642,7 +649,6 @@ emptySingle ctx _ = return ctx
 
 type OperandFunc1 a b = (OperandVal b, Operand a b)
 type OperandFunc2 a1 a2 b = (OperandVal b, Operand a1 b, Operand a2 b)
---type OperandFuncMR a1 a2 b = (OperandVal b, OperandMem a1 b, OperandReg a2 b)
 
 type FuncImm1 i = Ctx -> i -> PrismM
 type FuncImm2 i = Ctx -> i -> i -> PrismM
@@ -726,131 +732,24 @@ instrO2 func ctx op1 op2 = do
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M RegSeg Mem16 #-}
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Mem16 RegSeg #-}
 
-instrMemToReg :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
-instrMemToReg func ctx op1 op2 = instrO2 func ctx op2 op1
-
 -------------------------------------------------------------------------------
 
-type FuncVal8 = Ctx -> Uint8 -> PrismCtx IO (Ctx, Uint8)
-type FuncVal16 = Ctx -> Uint16 -> PrismCtx IO (Ctx, Uint16)
+instrOp1ToOp2 :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrOp1ToOp2 = instrO2
 
-instrRegVal8 :: FuncVal8 -> FuncReg8
-instrRegVal8 = instrOV1
+instrOp2ToOp1 :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrOp2ToOp1 func ctx op1 op2 = instrO2 func ctx op2 op1
 
-instrRegVal16 :: FuncVal16 -> FuncReg16
-instrRegVal16 = instrOV1
+instrRmToReg :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrRmToReg = instrOp1ToOp2
 
-instrMemVal8 :: FuncVal8 -> FuncMem
-instrMemVal8 func ctx mem = instrOV1 func ctx $ Mem8 mem
-
-instrMemVal16 :: FuncVal16 -> FuncMem
-instrMemVal16 func ctx mem = instrOV1 func ctx $ Mem16 mem
-
-type FuncNoVal8 = Ctx -> Uint8 -> PrismM
-type FuncNoVal16 = Ctx -> Uint16 -> PrismM
-
-instrRegNoVal8 :: FuncNoVal8 -> FuncReg8
-instrRegNoVal8 = instrON1
-
-instrRegNoVal16 :: FuncNoVal16 -> FuncReg16
-instrRegNoVal16 = instrON1
-
-instrMemNoVal8 :: FuncNoVal8 -> FuncMem
-instrMemNoVal8 func ctx mem = instrON1 func ctx $ Mem8 mem
-
-instrMemNoVal16 :: FuncNoVal16 -> FuncMem
-instrMemNoVal16 func ctx mem = instrON1 func ctx $ Mem16 mem
+instrRegToRm :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrRegToRm = instrOp2ToOp1
 
 -------------------------------------------------------------------------------
-
-convMemO2 :: (OperandVal b, OperandReg a1 b, OperandMem a2 b) =>
-    (Ctx -> Mem -> a1 -> PrismM) -> FuncO2M a2 a1
-convMemO2 f ctx mem reg =
-    f ctx (unwrapMem mem) reg
-
-{-# SPECIALISE INLINE convMemO2 :: (Ctx -> Mem -> Reg8 -> PrismM) -> FuncO2M Mem8 Reg8 #-}
-{-# SPECIALISE INLINE convMemO2 :: (Ctx -> Mem -> Reg16 -> PrismM) -> FuncO2M Mem16 Reg16 #-}
-
--------------------------------------------------------------------------------
-
--- ctx -> source -> dest -> (ctx, result)
-type Func8To8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-
-type Func8 = Ctx -> Uint8 -> (Ctx, Uint8)
-type Func16 = Ctx -> Uint16 -> (Ctx, Uint16)
-
-instrReg8 :: Func8 -> FuncReg8
-instrReg8 func ctx reg = instrO1 func ctx reg
-
-instrReg16 :: Func16 -> FuncReg16
-instrReg16 func ctx reg = instrO1 func ctx reg
-
-instrMem8 :: Func8 -> FuncMem
-instrMem8 func ctx mem = instrO1 func ctx $ Mem8 mem
-
-instrMem16 :: Func16 -> FuncMem
-instrMem16 func ctx mem = instrO1 func ctx $ Mem16 mem
-
-instrRegImm8 :: Func8To8 -> FuncRegImm8
-instrRegImm8 = instrOI1
 
 instrRegImm16 :: Func16To16 -> FuncRegImm16
 instrRegImm16 = instrOI1
 
-instrRegToReg8 :: Func8To8 -> FuncRegReg8
-instrRegToReg8 = instrO2
-
-instrRmToReg :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
-instrRmToReg = instrO2
-
-instrRegToRm :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
-instrRegToRm func ctx reg1 reg2 = instrO2 func ctx reg2 reg1
-
-instrRegToReg8RmToReg :: Func8To8 -> FuncRegReg8
-instrRegToReg8RmToReg = instrO2
-
-instrRegToReg8RegToRm :: Func8To8 -> FuncRegReg8
-instrRegToReg8RegToRm func ctx reg1 reg2 = instrO2 func ctx reg2 reg1
-
-instrRegToReg16 :: Func16To16 -> FuncRegReg16
-instrRegToReg16 = instrO2
-
-instrRegToReg16RmToReg :: Func16To16 -> FuncRegReg16
-instrRegToReg16RmToReg = instrO2
-
-instrRegToReg16RegToRm :: Func16To16 -> FuncRegReg16
-instrRegToReg16RegToRm func ctx reg1 reg2 = instrO2 func ctx reg2 reg1
-
-instrMemImm8 :: Func8To8 -> FuncMemImm8
-instrMemImm8 func ctx mem imm = instrOI1 func ctx (Mem8 mem) imm
-
 instrMemImm16 :: Func16To16 -> FuncMemImm16
 instrMemImm16 func ctx mem imm = instrOI1 func ctx (Mem16 mem) imm
-
-instrRegToMem8 :: Func8To8 -> FuncMemReg8
-instrRegToMem8 func ctx mem reg = instrO2 func ctx reg (Mem8 mem)
-
-instrRegToMem16 :: Func16To16 -> FuncMemReg16
-instrRegToMem16 func ctx mem reg = instrO2 func ctx reg (Mem16 mem)
-
-instrMemToReg8 :: Func8To8 -> FuncMemReg8
-instrMemToReg8 func ctx mem reg = instrO2 func ctx (Mem8 mem) reg
-
-instrMemToReg16 :: Func16To16 -> FuncMemReg16
-instrMemToReg16 func ctx mem reg = instrO2 func ctx (Mem16 mem) reg
-
-instrSegImm16 :: Func16To16 -> FuncSegImm16
-instrSegImm16 = instrOI1
-
-instrRegToSeg16 :: Func16To16 -> FuncSegReg16
-instrRegToSeg16 func ctx reg regSeg = instrO2 func ctx reg regSeg
-
-instrSegToReg16 :: Func16To16 -> FuncSegReg16
-instrSegToReg16 func ctx reg regSeg = instrO2 func ctx regSeg reg
-
-instrMemToSeg16 :: Func16To16 -> FuncMemSeg16
-instrMemToSeg16 func ctx mem regSeg = instrO2 func ctx (Mem16 mem) regSeg
-
-instrSegToMem16 :: Func16To16 -> FuncMemSeg16
-instrSegToMem16 func ctx mem regSeg = instrO2 func ctx regSeg (Mem16 mem)
