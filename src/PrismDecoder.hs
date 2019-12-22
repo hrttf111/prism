@@ -148,39 +148,40 @@ decodeImm32 freg (_, b2, b3, b4, b5, _) ctx =
         in
     updateIP 5 ctx >>= \c -> freg c imm1 imm2
 
-decodeAcc :: (ImmDecoder b, OperandVal b, OperandReg a b) =>
+--Decode IMM and execute function with predefined REG
+decodeStRI :: (ImmDecoder b, OperandVal b, OperandReg a b) =>
     a -> FuncOI1M a b -> PrismInstrFunc
-decodeAcc reg func (_, b2, b3, _, _, _) ctx =
+decodeStRI reg func (_, b2, b3, _, _, _) ctx =
     let imm = decodeImm b2 b3 
         in
     func ctx reg imm >>= updateIP (1 + immLength imm)
 
-{-# SPECIALISE decodeAcc :: Reg8 -> FuncOI1M Reg8 Uint8 -> PrismInstrFunc #-}
-{-# SPECIALISE decodeAcc :: Reg16 -> FuncOI1M Reg16 Uint16 -> PrismInstrFunc #-}
-{-# SPECIALISE decodeAcc :: RegSeg -> FuncOI1M RegSeg Uint16 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeStRI :: Reg8 -> FuncOI1M Reg8 Uint8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeStRI :: Reg16 -> FuncOI1M Reg16 Uint16 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeStRI :: RegSeg -> FuncOI1M RegSeg Uint16 -> PrismInstrFunc #-}
 
 decodeAcc8 :: Reg8 -> FuncRegImm8 -> PrismInstrFunc
-decodeAcc8 = decodeAcc
+decodeAcc8 = decodeStRI
 
 decodeAcc16 :: Reg16 -> FuncRegImm16 -> PrismInstrFunc
-decodeAcc16 = decodeAcc
+decodeAcc16 = decodeStRI 
 
 decodeAccSeg :: RegSeg -> FuncSegImm16 -> PrismInstrFunc
-decodeAccSeg = decodeAcc
+decodeAccSeg = decodeStRI
 
-decodeAccReg :: (OperandVal b, OperandReg a b) =>
+decodeStRR :: (OperandVal b, OperandReg a b) =>
     a -> a -> FuncO2M a a -> PrismInstrFunc
-decodeAccReg reg1 reg2 func _ ctx =
+decodeStRR reg1 reg2 func _ ctx =
     func ctx reg1 reg2 >>= updateIP 1
 
-{-# SPECIALISE decodeAccReg :: Reg8 -> Reg8 -> FuncO2M Reg8 Reg8 -> PrismInstrFunc #-}
-{-# SPECIALISE decodeAccReg :: Reg16 -> Reg16 -> FuncO2M Reg16 Reg16 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeStRR :: Reg8 -> Reg8 -> FuncO2M Reg8 Reg8 -> PrismInstrFunc #-}
+{-# SPECIALISE decodeStRR :: Reg16 -> Reg16 -> FuncO2M Reg16 Reg16 -> PrismInstrFunc #-}
 
 decodeAccReg8 :: Reg8 -> Reg8 -> FuncRegReg8 -> PrismInstrFunc
-decodeAccReg8 = decodeAccReg
+decodeAccReg8 = decodeStRR
 
 decodeAccReg16 :: Reg16 -> Reg16 -> FuncRegReg16 -> PrismInstrFunc
-decodeAccReg16 = decodeAccReg
+decodeAccReg16 = decodeStRR
 
 decodeAccMem :: (OperandVal b, OperandMem a1 b, OperandReg a2 b) =>
     a2 -> FuncO2M a1 a2 -> PrismInstrFunc
