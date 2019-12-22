@@ -252,6 +252,9 @@ decodeNI8 = decodeNI
 decodeNI16 :: FuncOI1M Reg16 Uint16 -> FuncOI1M Mem16 Uint16 -> PrismInstrFunc
 decodeNI16 = decodeNI
 
+--decodeNI16n :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
+--decodeNI16n freg fmem bytes ctx = decodeNI freg (convMemO2 fmem) bytes ctx
+
 decodeRM :: (OperandVal b, OperandReg a1 b, OperandReg a2 b, OperandMem a3 b) => 
     FuncO2M a2 a1 -> FuncO2M a3 a1 -> PrismInstrFunc
 decodeRM freg fmem (b1, b2, b3, b4, _, _) ctx =
@@ -290,6 +293,18 @@ decodeRM freg fmem (b1, b2, b3, b4, _, _) ctx =
 {-# SPECIALISE decodeRM :: FuncO2M Reg8 Reg8 -> FuncO2M Mem8 Reg8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeRM :: FuncO2M Reg16 Reg16 -> FuncO2M Mem16 Reg16 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeRM :: FuncO2M Reg16 RegSeg -> FuncO2M Mem16 RegSeg -> PrismInstrFunc #-}
+
+--decodeRMG :: (OperandVal b, OperandReg a1 b, OperandReg a2 b, OperandMem a3 b) =>
+    --FuncV2 b -> PrismInstrFunc
+
+decodeRM8 :: FuncO2M Reg8 Reg8 -> FuncO2M Mem8 Reg8 -> PrismInstrFunc
+decodeRM8 = decodeRM
+
+decodeRM16 :: FuncO2M Reg16 Reg16 -> FuncO2M Mem16 Reg16 -> PrismInstrFunc
+decodeRM16 = decodeRM
+
+decodeRMS16 :: FuncO2M Reg16 RegSeg -> FuncO2M Mem16 RegSeg -> PrismInstrFunc
+decodeRMS16 = decodeRM
 
 decodeN8Imm8 :: FuncRegImm8 -> FuncMemImm8 -> PrismInstrFunc
 decodeN8Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 

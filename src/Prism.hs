@@ -79,6 +79,7 @@ newtype Mem16 = Mem16 Mem deriving (Eq)
 class MemDecoder a where
     decodeMem1 :: Word8 -> Disp -> a
     decodeMemDirect :: Disp -> a
+    unwrapMem :: a -> Mem
 
 type OperandMem a b = (MemDecoder a, Operand a b)
 

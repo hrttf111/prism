@@ -9,102 +9,28 @@ import PrismCpu
 
 -------------------------------------------------------------------------------
 
-movI :: OperandVal b => FuncV2 b
-movI ctx source _ = (ctx, source)
+mov :: OperandVal b => FuncV2 b
+mov ctx source _ = (ctx, source)
 
-{-# SPECIALISE movI :: FuncV2 Uint8 #-}
-{-# SPECIALISE movI :: FuncV2 Uint16 #-}
-
-mov8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-mov8 ctx source _ = (ctx, source)
-
-mov16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-mov16 ctx source _ = (ctx, source)
-
-movRegImm8 :: Ctx -> Reg8 -> Imm8 -> PrismM
-movRegImm8 = instrRegImm8 mov8
-
-movRegImm16 :: Ctx -> Reg16 -> Imm16 -> PrismM
-movRegImm16 = instrRegImm16 mov16
-
-movSegImm16 :: Ctx -> RegSeg -> Imm16 -> PrismM
-movSegImm16 = instrSegImm16 mov16
-
-movRegToSeg16 :: Ctx -> Reg16 -> RegSeg -> PrismM
-movRegToSeg16 = instrRegToSeg16 mov16
-
-movSegToReg16 :: Ctx -> Reg16 -> RegSeg -> PrismM
-movSegToReg16 = instrSegToReg16 mov16
-
-movMemToSeg16 :: Ctx -> Mem -> RegSeg -> PrismM 
-movMemToSeg16 = instrMemToSeg16 mov16
-
-movSegToMem16 :: Ctx -> Mem -> RegSeg -> PrismM
-movSegToMem16 = instrSegToMem16 mov16
-
-movRegToMem8 :: Ctx -> Mem -> Reg8 -> PrismM
-movRegToMem8 = instrRegToMem8 mov8
-
-movRegToMem16 :: Ctx -> Mem -> Reg16 -> PrismM
-movRegToMem16 = instrRegToMem16 mov16
-
-movMemToReg8 :: Ctx -> Mem -> Reg8 -> PrismM
-movMemToReg8 = instrMemToReg8 mov8
-
-movMemToReg16 :: Ctx -> Mem -> Reg16 -> PrismM
-movMemToReg16 = instrMemToReg16 mov16
-
-movMemImm8 :: Ctx -> Mem -> Imm8 -> PrismM
-movMemImm8 = instrMemImm8 mov8
-
-movMemImm16 :: Ctx -> Mem -> Imm16 -> PrismM
-movMemImm16 = instrMemImm16 mov16
+{-# SPECIALISE mov :: FuncV2 Uint8 #-}
+{-# SPECIALISE mov :: FuncV2 Uint16 #-}
 
 -------------------------------------------------------------------------------
 
-xchgRegReg8 :: FuncRegReg8
-xchgRegReg8 ctx reg1 reg2 = do
-    valReg1 <- readReg8 memReg reg1
-    valReg2 <- readReg8 memReg reg2
-    writeReg8 memReg reg1 valReg2
-    writeReg8 memReg reg2 valReg1
+xchg :: OperandFunc2 a1 a2 b => FuncO2M a1 a2
+xchg ctx op1 op2 = do
+    val1 <- readOp ctx op1
+    val2 <- readOp ctx op2
+    writeOp ctx op1 val2
+    writeOp ctx op2 val1
     return ctx
-    where
-        memReg = ctxReg ctx
 
-xchgRegReg16 :: FuncRegReg16
-xchgRegReg16 ctx reg1 reg2 = do
-    valReg1 <- readReg16 memReg reg1
-    valReg2 <- readReg16 memReg reg2
-    writeReg16 memReg reg1 valReg2
-    writeReg16 memReg reg2 valReg1
-    return ctx
-    where
-        memReg = ctxReg ctx
-
-xchgMemReg8 :: FuncMemReg8
-xchgMemReg8 ctx mem reg = do
-    valReg <- readReg8 memReg reg
-    valMem <- readMem8 memReg memMain regSeg mem
-    writeMem8 memReg memMain regSeg mem valReg
-    writeReg8 memReg reg valMem
-    return ctx
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
-
-xchgMemReg16 :: FuncMemReg16
-xchgMemReg16 ctx mem reg = do
-    valReg <- readReg16 memReg reg
-    valMem <- readMem16 memReg memMain regSeg mem
-    writeMem16 memReg memMain regSeg mem valReg
-    writeReg16 memReg reg valMem
-    return ctx
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
+{-# SPECIALISE xchg :: FuncO2M Reg8 Reg8 #-}
+{-# SPECIALISE xchg :: FuncO2M Reg16 Reg16 #-}
+{-# SPECIALISE xchg :: FuncO2M Reg8 Mem8 #-}
+{-# SPECIALISE xchg :: FuncO2M Mem8 Reg8 #-}
+{-# SPECIALISE xchg :: FuncO2M Reg16 Mem16 #-}
+{-# SPECIALISE xchg :: FuncO2M Mem16 Reg16 #-}
 
 -------------------------------------------------------------------------------
 
@@ -130,64 +56,50 @@ pop16 ctx = do
         memReg = ctxReg ctx
         memMain = ctxMem ctx
 
+--pushOp :: Operand a Uint16 => Ctx -> a -> PrismM
+--pushOp ctx op =
+    --readOp ctx op >>= push16
+
 pushReg16 :: Ctx -> Reg16 -> PrismM
 pushReg16 ctx reg = do
-    val <- readReg16 memReg reg
+    val <- readOp ctx reg
     push16 ctx val
-    where
-        memReg = ctxReg ctx
 
 popReg16 :: Ctx -> Reg16 -> PrismM
 popReg16 ctx reg = do
     val <- pop16 ctx
-    writeReg16 memReg reg val
+    writeOp ctx reg val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 pushMem :: Ctx -> Mem -> PrismM
 pushMem ctx mem = do
-    val <- readMem16 memReg memMain regSeg mem
+    val <- readOp ctx $ Mem16 mem
     push16 ctx val
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
 
 popMem :: Ctx -> Mem -> PrismM
 popMem ctx mem = do
     val <- pop16 ctx
-    writeMem16 memReg memMain regSeg mem val
+    writeOp ctx (Mem16 mem) val
     return ctx
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
 
 pushSeg :: RegSeg -> Ctx -> PrismM
 pushSeg regSeg ctx = do
-    val <- readSeg memReg regSeg
+    val <- readOp ctx regSeg
     push16 ctx val
-    where
-        memReg = ctxReg ctx
 
 popSeg :: RegSeg -> Ctx -> PrismM
 popSeg regSeg ctx = do
     val <- pop16 ctx
-    writeSeg memReg regSeg val
+    writeOp ctx regSeg val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 
 lea16 :: FuncMemReg16
 lea16 ctx mem reg = do
-    offset <- getEA memReg mem
-    writeReg16 memReg reg offset
+    offset <- getEA (ctxReg ctx) mem
+    writeOp ctx reg offset
     return ctx
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 
@@ -225,35 +137,28 @@ popf ctx = do
 
 lahf :: FuncImplicit
 lahf ctx = do
-    writeReg8 memReg ah val
+    writeOp ctx ah val
     return ctx
     where
         val = (fromIntegral $ flagsToVal (ctxFlags ctx) 0) :: Uint8
-        memReg = ctxReg ctx
 
 sahf :: FuncImplicit
 sahf ctx = do
-    val <- readReg8 memReg ah
+    val <- readOp ctx ah
     let flags_ = valToFlags $ (fromIntegral val :: Uint16)
         of_ = flagOF $ ctxFlags ctx
         flags = flags_ { flagOF = of_ }
     return $ ctx { ctxFlags = flags }
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 
 xlat :: FuncImplicit
 xlat ctx = do
-    val <- readReg8 memReg al
+    val <- readOp ctx al
     let disp = fromIntegral val :: Disp
-    val1 <- readMem8 memReg memMain regSeg (MemBx disp)
-    writeReg8 memReg al val1
+    val1 <- readOp ctx $ Mem8 (MemBx disp)
+    writeOp ctx al val1
     return ctx
-    where
-        memReg = ctxReg ctx
-        memMain = ctxMem ctx
-        regSeg = findRegSegData ctx
 
 -------------------------------------------------------------------------------
 
@@ -279,115 +184,98 @@ portOut16 ctx portNum val =
 
 portInAlDx :: FuncImplicit
 portInAlDx ctx = do
-    portNum <- readReg16 memReg dx
+    portNum <- readOp ctx dx
     val <- portIn8 ctx portNum
-    writeReg8 memReg al val
+    writeOp ctx al val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portInAlImm :: FuncImm8
 portInAlImm ctx portNum = do
-    val <- portIn8 ctx $ fromIntegral portNum
-    writeReg8 memReg al val
+    (portIn8 ctx $ fromIntegral portNum) >>= writeOp ctx al
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portInAxDx :: FuncImplicit
 portInAxDx ctx = do
-    portNum <- readReg16 memReg dx
+    portNum <- readOp ctx dx
     val <- portIn16 ctx portNum
-    writeReg16 memReg ax val
+    writeOp ctx ax val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portInAxImm :: FuncImm8
 portInAxImm ctx portNum = do
     val <- portIn16 ctx $ fromIntegral portNum
-    writeReg16 memReg ax val
+    writeOp ctx ax val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portOutAlDx :: FuncImplicit
 portOutAlDx ctx = do
-    portNum <- readReg16 memReg dx
-    val <- readReg8 memReg al
+    portNum <- readOp ctx dx
+    val <- readOp ctx al
     portOut8 ctx portNum val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portOutAlImm :: FuncImm8
 portOutAlImm ctx portNum = do
-    val <- readReg8 memReg al
+    val <- readOp ctx al
     portOut8 ctx (fromIntegral portNum) val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portOutAxDx :: FuncImplicit
 portOutAxDx ctx = do
-    portNum <- readReg16 memReg dx
-    val <- readReg16 memReg ax
+    portNum <- readOp ctx dx
+    val <- readOp ctx ax
     portOut16 ctx portNum val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 portOutAxImm :: FuncImm8
 portOutAxImm ctx portNum = do
-    val <- readReg16 memReg ax
+    val <- readOp ctx ax
     portOut16 ctx (fromIntegral portNum) val
     return ctx
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 
 transferInstrList = [
         --MOV
-        makeInstructionS 0x88 Nothing (decodeRm8 (instrRegToReg8RegToRm mov8) (instrRegToMem8 mov8)),
-        makeInstructionS 0x89 Nothing (decodeRm16 (instrRegToReg16RegToRm mov16) (instrRegToMem16 mov16)),
-        makeInstructionS 0x8A Nothing (decodeRm8 (instrRegToReg8RmToReg mov8) (instrMemToReg8 mov8)),
-        makeInstructionS 0x8B Nothing (decodeRm16 (instrRegToReg16RmToReg mov16) (instrMemToReg16 mov16)),
-        makeInstructionS 0x8C Nothing (decodeRmS16 movSegToReg16 movSegToMem16),
-        makeInstructionS 0x8E Nothing (decodeRmS16 movRegToSeg16 movMemToSeg16),
-        makeInstructionS 0xA0 Nothing (decodeAccMem8 al movMemToReg8),
-        makeInstructionS 0xA1 Nothing (decodeAccMem16 ax movMemToReg16),
-        makeInstructionS 0xA2 Nothing (decodeAccMem8 al movRegToMem8),
-        makeInstructionS 0xA3 Nothing (decodeAccMem16 ax movRegToMem16),
-        makeInstructionS 0xB0 Nothing (decodeAcc8 al movRegImm8),
-        makeInstructionS 0xB1 Nothing (decodeAcc8 cl movRegImm8),
-        makeInstructionS 0xB2 Nothing (decodeAcc8 dl movRegImm8),
-        makeInstructionS 0xB3 Nothing (decodeAcc8 bl movRegImm8),
-        makeInstructionS 0xB4 Nothing (decodeAcc8 ah movRegImm8),
-        makeInstructionS 0xB5 Nothing (decodeAcc8 ch movRegImm8),
-        makeInstructionS 0xB6 Nothing (decodeAcc8 dh movRegImm8),
-        makeInstructionS 0xB7 Nothing (decodeAcc8 bh movRegImm8),
-        makeInstructionS 0xB8 Nothing (decodeAcc16 ax movRegImm16),
-        makeInstructionS 0xB9 Nothing (decodeAcc16 cx movRegImm16),
-        makeInstructionS 0xBA Nothing (decodeAcc16 dx movRegImm16),
-        makeInstructionS 0xBB Nothing (decodeAcc16 bx movRegImm16),
-        makeInstructionS 0xBC Nothing (decodeAcc16 sp movRegImm16),
-        makeInstructionS 0xBD Nothing (decodeAcc16 bp movRegImm16),
-        makeInstructionS 0xBE Nothing (decodeAcc16 si movRegImm16),
-        makeInstructionS 0xBF Nothing (decodeAcc16 di movRegImm16),
-        makeInstructionS 0xC6 (Just 0) (decodeNI8 (instrOI1 movI) (instrOI1 movI)),
-        makeInstructionS 0xC7 (Just 0) (decodeNI16 (instrOI1 movI) (instrOI1 movI)),
+        makeInstructionS 0x88 Nothing (decodeRM8 (instrRegToRm mov) (instrRegToRm mov)),
+        makeInstructionS 0x89 Nothing (decodeRM16 (instrRegToRm mov) (instrRegToRm mov)),
+        makeInstructionS 0x8A Nothing (decodeRM8 (instrRmToReg mov) (instrRmToReg mov)),
+        makeInstructionS 0x8B Nothing (decodeRM16 (instrRmToReg mov) (instrRmToReg mov)),
+        makeInstructionS 0x8C Nothing (decodeRMS16 (instrRegToRm mov) (instrRegToRm mov)),
+        makeInstructionS 0x8E Nothing (decodeRMS16 (instrRmToReg mov) (instrRmToReg mov)),
+        makeInstructionS 0xA0 Nothing (decodeAccMem8 al $ instrMemToReg8 mov),
+        makeInstructionS 0xA1 Nothing (decodeAccMem16 ax $ instrMemToReg16 mov),
+        makeInstructionS 0xA2 Nothing (decodeAccMem8 al $ instrRegToMem8 mov),
+        makeInstructionS 0xA3 Nothing (decodeAccMem16 ax $ instrRegToMem16 mov),
+        makeInstructionS 0xB0 Nothing (decodeAcc al $ instrOI1 mov),
+        makeInstructionS 0xB1 Nothing (decodeAcc cl $ instrOI1 mov),
+        makeInstructionS 0xB2 Nothing (decodeAcc dl $ instrOI1 mov),
+        makeInstructionS 0xB3 Nothing (decodeAcc bl $ instrOI1 mov),
+        makeInstructionS 0xB4 Nothing (decodeAcc ah $ instrOI1 mov),
+        makeInstructionS 0xB5 Nothing (decodeAcc ch $ instrOI1 mov),
+        makeInstructionS 0xB6 Nothing (decodeAcc dh $ instrOI1 mov),
+        makeInstructionS 0xB7 Nothing (decodeAcc bh $ instrOI1 mov),
+        makeInstructionS 0xB8 Nothing (decodeAcc ax $ instrOI1 mov),
+        makeInstructionS 0xB9 Nothing (decodeAcc cx $ instrOI1 mov),
+        makeInstructionS 0xBA Nothing (decodeAcc dx $ instrOI1 mov),
+        makeInstructionS 0xBB Nothing (decodeAcc bx $ instrOI1 mov),
+        makeInstructionS 0xBC Nothing (decodeAcc sp $ instrOI1 mov),
+        makeInstructionS 0xBD Nothing (decodeAcc bp $ instrOI1 mov),
+        makeInstructionS 0xBE Nothing (decodeAcc si $ instrOI1 mov),
+        makeInstructionS 0xBF Nothing (decodeAcc di $ instrOI1 mov),
+        makeInstructionS 0xC6 (Just 0) (decodeNI8 (instrOI1 mov) (instrOI1 mov)),
+        makeInstructionS 0xC7 (Just 0) (decodeNI16 (instrOI1 mov) (instrOI1 mov)),
         --XCHG
-        makeInstructionS 0x86 Nothing (decodeRm8 xchgRegReg8 xchgMemReg8),
-        makeInstructionS 0x87 Nothing (decodeRm16 xchgRegReg16 xchgMemReg16),
-        --makeInstructionS 0x90 Nothing (decodeAccReg16 ax ax xchgRegReg16), NOP
-        makeInstructionS 0x91 Nothing (decodeAccReg16 ax cx xchgRegReg16),
-        makeInstructionS 0x92 Nothing (decodeAccReg16 ax dx xchgRegReg16),
-        makeInstructionS 0x93 Nothing (decodeAccReg16 ax bx xchgRegReg16),
-        makeInstructionS 0x94 Nothing (decodeAccReg16 ax sp xchgRegReg16),
-        makeInstructionS 0x95 Nothing (decodeAccReg16 ax bp xchgRegReg16),
-        makeInstructionS 0x96 Nothing (decodeAccReg16 ax si xchgRegReg16),
-        makeInstructionS 0x97 Nothing (decodeAccReg16 ax di xchgRegReg16),
+        makeInstructionS 0x86 Nothing (decodeRM8 xchg xchg),
+        makeInstructionS 0x87 Nothing (decodeRM16 xchg xchg),
+        --makeInstructionS 0x90 Nothing (decodeAccReg16 ax ax xchg), NOP
+        makeInstructionS 0x91 Nothing (decodeAccReg16 ax cx xchg),
+        makeInstructionS 0x92 Nothing (decodeAccReg16 ax dx xchg),
+        makeInstructionS 0x93 Nothing (decodeAccReg16 ax bx xchg),
+        makeInstructionS 0x94 Nothing (decodeAccReg16 ax sp xchg),
+        makeInstructionS 0x95 Nothing (decodeAccReg16 ax bp xchg),
+        makeInstructionS 0x96 Nothing (decodeAccReg16 ax si xchg),
+        makeInstructionS 0x97 Nothing (decodeAccReg16 ax di xchg),
         --PUSH/POP
         makeInstructionS 0x06 Nothing (decodeImplicit $ pushSeg es),
         makeInstructionS 0x07 Nothing (decodeImplicit $ popSeg es),

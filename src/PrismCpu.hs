@@ -111,6 +111,7 @@ instance Operand Mem8 Word8 where
 instance MemDecoder Mem8 where
     decodeMem1 v off = Mem8 $ decodeMem v off
     decodeMemDirect = Mem8 . MemDirect
+    unwrapMem (Mem8 m) = m
 
 instance Operand Mem16 Word16 where
     readOp ctx (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
@@ -119,6 +120,7 @@ instance Operand Mem16 Word16 where
 instance MemDecoder Mem16 where
     decodeMem1 v off = Mem16 $ decodeMem v off
     decodeMemDirect = Mem16 . MemDirect
+    unwrapMem (Mem16 m) = m
 
 -------------------------------------------------------------------------------
 
@@ -617,6 +619,7 @@ emptySingle ctx _ = return ctx
 
 type OperandFunc1 a b = (OperandVal b, Operand a b)
 type OperandFunc2 a1 a2 b = (OperandVal b, Operand a1 b, Operand a2 b)
+--type OperandFuncMR a1 a2 b = (OperandVal b, OperandMem a1 b, OperandReg a2 b)
 
 type FuncImm1 i = Ctx -> i -> PrismM
 type FuncImm2 i = Ctx -> i -> i -> PrismM
@@ -700,6 +703,9 @@ instrO2 func ctx op1 op2 = do
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M RegSeg Mem16 #-}
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Mem16 RegSeg #-}
 
+instrMemToReg :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrMemToReg func ctx op1 op2 = instrO2 func ctx op2 op1
+
 -------------------------------------------------------------------------------
 
 type FuncVal8 = Ctx -> Uint8 -> PrismCtx IO (Ctx, Uint8)
@@ -734,6 +740,16 @@ instrMemNoVal16 func ctx mem = instrON1 func ctx $ Mem16 mem
 
 -------------------------------------------------------------------------------
 
+convMemO2 :: (OperandVal b, OperandReg a1 b, OperandMem a2 b) =>
+    (Ctx -> Mem -> a1 -> PrismM) -> FuncO2M a2 a1
+convMemO2 f ctx mem reg =
+    f ctx (unwrapMem mem) reg
+
+{-# SPECIALISE INLINE convMemO2 :: (Ctx -> Mem -> Reg8 -> PrismM) -> FuncO2M Mem8 Reg8 #-}
+{-# SPECIALISE INLINE convMemO2 :: (Ctx -> Mem -> Reg16 -> PrismM) -> FuncO2M Mem16 Reg16 #-}
+
+-------------------------------------------------------------------------------
+
 -- ctx -> source -> dest -> (ctx, result)
 type Func8To8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
 type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
@@ -762,20 +778,26 @@ instrRegImm16 = instrOI1
 instrRegToReg8 :: Func8To8 -> FuncRegReg8
 instrRegToReg8 = instrO2
 
+instrRmToReg :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrRmToReg = instrO2
+
+instrRegToRm :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrRegToRm func ctx reg1 reg2 = instrO2 func ctx reg2 reg1
+
 instrRegToReg8RmToReg :: Func8To8 -> FuncRegReg8
-instrRegToReg8RmToReg func ctx reg1 reg2 = instrRegToReg8 func ctx reg1 reg2
+instrRegToReg8RmToReg = instrO2
 
 instrRegToReg8RegToRm :: Func8To8 -> FuncRegReg8
-instrRegToReg8RegToRm func ctx reg1 reg2 = instrRegToReg8 func ctx reg2 reg1
+instrRegToReg8RegToRm func ctx reg1 reg2 = instrO2 func ctx reg2 reg1
 
 instrRegToReg16 :: Func16To16 -> FuncRegReg16
 instrRegToReg16 = instrO2
 
 instrRegToReg16RmToReg :: Func16To16 -> FuncRegReg16
-instrRegToReg16RmToReg func ctx reg1 reg2 = instrRegToReg16 func ctx reg1 reg2
+instrRegToReg16RmToReg = instrO2
 
 instrRegToReg16RegToRm :: Func16To16 -> FuncRegReg16
-instrRegToReg16RegToRm func ctx reg1 reg2 = instrRegToReg16 func ctx reg2 reg1
+instrRegToReg16RegToRm func ctx reg1 reg2 = instrO2 func ctx reg2 reg1
 
 instrMemImm8 :: Func8To8 -> FuncMemImm8
 instrMemImm8 func ctx mem imm = instrOI1 func ctx (Mem8 mem) imm
