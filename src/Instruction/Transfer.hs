@@ -186,7 +186,7 @@ portInAlDx ctx = do
     writeOp ctx al val
     return ctx
 
-portInAlImm :: FuncImm8
+portInAlImm :: FuncImm1 Uint8
 portInAlImm ctx portNum = do
     (portIn8 ctx $ fromIntegral portNum) >>= writeOp ctx al
     return ctx
@@ -198,7 +198,7 @@ portInAxDx ctx = do
     writeOp ctx ax val
     return ctx
 
-portInAxImm :: FuncImm8
+portInAxImm :: FuncImm1 Uint8
 portInAxImm ctx portNum = do
     val <- portIn16 ctx $ fromIntegral portNum
     writeOp ctx ax val
@@ -211,7 +211,7 @@ portOutAlDx ctx = do
     portOut8 ctx portNum val
     return ctx
 
-portOutAlImm :: FuncImm8
+portOutAlImm :: FuncImm1 Uint8
 portOutAlImm ctx portNum = do
     val <- readOp ctx al
     portOut8 ctx (fromIntegral portNum) val
@@ -224,7 +224,7 @@ portOutAxDx ctx = do
     portOut16 ctx portNum val
     return ctx
 
-portOutAxImm :: FuncImm8
+portOutAxImm :: FuncImm1 Uint8
 portOutAxImm ctx portNum = do
     val <- readOp ctx ax
     portOut16 ctx (fromIntegral portNum) val

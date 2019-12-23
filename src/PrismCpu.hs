@@ -87,6 +87,7 @@ instance Operand Reg8 Word8 where
 
 instance RegDecoder Reg8 where
     decodeReg = Reg8
+    decodeRegVal (Reg8 v) = v
 
 instance Operand Reg16 Word16 where
     readOp ctx reg = readReg16 (ctxReg ctx) reg
@@ -94,6 +95,7 @@ instance Operand Reg16 Word16 where
 
 instance RegDecoder Reg16 where
     decodeReg = Reg16
+    decodeRegVal (Reg16 v) = v
 
 instance Operand RegSeg Word16 where
     readOp ctx reg = readSeg (ctxReg ctx) reg
@@ -101,6 +103,11 @@ instance Operand RegSeg Word16 where
 
 instance RegDecoder RegSeg where
     decodeReg = RegSeg
+    decodeRegVal (RegSeg v) = v
+
+convertReg :: (OperandVal b1, OperandVal b2, OperandReg a1 b1, OperandReg a2 b2) =>
+    a1 -> a2
+convertReg = decodeReg . decodeRegVal
 
 -------------------------------------------------------------------------------
 
@@ -112,6 +119,7 @@ instance MemDecoder Mem8 where
     decodeMem1 v off = Mem8 $ decodeMem v off
     decodeMemDirect = Mem8 . MemDirect
     unwrapMem (Mem8 m) = m
+    wrapMem m = Mem8 m
 
 instance Operand Mem16 Word16 where
     readOp ctx (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
@@ -121,6 +129,11 @@ instance MemDecoder Mem16 where
     decodeMem1 v off = Mem16 $ decodeMem v off
     decodeMemDirect = Mem16 . MemDirect
     unwrapMem (Mem16 m) = m
+    wrapMem m = Mem16 m
+
+convertMem :: (OperandVal b1, OperandVal b2, OperandMem a1 b1, OperandMem a2 b2) =>
+    a1 -> a2
+convertMem = wrapMem . unwrapMem
 
 -------------------------------------------------------------------------------
 
@@ -566,6 +579,10 @@ updateIP val ctx = moveRegIP (ctxReg ctx) val >> return ctx
 
 -------------------------------------------------------------------------------
 
+signExterndWordN :: (OperandVal b1, OperandVal b2) => b1 -> b2
+signExterndWordN val | val > 0x80 = (+0xFF00) $ fromIntegral val
+signExterndWordN val = fromIntegral val
+
 signExterndWord :: Uint8 -> Uint16
 signExterndWord val | val > 0x80 = (+0xFF00) $ fromIntegral val
 signExterndWord val = fromIntegral val
@@ -605,50 +622,10 @@ signedOpS func val1 = toUnsignedComp2 $ func $ toSignedCompl2 val1
 
 -------------------------------------------------------------------------------
 
-type FuncImplicit = Ctx -> PrismM
-type FuncImm8 = Ctx -> Imm8 -> PrismM
-type FuncImm16 = Ctx -> Imm16 -> PrismM
-type FuncImm32 = Ctx -> Imm16 -> Imm16 -> PrismM
-
-type FuncReg8 = Ctx -> Reg8 -> PrismM
-type FuncReg16 = Ctx -> Reg16 -> PrismM
-type FuncSeg = Ctx -> RegSeg -> PrismM
-
-type FuncMem = Ctx -> Mem -> PrismM
-
-type FuncRegImm8 = Ctx -> Reg8 -> Imm8 -> PrismM
-type FuncMemImm8 = Ctx -> Mem -> Imm8 -> PrismCtx IO Ctx
-
-type FuncRegImm16 = Ctx -> Reg16 -> Imm16 -> PrismCtx IO Ctx
-type FuncMemImm16 = Ctx -> Mem -> Imm16 -> PrismCtx IO Ctx
-
-type FuncRegReg8 = Ctx -> Reg8 -> Reg8 -> PrismCtx IO Ctx
-type FuncRegReg16 = Ctx -> Reg16 -> Reg16 -> PrismCtx IO Ctx
-
-type FuncMemReg8 = Ctx -> Mem -> Reg8 -> PrismCtx IO Ctx
-type FuncMemReg16 = Ctx -> Mem -> Reg16 -> PrismCtx IO Ctx
-
-type FuncSegImm16 = Ctx -> RegSeg -> Imm16 -> PrismM
-type FuncSegReg16 = Ctx -> Reg16 -> RegSeg -> PrismM
-type FuncMemSeg16 = Ctx -> Mem -> RegSeg -> PrismM
-
-type FuncNoVal8 = Ctx -> Uint8 -> PrismM
-type FuncNoVal16 = Ctx -> Uint16 -> PrismM
-
--- ctx -> source -> dest -> (ctx, result)
-type Func16 = Ctx -> Uint16 -> (Ctx, Uint16)
-type Func16To16 = Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-
-emptyRegReg :: Ctx -> a -> a -> PrismM
-emptyRegReg ctx _ _ = return ctx
-
-emptySingle :: Ctx -> a -> PrismM
-emptySingle ctx _ = return ctx
-
--------------------------------------------------------------------------------
-
 type OperandFunc1 a b = (OperandVal b, Operand a b)
 type OperandFunc2 a1 a2 b = (OperandVal b, Operand a1 b, Operand a2 b)
+
+type FuncImplicit = Ctx -> PrismM
 
 type FuncImm1 i = Ctx -> i -> PrismM
 type FuncImm2 i = Ctx -> i -> i -> PrismM
@@ -746,10 +723,10 @@ instrRmToReg = instrOp1ToOp2
 instrRegToRm :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
 instrRegToRm = instrOp2ToOp1
 
+emptyRegReg :: Ctx -> a -> a -> PrismM
+emptyRegReg ctx _ _ = return ctx
+
+emptySingle :: Ctx -> a -> PrismM
+emptySingle ctx _ = return ctx
+
 -------------------------------------------------------------------------------
-
-instrRegImm16 :: Func16To16 -> FuncRegImm16
-instrRegImm16 = instrOI1
-
-instrMemImm16 :: Func16To16 -> FuncMemImm16
-instrMemImm16 func ctx mem imm = instrOI1 func ctx (Mem16 mem) imm

@@ -177,7 +177,8 @@ logicalInstrList = [
         makeInstructionS 0x80 (Just 1) (decodeNI8 (instrOI1 orI) (instrOI1 orI)),
         makeInstructionS 0x81 (Just 1) (decodeNI16 (instrOI1 orI) (instrOI1 orI)),
         makeInstructionS 0x82 (Just 1) (decodeNI8 (instrOI1 orI) (instrOI1 orI)),
-        makeInstructionS 0x83 (Just 1) (decodeN16Imm8 (instrRegImm16 orI) (instrMemImm16 orI)),
+        --makeInstructionS 0x83 (Just 1) (decodeN16Imm8 (instrRegImm16 orI) (instrMemImm16 orI)),
+        makeInstructionS 0x83 (Just 1) (decodeNC16 (instrOI1 orI) (instrOI1 orI)),
         --AND
         makeInstructionS 0x20 Nothing (decodeRM8 (instrRegToRm andI) (instrRegToRm andI)),
         makeInstructionS 0x21 Nothing (decodeRM16 (instrRegToRm andI) (instrRegToRm andI)),
@@ -188,7 +189,8 @@ logicalInstrList = [
         makeInstructionS 0x80 (Just 4) (decodeNI8 (instrOI1 andI) (instrOI1 andI)),
         makeInstructionS 0x81 (Just 4) (decodeNI16 (instrOI1 andI) (instrOI1 andI)),
         makeInstructionS 0x82 (Just 4) (decodeNI8 (instrOI1 andI) (instrOI1 andI)),
-        makeInstructionS 0x83 (Just 4) (decodeN16Imm8 (instrRegImm16 andI) (instrMemImm16 andI)),
+        --makeInstructionS 0x83 (Just 4) (decodeN16Imm8 (instrRegImm16 andI) (instrMemImm16 andI)),
+        makeInstructionS 0x83 (Just 4) (decodeNC16 (instrOI1 andI) (instrOI1 andI)),
         --XOR
         makeInstructionS 0x30 Nothing (decodeRM8 (instrRegToRm xorI) (instrRegToRm xorI)),
         makeInstructionS 0x31 Nothing (decodeRM16 (instrRegToRm xorI) (instrRegToRm xorI)),
@@ -199,7 +201,8 @@ logicalInstrList = [
         makeInstructionS 0x80 (Just 6) (decodeNI8 (instrOI1 xorI) (instrOI1 xorI)),
         makeInstructionS 0x81 (Just 6) (decodeNI16 (instrOI1 xorI) (instrOI1 xorI)),
         makeInstructionS 0x82 (Just 6) (decodeNI8 (instrOI1 xorI) (instrOI1 xorI)),
-        makeInstructionS 0x83 (Just 6) (decodeN16Imm8 (instrRegImm16 xorI) (instrMemImm16 xorI)),
+        --makeInstructionS 0x83 (Just 6) (decodeN16Imm8 (instrRegImm16 xorI) (instrMemImm16 xorI)),
+        makeInstructionS 0x83 (Just 6) (decodeNC16 (instrOI1 xorI) (instrOI1 xorI)),
         --TEST
         makeInstructionS 0x84 Nothing (decodeRM8 (instrRegToRm testI) (instrRegToRm testI)),
         makeInstructionS 0x85 Nothing (decodeRM16 (instrRegToRm testI) (instrRegToRm testI)),

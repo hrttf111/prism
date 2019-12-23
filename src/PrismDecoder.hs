@@ -121,13 +121,13 @@ decodeImm1 func (_, b2, b3, _, _, _) ctx =
 {-# SPECIALISE decodeImm1 :: FuncImm1 Imm8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeImm1 :: FuncImm1 Imm16 -> PrismInstrFunc #-}
 
-decodeImm8 :: FuncImm8 -> PrismInstrFunc
+decodeImm8 :: FuncImm1 Imm8 -> PrismInstrFunc
 decodeImm8 = decodeImm1
 
-decodeImm16 :: FuncImm16 -> PrismInstrFunc
+decodeImm16 :: FuncImm1 Imm16 -> PrismInstrFunc
 decodeImm16 = decodeImm1
 
-decodeImm32 :: FuncImm32 -> PrismInstrFunc
+decodeImm32 :: FuncImm2 Imm16 -> PrismInstrFunc
 decodeImm32 freg (_, b2, b3, b4, b5, _) ctx =
     let imm1 = getImm16 b2 b3
         imm2 = getImm16 b4 b5
@@ -232,6 +232,21 @@ decodeNI16 = decodeNI
 
 -------------------------------------------------------------------------------
 
+decodeNC :: (ImmDecoder b, OperandVal b, OperandReg a1 b, OperandMem a2 b) => 
+    FuncOI1M a1 b -> FuncOI1M a2 b -> PrismInstrFunc
+decodeNC freg fmem bytes ctx = 
+    decodeNI8 freg8 fmem8 bytes ctx
+    where
+        freg8 ctx reg imm8 = freg ctx (convertReg reg) $ signExterndWordN imm8
+        fmem8 ctx mem imm8 = fmem ctx (convertMem mem) $ signExterndWordN imm8
+
+{-# SPECIALISE decodeNC :: FuncOI1M Reg16 Uint16 -> FuncOI1M Mem16 Uint16 -> PrismInstrFunc #-}
+
+decodeNC16 :: FuncOI1M Reg16 Uint16 -> FuncOI1M Mem16 Uint16 -> PrismInstrFunc
+decodeNC16 = decodeNC
+
+-------------------------------------------------------------------------------
+
 decodeRM :: (OperandVal b, OperandReg a1 b, OperandReg a2 b, OperandMem a3 b) => 
     FuncO2M a2 a1 -> FuncO2M a3 a1 -> PrismInstrFunc
 decodeRM freg fmem (b1, b2, b3, b4, _, _) ctx =
@@ -326,45 +341,6 @@ decodeN16 :: FuncO1M Reg16 -> FuncO1M Mem16 -> PrismInstrFunc
 decodeN16 = decodeN
 
 -------------------------------------------------------------------------------
-
-decodeN16Imm8 :: FuncRegImm16 -> FuncMemImm16 -> PrismInstrFunc
-decodeN16Imm8 freg fmem (b1, b2, b3, b4, b5, _) ctx = 
-    let modrm = b2
-        mod = shiftR (modrm .&. 0xE0) 6
-        rm = modrm .&. 0x07
-        in
-    case mod of
-        0x00 ->
-            case rm of
-                0x06 ->
-                    let disp16 = getDisp16 b3 b4
-                        imm16 = signExterndWord $ getImm8 b3
-                        mem = MemDirect disp16
-                        in
-                    fmem ctx mem imm16 >>= updateIP 5
-                _ ->
-                    let mem = decodeMem rm 0
-                        imm16 = signExterndWord $ getImm8 b3
-                        in
-                    fmem ctx mem imm16 >>= updateIP 3
-        0x01 -> 
-            let disp8 = getDisp8 b3
-                mem = decodeMem rm disp8
-                imm16 = signExterndWord $ getImm8 b4
-                in
-            fmem ctx mem imm16 >>= updateIP 4
-        0x02 ->
-            let disp16 = getDisp16 b3 b4 
-                mem = decodeMem rm disp16
-                imm16 = signExterndWord $ getImm8 b5
-                in
-            fmem ctx mem imm16 >>= updateIP 5
-        0x03 ->
-            let reg = Reg16 rm
-                imm16 = signExterndWord $ getImm8 b3
-                in
-            freg ctx reg imm16 >>= updateIP 3
-
 
 decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
 decodeList _ ctx [] = return ctx

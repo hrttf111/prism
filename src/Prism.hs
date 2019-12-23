@@ -52,6 +52,7 @@ newtype RegSeg = RegSeg Word8 deriving (Eq)
 
 class RegDecoder a where
     decodeReg :: Word8 -> a
+    decodeRegVal :: a -> Word8
 
 type OperandReg a b = (RegDecoder a, Operand a b)
 
@@ -80,6 +81,7 @@ class MemDecoder a where
     decodeMem1 :: Word8 -> Disp -> a
     decodeMemDirect :: Disp -> a
     unwrapMem :: a -> Mem
+    wrapMem :: Mem -> a
 
 type OperandMem a b = (MemDecoder a, Operand a b)
 

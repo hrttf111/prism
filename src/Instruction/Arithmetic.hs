@@ -316,7 +316,7 @@ idiv16 ctx val1H val1L val2 = (ctx, resultH, resultL)
         resultL = fromIntegral $ signedOp opDiv val132 val232
         resultH = fromIntegral $ signedOp opMod val132 val232
 
-muldivInstr8 :: MuldivFunc8 -> FuncNoVal8
+muldivInstr8 :: MuldivFunc8 -> FuncNV1M Uint8
 muldivInstr8 func ctx val = do
     alVal <- readReg8 memReg al
     let (newCtx, axVal) = func ctx alVal val
@@ -325,7 +325,7 @@ muldivInstr8 func ctx val = do
     where
         memReg = ctxReg ctx
 
-muldivInstr16 :: MuldivFunc16 -> FuncNoVal16
+muldivInstr16 :: MuldivFunc16 -> FuncNV1M Uint16
 muldivInstr16 func ctx val = do
     axVal <- readReg16 memReg ax
     let (newCtx, dxValNew, axValNew) = func ctx axVal val
@@ -335,7 +335,7 @@ muldivInstr16 func ctx val = do
     where
         memReg = ctxReg ctx
 
-divInstr8 :: DivFunc8 -> FuncNoVal8
+divInstr8 :: DivFunc8 -> FuncNV1M Uint8
 divInstr8 func ctx val = do
     axVal <- readReg16 memReg ax
     let (newCtx, axValNew) = func ctx axVal val
@@ -344,7 +344,7 @@ divInstr8 func ctx val = do
     where
         memReg = ctxReg ctx
 
-divInstr16 :: DivFunc16 -> FuncNoVal16
+divInstr16 :: DivFunc16 -> FuncNV1M Uint16
 divInstr16 func ctx val = do
     axVal <- readReg16 memReg ax
     dxVal <- readReg16 memReg dx
@@ -368,7 +368,7 @@ arithmeticInstrList = [
         makeInstructionS 0x80 (Just 0) (decodeNI8 (instrOI1 add8) (instrOI1 add8)),
         makeInstructionS 0x81 (Just 0) (decodeNI16 (instrOI1 add16) (instrOI1 add16)),
         makeInstructionS 0x82 (Just 0) (decodeNI8 (instrOI1 add8) (instrOI1 add8)),
-        makeInstructionS 0x83 (Just 0) (decodeN16Imm8 (instrOI1 add16) (instrMemImm16 add16)),
+        makeInstructionS 0x83 (Just 0) (decodeNC16 (instrOI1 add16) (instrOI1 add16)),
         --ADC
         makeInstructionS 0x10 Nothing (decodeRM8 (instrRegToRm adc8) (instrRegToRm adc8)),
         makeInstructionS 0x11 Nothing (decodeRM16 (instrRegToRm adc16) (instrRegToRm adc16)),
@@ -379,7 +379,7 @@ arithmeticInstrList = [
         makeInstructionS 0x80 (Just 0x2) (decodeNI8 (instrOI1 adc8) (instrOI1 adc8)),
         makeInstructionS 0x81 (Just 0x2) (decodeNI16 (instrOI1 adc16) (instrOI1 adc16)),
         makeInstructionS 0x82 (Just 0x2) (decodeNI8 (instrOI1 adc8) (instrOI1 adc8)),
-        makeInstructionS 0x83 (Just 0x2) (decodeN16Imm8 (instrOI1 adc16) (instrMemImm16 adc16)),
+        makeInstructionS 0x83 (Just 0x2) (decodeNC16 (instrOI1 adc16) (instrOI1 adc16)),
         --INC
         makeInstructionS 0x40 Nothing (decodeStR ax (instrO1 inc16)),
         makeInstructionS 0x41 Nothing (decodeStR cx (instrO1 inc16)),
@@ -401,7 +401,7 @@ arithmeticInstrList = [
         makeInstructionS 0x80 (Just 0x5) (decodeNI8 (instrOI1 sub8) (instrOI1 sub8)),
         makeInstructionS 0x81 (Just 0x5) (decodeNI16 (instrOI1 sub16) (instrOI1 sub16)),
         makeInstructionS 0x82 (Just 0x5) (decodeNI8 (instrOI1 sub8) (instrOI1 sub8)),
-        makeInstructionS 0x83 (Just 0x5) (decodeN16Imm8 (instrOI1 sub16) (instrMemImm16 sub16)),
+        makeInstructionS 0x83 (Just 0x5) (decodeNC16 (instrOI1 sub16) (instrOI1 sub16)),
         --SBB
         makeInstructionS 0x18 Nothing (decodeRM8 (instrRegToRm sbb8) (instrRegToRm sbb8)),
         makeInstructionS 0x19 Nothing (decodeRM16 (instrRegToRm sbb16) (instrRegToRm sbb16)),
@@ -412,7 +412,7 @@ arithmeticInstrList = [
         makeInstructionS 0x80 (Just 0x3) (decodeNI8 (instrOI1 sbb8) (instrOI1 sbb8)),
         makeInstructionS 0x81 (Just 0x3) (decodeNI16 (instrOI1 sbb16) (instrOI1 sbb16)),
         makeInstructionS 0x82 (Just 0x3) (decodeNI8 (instrOI1 sbb8) (instrOI1 sbb8)),
-        makeInstructionS 0x83 (Just 0x3) (decodeN16Imm8 (instrOI1 sbb16) (instrMemImm16 sbb16)),
+        makeInstructionS 0x83 (Just 0x3) (decodeNC16 (instrOI1 sbb16) (instrOI1 sbb16)),
         --DEC
         makeInstructionS 0x48 Nothing (decodeStR ax (instrO1 dec16)),
         makeInstructionS 0x49 Nothing (decodeStR cx (instrO1 dec16)),
@@ -434,7 +434,7 @@ arithmeticInstrList = [
         makeInstructionS 0x80 (Just 0x7) (decodeNI8 (instrOI1 cmp8) (instrOI1 cmp8)),
         makeInstructionS 0x81 (Just 0x7) (decodeNI16 (instrOI1 cmp16) (instrOI1 cmp16)),
         makeInstructionS 0x82 (Just 0x7) (decodeNI8 (instrOI1 cmp8) (instrOI1 cmp8)),
-        makeInstructionS 0x83 (Just 0x7) (decodeN16Imm8 (instrOI1 cmp16) (instrMemImm16 cmp16)),
+        makeInstructionS 0x83 (Just 0x7) (decodeNC16 (instrOI1 cmp16) (instrOI1 cmp16)),
         --NEG
         makeInstructionS 0xF6 (Just 3) (decodeN8 (instrO1 neg8) (instrO1 neg8)),
         makeInstructionS 0xF7 (Just 3) (decodeN16 (instrO1 neg16) (instrO1 neg16)),
