@@ -465,28 +465,16 @@ calcOFSub8i before val after =
     if val >= 0 then before < after else False
 
 calcOFAdd8 :: Uint8 -> Uint8 -> Uint8 -> Bool
-calcOFAdd8 before val after | before < 0x80 =
-    if val < 0x80 then after >= 0x80 else False
-calcOFAdd8 before val after =
-    if val >= 0x80 then after < 0x80 else False
+calcOFAdd8 = calcOFAdd
 
 calcOFSub8 :: Uint8 -> Uint8 -> Uint8 -> Bool
-calcOFSub8 before val after | before < 0x80 =
-    if val >= 0x80 then after >= 0x80 else False
-calcOFSub8 before val after =
-    if val < 0x80 then after < 0x80 else False
+calcOFSub8 = calcOFSub
 
 calcOFAdd16 :: Uint16 -> Uint16 -> Uint16 -> Bool
-calcOFAdd16 before val after | before < 0x8000 =
-    if val < 0x8000 then after >= 0x8000 else False
-calcOFAdd16 before val after =
-    if val >= 0x8000 then after < 0x8000 else False
+calcOFAdd16 = calcOFAdd
 
 calcOFSub16 :: Uint16 -> Uint16 -> Uint16 -> Bool
-calcOFSub16 before val after | before < 0x8000 =
-    if val >= 0x8000 then after >= 0x8000 else False
-calcOFSub16 before val after =
-    if val < 0x8000 then after < 0x8000 else False
+calcOFSub16 = calcOFSub
 
 flagsToVal :: Flags -> Uint16 -> Uint16
 flagsToVal (Flags cf pf af zf sf of_) = 
@@ -560,6 +548,21 @@ calcZF = (==0)
 
 calcSF :: (OperandVal b) => b -> Bool
 calcSF val = testBit val ((finiteBitSize val) - 1)
+
+negV :: (OperandVal b) => b
+negV = (div maxBound 2) + 1
+
+calcOFAdd :: (OperandVal b) => b -> b -> b -> Bool
+calcOFAdd before val after | before < negV = 
+    if val < negV then after >= negV else False
+calcOFAdd before val after =
+    if val >= negV then after < negV else False
+
+calcOFSub :: (OperandVal b) => b -> b -> b -> Bool
+calcOFSub before val after | before < negV =
+    if val >= negV then after >= negV else False
+calcOFSub before val after =
+    if val < negV then after < negV else False
 
 -------------------------------------------------------------------------------
 
