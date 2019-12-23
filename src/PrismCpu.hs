@@ -79,6 +79,12 @@ instance ImmDecoder Imm16 where
     decodeImm = getImm16
     immLength _ = 2
 
+getImm8 :: Uint8 -> Imm8
+getImm8 = id
+
+getImm16 :: Uint8 -> Uint8 -> Imm16
+getImm16 lo hi = (+) (fromIntegral lo :: Imm16) $ shiftL (fromIntegral hi :: Imm16) 8
+
 -------------------------------------------------------------------------------
 
 instance Operand Reg8 Word8 where
@@ -154,12 +160,6 @@ getDisp8 lo = fromIntegral lo :: Disp
 
 getDisp16 :: Uint8 -> Uint8 -> Disp
 getDisp16 lo hi = (+) (fromIntegral lo :: Disp) $ shiftL (fromIntegral hi :: Disp) 8
-
-getImm8 :: Uint8 -> Imm8
-getImm8 = id
-
-getImm16 :: Uint8 -> Uint8 -> Imm16
-getImm16 lo hi = (+) (fromIntegral lo :: Imm16) $ shiftL (fromIntegral hi :: Imm16) 8
 
 -------------------------------------------------------------------------------
 
