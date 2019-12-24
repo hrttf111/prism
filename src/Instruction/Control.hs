@@ -10,10 +10,10 @@ import Instruction.Transfer
 
 -------------------------------------------------------------------------------
 
-jmpShort :: Ctx -> Imm8 -> PrismM
+jmpShort :: FuncImm1 Imm8
 jmpShort ctx val = jmpNear ctx $ signExterndWord val
 
-jmpNear :: Ctx -> Imm16 -> PrismM
+jmpNear :: FuncImm1 Imm16
 jmpNear ctx val = do
     ipVal <- readRegIP memReg
     writeRegIP memReg (ipVal + val)
@@ -21,33 +21,22 @@ jmpNear ctx val = do
     where
         memReg = ctxReg ctx
 
-jmpIntra :: Ctx -> Imm16 -> PrismM
+jmpIntra :: FuncImm1 Imm16
 jmpIntra ctx ipVal = do
     writeRegIP memReg ipVal
     return ctx
     where
         memReg = ctxReg ctx
 
-jmpInter :: Ctx -> Imm16 -> Imm16 -> PrismM
+jmpInter :: FuncImm2 Imm16
 jmpInter ctx ipVal csVal = do
-    writeSeg memReg cs csVal
+    writeOp ctx cs csVal
     writeRegIP memReg ipVal
     return ctx
     where
         memReg = ctxReg ctx
 
-type FuncJ = Ctx -> Imm16 -> PrismM
-type FuncJInter = Ctx -> Imm16 -> Imm16 -> PrismM
-
-instrJReg :: FuncJ -> Ctx -> Reg16 -> PrismM
-instrJReg func ctx reg =
-    readOp ctx reg >>= func ctx
-
-instrJMem16 :: FuncJ -> Ctx -> Mem16 -> PrismM
-instrJMem16 func ctx mem =
-    readOp ctx mem >>= func ctx
-
-instrJMem32 :: FuncJInter -> Ctx -> Mem16 -> PrismM
+instrJMem32 :: FuncImm2 Imm16 -> FuncO1M Mem16
 instrJMem32 func ctx mem = do
     (val1, val2) <- readMem32 (ctxReg ctx) (ctxMem ctx) seg (unwrapMem mem)
     func ctx val1 val2
@@ -56,7 +45,7 @@ instrJMem32 func ctx mem = do
 
 -------------------------------------------------------------------------------
 
-callNear :: Ctx -> Imm16 -> PrismM
+callNear :: FuncImm1 Imm16
 callNear ctx val = do
     ipVal <- readRegIP memReg
     push16 ctx ipVal
@@ -65,7 +54,7 @@ callNear ctx val = do
     where
         memReg = ctxReg ctx
 
-callIntra :: Ctx -> Imm16 -> PrismM
+callIntra :: FuncImm1 Imm16
 callIntra ctx val = do
     ipVal <- readRegIP memReg
     push16 ctx ipVal
@@ -74,41 +63,41 @@ callIntra ctx val = do
     where
         memReg = ctxReg ctx
 
-callInter :: Ctx -> Imm16 -> Imm16 -> PrismM
+callInter :: FuncImm2 Imm16
 callInter ctx ipVal csVal = do
     ipValOld <- readRegIP memReg
-    csValOld <- readSeg memReg cs
+    csValOld <- readOp ctx cs
     push16 ctx csValOld
     push16 ctx ipValOld
-    writeSeg memReg cs csVal
+    writeOp ctx cs csVal
     writeRegIP memReg ipVal
     return ctx
     where
         memReg = ctxReg ctx
 
-retIntra :: Ctx -> Imm16 -> PrismM
+retIntra :: FuncImm1 Imm16
 retIntra ctx val = do
     ipVal <- pop16 ctx
     writeRegIP memReg ipVal
     if val /= 0 then do
-        spOld <- readReg16 memReg sp
+        spOld <- readOp ctx sp
         let spNew = spOld + val
-        writeReg16 memReg sp spNew
+        writeOp ctx sp spNew
         return ctx
         else return ctx
     where
         memReg = ctxReg ctx
 
-retInter :: Ctx -> Imm16 -> PrismM
+retInter :: FuncImm1 Imm16
 retInter ctx val = do
     csVal <- pop16 ctx
     ipVal <- pop16 ctx
     writeRegIP memReg ipVal
-    writeSeg memReg cs csVal
+    writeOp ctx cs csVal
     if val /= 0 then do
-        spOld <- readReg16 memReg sp
+        spOld <- readOp ctx sp
         let spNew = spOld + val
-        writeReg16 memReg sp spNew
+        writeOp ctx sp spNew
         return ctx
         else return ctx
     where
@@ -185,41 +174,35 @@ js ctx val = if sfIsSet ctx then jmpShort ctx val else return ctx
 
 -------------------------------------------------------------------------------
 
-loop :: Ctx -> Imm8 -> PrismM
+loop :: FuncImm1 Imm8
 loop ctx val = do
-    regVal <- readReg16 memReg cx
+    regVal <- readOp ctx cx
     let newRegVal = regVal - 1
-    writeReg16 memReg cx newRegVal
+    writeOp ctx cx newRegVal
     if newRegVal /= 0 then jmpShort ctx val else return ctx
-    where
-        memReg = ctxReg ctx
 
-loopZ :: Ctx -> Imm8 -> PrismM
+loopZ :: FuncImm1 Imm8
 loopZ ctx val = do
-    regVal <- readReg16 memReg cx
+    regVal <- readOp ctx cx
     let newRegVal = regVal - 1
-    writeReg16 memReg cx newRegVal
+    writeOp ctx cx newRegVal
     if newRegVal /= 0 && zfIsSet ctx then jmpShort ctx val else return ctx
-    where
-        memReg = ctxReg ctx
+
 loopE = loopZ
 
-loopNZ :: Ctx -> Imm8 -> PrismM
+loopNZ :: FuncImm1 Imm8
 loopNZ ctx val = do
-    regVal <- readReg16 memReg cx
+    regVal <- readOp ctx cx
     let newRegVal = regVal - 1
-    writeReg16 memReg cx newRegVal
+    writeOp ctx cx newRegVal
     if newRegVal /= 0 && zfIsClear ctx then jmpShort ctx val else return ctx
-    where
-        memReg = ctxReg ctx
+
 loopNE = loopNZ
 
-jcxz :: Ctx -> Imm8 -> PrismM
+jcxz :: FuncImm1 Imm8
 jcxz ctx val = do
-    regVal <- readReg16 memReg cx
+    regVal <- readOp ctx cx
     if regVal == 0 then jmpShort ctx val else return ctx
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 
@@ -249,12 +232,12 @@ controlInstrList = [
         makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
         makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
         makeInstructionS 0xEB Nothing (decodeImm8 jmpShort),
-        makeInstructionS 0xFF (Just 4) (decodeN16 (instrJReg jmpIntra) (instrJMem16 jmpIntra)),
+        makeInstructionS 0xFF (Just 4) (decodeN16 (instrON1 jmpIntra) (instrON1 jmpIntra)),
         makeInstructionS 0xFF (Just 5) (decodeN16 emptySingle (instrJMem32 jmpInter)),
         --CALL
         makeInstructionS 0xE8 Nothing (decodeImm16 callNear),
         makeInstructionS 0x9A Nothing (decodeImm32 callInter),
-        makeInstructionS 0xFF (Just 2) (decodeN16 (instrJReg callIntra) (instrJMem16 callIntra)),
+        makeInstructionS 0xFF (Just 2) (decodeN16 (instrON1 callIntra) (instrON1 callIntra)),
         makeInstructionS 0xFF (Just 3) (decodeN16 emptySingle (instrJMem32 callInter)),
         --RET
         makeInstructionS 0xC2 Nothing (decodeImm16 retIntra),

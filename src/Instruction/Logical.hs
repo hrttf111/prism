@@ -11,8 +11,6 @@ import PrismCpu
 -------------------------------------------------------------------------------
 
 type RotateFunc b = Ctx -> b -> Uint8 -> (Ctx, b)
-type RotateFunc8 = Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-type RotateFunc16 = Ctx -> Uint16 -> Uint8 -> (Ctx, Uint16)
 
 signRetained :: (OperandVal a) => a -> a -> Bool
 signRetained before after = testBit before bit == testBit after bit
@@ -108,12 +106,12 @@ sar op ctx val shVal = (newCtx, result)
         flags = Flags cf_ (calcPF result) (flagAF . ctxFlags $ ctx) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
-sar8 :: RotateFunc8
+sar8 :: RotateFunc Uint8
 sar8 ctx val shVal = sar op1 ctx val shVal
     where
         op1 sh1 = (flip shiftR $ fromIntegral sh1) :: Int8 -> Int8
 
-sar16 :: RotateFunc16
+sar16 :: RotateFunc Uint16
 sar16 ctx val shVal = sar op1 ctx val shVal
     where
         op1 sh1 = (flip shiftR $ fromIntegral sh1) :: Int16 -> Int16
