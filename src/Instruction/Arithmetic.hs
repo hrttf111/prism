@@ -60,13 +60,8 @@ dec ctx val = (newCtx, result)
 
 -------------------------------------------------------------------------------
 
-cmp8 :: Ctx -> Uint8 -> Uint8 -> (Ctx, Uint8)
-cmp8 ctx source dest = (newCtx, dest)
-    where
-        (newCtx, _) = sub ctx source dest
-
-cmp16 :: Ctx -> Uint16 -> Uint16 -> (Ctx, Uint16)
-cmp16 ctx source dest = (newCtx, dest)
+cmp :: OperandVal b => FuncV2 b
+cmp ctx source dest = (newCtx, dest)
     where
         (newCtx, _) = sub ctx source dest
 
@@ -93,22 +88,13 @@ cwd ctx = do
 
 -------------------------------------------------------------------------------
 
-neg8 :: Ctx -> Uint8 -> (Ctx, Uint8)
-neg8 ctx val = (newCtx, result)
+neg :: OperandVal b => FuncV1 b
+neg ctx val = (newCtx, result)
     where
         result = 0 - val
         cf = val /= 0
-        of_ = val == 0x80
-        flags = Flags cf (calcPF8 result) (calcAFBorrow8 0 result) (calcZF8 result) (calcSF8 result) of_
-        newCtx = ctx { ctxFlags = flags }
-
-neg16 :: Ctx -> Uint16 -> (Ctx, Uint16)
-neg16 ctx val = (newCtx, result)
-    where
-        result = 0 - val
-        cf = val /= 0
-        of_ = val == 0x8000
-        flags = Flags cf (calcPF16 result) (calcAFBorrow16 0 result) (calcZF16 result) (calcSF16 result) of_
+        of_ = val == negV
+        flags = Flags cf (calcPF result) (calcAFBorrow 0 result) (calcZF result) (calcSF result) of_
         newCtx = ctx { ctxFlags = flags }
 
 -------------------------------------------------------------------------------
@@ -387,19 +373,19 @@ arithmeticInstrList = [
         makeInstructionS 0xFE (Just 1) (decodeN8 (instrO1 dec) (instrO1 dec)),
         makeInstructionS 0xFF (Just 1) (decodeN16 (instrO1 dec) (instrO1 dec)),
         --CMP
-        makeInstructionS 0x38 Nothing (decodeRM8 (instrRegToRm cmp8) (instrRegToRm cmp8)),
-        makeInstructionS 0x39 Nothing (decodeRM16 (instrRegToRm cmp16) (instrRegToRm cmp16)),
-        makeInstructionS 0x3A Nothing (decodeRM8 (instrRmToReg cmp8) (instrRmToReg cmp8)),
-        makeInstructionS 0x3B Nothing (decodeRM16 (instrRmToReg cmp16) (instrRmToReg cmp16)),
-        makeInstructionS 0x3C Nothing (decodeStRI al $ instrOI1 cmp8),
-        makeInstructionS 0x3D Nothing (decodeStRI ax $ instrOI1 cmp16),
-        makeInstructionS 0x80 (Just 0x7) (decodeNI8 (instrOI1 cmp8) (instrOI1 cmp8)),
-        makeInstructionS 0x81 (Just 0x7) (decodeNI16 (instrOI1 cmp16) (instrOI1 cmp16)),
-        makeInstructionS 0x82 (Just 0x7) (decodeNI8 (instrOI1 cmp8) (instrOI1 cmp8)),
-        makeInstructionS 0x83 (Just 0x7) (decodeNC16 (instrOI1 cmp16) (instrOI1 cmp16)),
+        makeInstructionS 0x38 Nothing (decodeRM8 (instrRegToRm cmp) (instrRegToRm cmp)),
+        makeInstructionS 0x39 Nothing (decodeRM16 (instrRegToRm cmp) (instrRegToRm cmp)),
+        makeInstructionS 0x3A Nothing (decodeRM8 (instrRmToReg cmp) (instrRmToReg cmp)),
+        makeInstructionS 0x3B Nothing (decodeRM16 (instrRmToReg cmp) (instrRmToReg cmp)),
+        makeInstructionS 0x3C Nothing (decodeStRI al $ instrOI1 cmp),
+        makeInstructionS 0x3D Nothing (decodeStRI ax $ instrOI1 cmp),
+        makeInstructionS 0x80 (Just 0x7) (decodeNI8 (instrOI1 cmp) (instrOI1 cmp)),
+        makeInstructionS 0x81 (Just 0x7) (decodeNI16 (instrOI1 cmp) (instrOI1 cmp)),
+        makeInstructionS 0x82 (Just 0x7) (decodeNI8 (instrOI1 cmp) (instrOI1 cmp)),
+        makeInstructionS 0x83 (Just 0x7) (decodeNC16 (instrOI1 cmp) (instrOI1 cmp)),
         --NEG
-        makeInstructionS 0xF6 (Just 3) (decodeN8 (instrO1 neg8) (instrO1 neg8)),
-        makeInstructionS 0xF7 (Just 3) (decodeN16 (instrO1 neg16) (instrO1 neg16)),
+        makeInstructionS 0xF6 (Just 3) (decodeN8 (instrO1 neg) (instrO1 neg)),
+        makeInstructionS 0xF7 (Just 3) (decodeN16 (instrO1 neg) (instrO1 neg)),
         --AAA/AAD/AAM/AAS
         makeInstructionS 0x37 Nothing (decodeStR ax $ instrO1 aaa),
         makeInstructionS 0xD5 (Just 1) (decodeStR ax $ instrO1 aad),
