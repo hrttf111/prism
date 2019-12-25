@@ -83,7 +83,9 @@ class MemDecoder a where
     unwrapMem :: a -> Mem
     wrapMem :: Mem -> a
 
-type OperandMem a b = (MemDecoder a, Operand a b)
+class (MemDecoder a, Operand a b) => OperandMem a b | a -> b where
+    readMemOp :: MonadIO m => Ctx -> RegSeg -> a -> m b
+    writeMemOp :: MonadIO m => Ctx -> RegSeg -> a -> b -> m ()
 
 -------------------------------------------------------------------------------
 

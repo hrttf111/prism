@@ -127,6 +127,10 @@ instance MemDecoder Mem8 where
     unwrapMem (Mem8 m) = m
     wrapMem m = Mem8 m
 
+instance OperandMem Mem8 Word8 where
+    readMemOp ctx regSeg (Mem8 mem) = readMem8 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem
+    writeMemOp ctx regSeg (Mem8 mem) val = writeMem8 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem val
+
 instance Operand Mem16 Word16 where
     readOp ctx (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
     writeOp ctx (Mem16 mem) val = writeMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
@@ -136,6 +140,10 @@ instance MemDecoder Mem16 where
     decodeMemDirect = Mem16 . MemDirect
     unwrapMem (Mem16 m) = m
     wrapMem m = Mem16 m
+
+instance OperandMem Mem16 Word16 where
+    readMemOp ctx regSeg (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem
+    writeMemOp ctx regSeg (Mem16 mem) val = writeMem16 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem val
 
 convertMem :: (OperandVal b1, OperandVal b2, OperandMem a1 b1, OperandMem a2 b2) =>
     a1 -> a2
