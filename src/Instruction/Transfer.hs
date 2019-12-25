@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Instruction.Transfer where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
@@ -56,42 +58,13 @@ pop16 ctx = do
         memReg = ctxReg ctx
         memMain = ctxMem ctx
 
---pushOp :: Operand a Uint16 => Ctx -> a -> PrismM
---pushOp ctx op =
-    --readOp ctx op >>= push16
+pushOp :: Operand a Uint16 => FuncO1M a
+pushOp ctx op =
+    readOp ctx op >>= push16 ctx
 
-pushReg16 :: FuncO1M Reg16
-pushReg16 ctx reg = do
-    val <- readOp ctx reg
-    push16 ctx val
-
-popReg16 :: FuncO1M Reg16
-popReg16 ctx reg = do
-    val <- pop16 ctx
-    writeOp ctx reg val
-    return ctx
-
-pushMem :: FuncO1M Mem16
-pushMem ctx mem = do
-    val <- readOp ctx mem
-    push16 ctx val
-
-popMem :: FuncO1M Mem16
-popMem ctx mem = do
-    val <- pop16 ctx
-    writeOp ctx mem val
-    return ctx
-
-pushSeg :: RegSeg -> FuncImplicit
-pushSeg regSeg ctx = do
-    val <- readOp ctx regSeg
-    push16 ctx val
-
-popSeg :: RegSeg -> FuncImplicit
-popSeg regSeg ctx = do
-    val <- pop16 ctx
-    writeOp ctx regSeg val
-    return ctx
+popOp :: Operand a Uint16 => FuncO1M a
+popOp ctx op =
+    pop16 ctx >>= writeOp ctx op >> return ctx
 
 -------------------------------------------------------------------------------
 
@@ -274,31 +247,31 @@ transferInstrList = [
         makeInstructionS 0x96 Nothing (decodeStRR ax si xchg),
         makeInstructionS 0x97 Nothing (decodeStRR ax di xchg),
         --PUSH/POP
-        makeInstructionS 0x06 Nothing (decodeImplicit $ pushSeg es),
-        makeInstructionS 0x07 Nothing (decodeImplicit $ popSeg es),
-        makeInstructionS 0x0E Nothing (decodeImplicit $ pushSeg cs),
-        makeInstructionS 0x16 Nothing (decodeImplicit $ pushSeg ss),
-        makeInstructionS 0x17 Nothing (decodeImplicit $ popSeg ss),
-        makeInstructionS 0x1E Nothing (decodeImplicit $ pushSeg ds),
-        makeInstructionS 0x1F Nothing (decodeImplicit $ popSeg ds),
-        makeInstructionS 0x50 Nothing (decodeStR ax pushReg16),
-        makeInstructionS 0x51 Nothing (decodeStR cx pushReg16),
-        makeInstructionS 0x52 Nothing (decodeStR dx pushReg16),
-        makeInstructionS 0x53 Nothing (decodeStR bx pushReg16),
-        makeInstructionS 0x54 Nothing (decodeStR bp pushReg16),
-        makeInstructionS 0x55 Nothing (decodeStR sp pushReg16),
-        makeInstructionS 0x56 Nothing (decodeStR si pushReg16),
-        makeInstructionS 0x57 Nothing (decodeStR di pushReg16),
-        makeInstructionS 0x58 Nothing (decodeStR ax popReg16),
-        makeInstructionS 0x59 Nothing (decodeStR cx popReg16),
-        makeInstructionS 0x5A Nothing (decodeStR dx popReg16),
-        makeInstructionS 0x5B Nothing (decodeStR bx popReg16),
-        makeInstructionS 0x5C Nothing (decodeStR bp popReg16),
-        makeInstructionS 0x5D Nothing (decodeStR sp popReg16),
-        makeInstructionS 0x5E Nothing (decodeStR si popReg16),
-        makeInstructionS 0x5F Nothing (decodeStR di popReg16),
-        makeInstructionS 0x8F (Just 0) (decodeN16 popReg16 popMem),
-        makeInstructionS 0xFF (Just 6) (decodeN16 pushReg16 pushMem),
+        makeInstructionS 0x06 Nothing (decodeStR es pushOp),
+        makeInstructionS 0x07 Nothing (decodeStR es popOp),
+        makeInstructionS 0x0E Nothing (decodeStR cs pushOp),
+        makeInstructionS 0x16 Nothing (decodeStR ss pushOp),
+        makeInstructionS 0x17 Nothing (decodeStR ss popOp),
+        makeInstructionS 0x1E Nothing (decodeStR ds pushOp),
+        makeInstructionS 0x1F Nothing (decodeStR ds popOp),
+        makeInstructionS 0x50 Nothing (decodeStR ax pushOp),
+        makeInstructionS 0x51 Nothing (decodeStR cx pushOp),
+        makeInstructionS 0x52 Nothing (decodeStR dx pushOp),
+        makeInstructionS 0x53 Nothing (decodeStR bx pushOp),
+        makeInstructionS 0x54 Nothing (decodeStR bp pushOp),
+        makeInstructionS 0x55 Nothing (decodeStR sp pushOp),
+        makeInstructionS 0x56 Nothing (decodeStR si pushOp),
+        makeInstructionS 0x57 Nothing (decodeStR di pushOp),
+        makeInstructionS 0x58 Nothing (decodeStR ax popOp),
+        makeInstructionS 0x59 Nothing (decodeStR cx popOp),
+        makeInstructionS 0x5A Nothing (decodeStR dx popOp),
+        makeInstructionS 0x5B Nothing (decodeStR bx popOp),
+        makeInstructionS 0x5C Nothing (decodeStR bp popOp),
+        makeInstructionS 0x5D Nothing (decodeStR sp popOp),
+        makeInstructionS 0x5E Nothing (decodeStR si popOp),
+        makeInstructionS 0x5F Nothing (decodeStR di popOp),
+        makeInstructionS 0x8F (Just 0) (decodeN16 popOp popOp),
+        makeInstructionS 0xFF (Just 6) (decodeN16 pushOp pushOp),
         --LEA
         makeInstructionS 0x8D Nothing (decodeRM16 emptyRegReg lea16),
         --LES
