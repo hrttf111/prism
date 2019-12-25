@@ -69,22 +69,18 @@ cmp ctx source dest = (newCtx, dest)
 
 cbw :: FuncImplicit
 cbw ctx = do
-    val8 <- readReg8 memReg al
+    val8 <- readOp ctx al
     let val16 = signExterndWord val8
-    writeReg16 memReg ax val16
+    writeOp ctx ax val16
     return ctx
-    where
-        memReg = ctxReg ctx
 
 cwd :: FuncImplicit
 cwd ctx = do
-    val16 <- readReg16 memReg ax
+    val16 <- readOp ctx ax
     let (valH, valL) = signExterndDoubleword val16
-    writeReg16 memReg ax valL
-    writeReg16 memReg dx valH
+    writeOp ctx ax valL
+    writeOp ctx dx valH
     return ctx
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 
@@ -266,42 +262,34 @@ idiv16 ctx val1H val1L val2 = (ctx, resultH, resultL)
 
 muldivInstr8 :: MuldivFunc8 -> FuncNV1M Uint8
 muldivInstr8 func ctx val = do
-    alVal <- readReg8 memReg al
+    alVal <- readOp ctx al
     let (newCtx, axVal) = func ctx alVal val
-    writeReg16 memReg ax axVal
+    writeOp ctx ax axVal
     return newCtx
-    where
-        memReg = ctxReg ctx
 
 muldivInstr16 :: MuldivFunc16 -> FuncNV1M Uint16
 muldivInstr16 func ctx val = do
-    axVal <- readReg16 memReg ax
+    axVal <- readOp ctx ax
     let (newCtx, dxValNew, axValNew) = func ctx axVal val
-    writeReg16 memReg ax axValNew
-    writeReg16 memReg dx dxValNew
+    writeOp ctx ax axValNew
+    writeOp ctx dx dxValNew
     return newCtx
-    where
-        memReg = ctxReg ctx
 
 divInstr8 :: DivFunc8 -> FuncNV1M Uint8
 divInstr8 func ctx val = do
-    axVal <- readReg16 memReg ax
+    axVal <- readOp ctx ax
     let (newCtx, axValNew) = func ctx axVal val
-    writeReg16 memReg ax axValNew
+    writeOp ctx ax axValNew
     return newCtx
-    where
-        memReg = ctxReg ctx
 
 divInstr16 :: DivFunc16 -> FuncNV1M Uint16
 divInstr16 func ctx val = do
-    axVal <- readReg16 memReg ax
-    dxVal <- readReg16 memReg dx
+    axVal <- readOp ctx ax
+    dxVal <- readOp ctx dx
     let (newCtx, dxValNew, axValNew) = func ctx dxVal axVal val
-    writeReg16 memReg ax axValNew
-    writeReg16 memReg dx dxValNew
+    writeOp ctx ax axValNew
+    writeOp ctx dx dxValNew
     return newCtx
-    where
-        memReg = ctxReg ctx
 
 -------------------------------------------------------------------------------
 

@@ -38,9 +38,9 @@ xchg ctx op1 op2 = do
 
 push16 :: Ctx -> Uint16 -> PrismM
 push16 ctx val = do
-    valSp <- readReg16 memReg sp
+    valSp <- readOp ctx sp
     let valNewSp = valSp - 2
-    writeReg16 memReg sp valNewSp
+    writeOp ctx sp valNewSp
     writeMemSp16 memReg memMain val
     return ctx
     where
@@ -50,9 +50,9 @@ push16 ctx val = do
 pop16 :: MonadIO m => Ctx -> m Uint16
 pop16 ctx = do
     val <- readMemSp16 memReg memMain
-    valSp <- readReg16 memReg sp
+    valSp <- readOp ctx sp
     let valNewSp = valSp + 2
-    writeReg16 memReg sp valNewSp
+    writeOp ctx sp valNewSp
     return val 
     where
         memReg = ctxReg ctx
