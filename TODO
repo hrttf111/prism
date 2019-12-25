@@ -1,7 +1,5 @@
  - implement port infra
  - memory mapped infra
- - implement generalized mem/reg instructions
-    - how to handle mem? Same mem can work with 8/16 bit values
  - prism BIOS
     - set internal interrupts
     - main app writes indexes of medias in main mem, BIOS reads them
