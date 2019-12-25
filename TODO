@@ -23,3 +23,34 @@ readPort16 :: MonadIO m => PortHandlers -> Uint16 -> m Uint16
 readPort16 handlers port = 
     func <- handlers ! port
     func port
+
+-------------------------------------------------------
+
+data MemMapPage = MemMapPage {
+        pageStart :: Offset,
+        pageSize :: Int,
+        pageMapped :: Bool,
+        pageMappedBytes :: Array Bool
+    }
+
+type MappedHandler = Ctx -> Offset -> m ()
+
+data Mapped = Mapped {
+    mappedPages :: Array MemMapPage,
+    mappedHandler :: MappedHandler
+}
+
+isMapped :: Ctx -> Offset -> Bool
+isMapped ctx offset = 
+    if pageMapped mappedPage then
+        ! (pageMappedBytes mappedPage) (offset % pageSizeG)
+        else False
+    where
+        mappedInfra = ctxMapped ctx
+        mappedPage = ! (mappedPages mappedInfra) (div offset pageSizeG)
+
+readMem16 :: Ctx -> Mem -> m Uint16
+readMem16 ctx mem = do
+    offset <- getMemOffset ctx mem
+    if isMapped offset then mappedHandler offset
+        else peekByteOff
