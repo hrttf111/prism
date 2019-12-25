@@ -29,7 +29,7 @@ instance StringOp StringOp16 Mem16 Uint16 where
 
 -------------------------------------------------------------------------------
 
-movs :: (StringOp k a b) => k -> Ctx -> PrismM
+movs :: (StringOp k a b) => k -> FuncImplicit
 movs strOp ctx = do
     valDi <- readOp ctx di
     valSi <- readOp ctx si
@@ -41,7 +41,7 @@ movs strOp ctx = do
 
 -------------------------------------------------------------------------------
 
-cmps :: (StringOp k a b) => k -> Ctx -> PrismM
+cmps :: (StringOp k a b) => k -> FuncImplicit
 cmps strOp ctx = do
     valDi <- readOp ctx di
     valSi <- readOp ctx si
@@ -57,7 +57,7 @@ cmps strOp ctx = do
 
 -------------------------------------------------------------------------------
 
-scas :: (OperandVal b, StringOp k a b, OperandReg a1 b) => k -> a1 -> Ctx -> PrismM
+scas :: (OperandVal b, StringOp k a b, OperandReg a1 b) => k -> a1 -> FuncImplicit
 scas strOp reg ctx = do
     valRegA <- readOp ctx reg
     valDi <- readOp ctx di
@@ -71,7 +71,7 @@ scas strOp reg ctx = do
 
 -------------------------------------------------------------------------------
 
-lods :: (OperandVal b, StringOp k a b, OperandReg a1 b) => k -> a1 -> Ctx -> PrismM
+lods :: (OperandVal b, StringOp k a b, OperandReg a1 b) => k -> a1 -> FuncImplicit
 lods strOp reg ctx = do
     valSi <- readOp ctx si
     valMemSi <- readOp ctx $ memType strOp valSi
@@ -81,7 +81,7 @@ lods strOp reg ctx = do
 
 -------------------------------------------------------------------------------
 
-stos :: (OperandVal b, StringOp k a b, OperandReg a1 b) => k -> a1 -> Ctx -> PrismM
+stos :: (OperandVal b, StringOp k a b, OperandReg a1 b) => k -> a1 -> FuncImplicit
 stos strOp reg ctx = do
     valDi <- readOp ctx di
     valRegA <- readOp ctx reg
@@ -91,7 +91,7 @@ stos strOp reg ctx = do
 
 -------------------------------------------------------------------------------
 
-rep :: (Ctx -> PrismM) -> Bool -> Ctx -> PrismM
+rep :: (Ctx -> PrismM) -> Bool -> FuncImplicit
 rep execInstr zfOne ctx = do
     cxVal <- readOp ctx cx
     ip <- readRegIP memReg

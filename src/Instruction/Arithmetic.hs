@@ -67,7 +67,7 @@ cmp ctx source dest = (newCtx, dest)
 
 -------------------------------------------------------------------------------
 
-cbw :: Ctx -> PrismM
+cbw :: FuncImplicit
 cbw ctx = do
     val8 <- readReg8 memReg al
     let val16 = signExterndWord val8
@@ -76,7 +76,7 @@ cbw ctx = do
     where
         memReg = ctxReg ctx
 
-cwd :: Ctx -> PrismM
+cwd :: FuncImplicit
 cwd ctx = do
     val16 <- readReg16 memReg ax
     let (valH, valL) = signExterndDoubleword val16
@@ -99,7 +99,7 @@ neg ctx val = (newCtx, result)
 
 -------------------------------------------------------------------------------
 
-aaa :: Ctx -> Uint16 -> (Ctx, Uint16)
+aaa :: FuncV1 Uint16
 aaa ctx val = (newCtx, result)
     where
         alVal = val .&. 0xFF
@@ -111,7 +111,7 @@ aaa ctx val = (newCtx, result)
         flags = Flags cf_ False af_ False False False
         newCtx = ctx { ctxFlags = flags }
 
-aad :: Ctx -> Uint16 -> (Ctx, Uint16)
+aad :: FuncV1 Uint16
 aad ctx val = (newCtx, result)
     where
         alVal = val .&. 0xFF
@@ -120,7 +120,7 @@ aad ctx val = (newCtx, result)
         flags = Flags False (calcPF16 result) False (calcZF16 result) (calcSF16 result) False
         newCtx = ctx { ctxFlags = flags }
 
-aam :: Ctx -> Uint16 -> (Ctx, Uint16)
+aam :: FuncV1 Uint16
 aam ctx val = (newCtx, result)
     where
         alVal = val .&. 0xFF
@@ -130,7 +130,7 @@ aam ctx val = (newCtx, result)
         flags = Flags False (calcPF16 result) False (calcZF16 result) (calcSF16 result) False
         newCtx = ctx { ctxFlags = flags }
 
-aas :: Ctx -> Uint16 -> (Ctx, Uint16)
+aas :: FuncV1 Uint16
 aas ctx val = (newCtx, result)
     where
         alVal = val .&. 0xFF
@@ -144,7 +144,7 @@ aas ctx val = (newCtx, result)
 
 -------------------------------------------------------------------------------
 
-daa :: Ctx -> Uint8 -> (Ctx, Uint8)
+daa :: FuncV1 Uint8
 daa ctx val = (newCtx, result)
     where
         af = (flagAF . ctxFlags $ ctx)
@@ -158,7 +158,7 @@ daa ctx val = (newCtx, result)
         flags = Flags cf_ False af_ False False False
         newCtx = ctx { ctxFlags = flags }
 
-das :: Ctx -> Uint8 -> (Ctx, Uint8)
+das :: FuncV1 Uint8
 das ctx val = (newCtx, result)
     where
         af = (flagAF . ctxFlags $ ctx)

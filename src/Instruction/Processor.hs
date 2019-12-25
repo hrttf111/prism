@@ -10,69 +10,69 @@ import PrismInterrupt
 
 -------------------------------------------------------------------------------
 
-clc :: Ctx -> PrismM
+clc :: FuncImplicit
 clc ctx = return $ ctx { ctxFlags = flags }
     where
         flags = (ctxFlags ctx) { flagCF = False }
 
-stc :: Ctx -> PrismM
+stc :: FuncImplicit
 stc ctx = return $ ctx { ctxFlags = flags }
     where
         flags = (ctxFlags ctx) { flagCF = True }
 
-cmc :: Ctx -> PrismM
+cmc :: FuncImplicit
 cmc ctx = return $ ctx { ctxFlags = flags }
     where
         cf = not . flagCF . ctxFlags $ ctx
         flags = (ctxFlags ctx) { flagCF = cf }
 
-cld :: Ctx -> PrismM
+cld :: FuncImplicit
 cld ctx = return $ ctx { ctxEFlags = flags }
     where
         flags = (ctxEFlags ctx) { eflagDF = False }
 
-std :: Ctx -> PrismM
+std :: FuncImplicit
 std ctx = return $ ctx { ctxEFlags = flags }
     where
         flags = (ctxEFlags ctx) { eflagDF = True }
 
-cli :: Ctx -> PrismM
+cli :: FuncImplicit
 cli ctx = return $ ctx { ctxEFlags = flags }
     where
         flags = (ctxEFlags ctx) { eflagIF = False }
 
-sti :: Ctx -> PrismM
+sti :: FuncImplicit
 sti ctx = return $ ctx { ctxEFlags = flags }
     where
         flags = (ctxEFlags ctx) { eflagIF = True }
 
 -------------------------------------------------------------------------------
 
-hlt :: Ctx -> PrismM
+hlt :: FuncImplicit
 hlt ctx = return $ ctx {ctxStop = True}
 
-wait :: Ctx -> PrismM
+wait :: FuncImplicit
 wait = return
 
-lock :: Ctx -> PrismM
+lock :: FuncImplicit
 lock = return
 
-nop :: Ctx -> PrismM
+nop :: FuncImplicit
 nop = return
 -------------------------------------------------------------------------------
 
-int :: Ctx -> Imm8 -> PrismM
+int :: FuncImm1 Imm8
 int ctx val = return $ ctx { ctxInterrupts = addInterruptInt (ctxInterrupts ctx) val }
 
-into :: Ctx -> PrismM
+into :: FuncImplicit
 into ctx = int ctx 4
 
-iret :: Ctx -> PrismM
+iret :: FuncImplicit
 iret = loadInterruptCtx
 
 -------------------------------------------------------------------------------
 
-segmentOverride :: (Ctx -> PrismM) -> RegSeg -> Ctx -> PrismM
+segmentOverride :: FuncImplicit -> RegSeg -> FuncImplicit
 segmentOverride execInstr regSeg ctx =
     execInstr newCtx >>= \c -> return $ c { ctxReplaceSeg = Nothing }
     where

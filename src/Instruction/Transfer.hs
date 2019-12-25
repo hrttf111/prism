@@ -60,34 +60,34 @@ pop16 ctx = do
 --pushOp ctx op =
     --readOp ctx op >>= push16
 
-pushReg16 :: Ctx -> Reg16 -> PrismM
+pushReg16 :: FuncO1M Reg16
 pushReg16 ctx reg = do
     val <- readOp ctx reg
     push16 ctx val
 
-popReg16 :: Ctx -> Reg16 -> PrismM
+popReg16 :: FuncO1M Reg16
 popReg16 ctx reg = do
     val <- pop16 ctx
     writeOp ctx reg val
     return ctx
 
-pushMem :: Ctx -> Mem16 -> PrismM
+pushMem :: FuncO1M Mem16
 pushMem ctx mem = do
     val <- readOp ctx mem
     push16 ctx val
 
-popMem :: Ctx -> Mem16 -> PrismM
+popMem :: FuncO1M Mem16
 popMem ctx mem = do
     val <- pop16 ctx
     writeOp ctx mem val
     return ctx
 
-pushSeg :: RegSeg -> Ctx -> PrismM
+pushSeg :: RegSeg -> FuncImplicit
 pushSeg regSeg ctx = do
     val <- readOp ctx regSeg
     push16 ctx val
 
-popSeg :: RegSeg -> Ctx -> PrismM
+popSeg :: RegSeg -> FuncImplicit
 popSeg regSeg ctx = do
     val <- pop16 ctx
     writeOp ctx regSeg val
@@ -95,7 +95,7 @@ popSeg regSeg ctx = do
 
 -------------------------------------------------------------------------------
 
-lea16 :: Ctx -> Mem16 -> Reg16 -> PrismM
+lea16 :: FuncO2M Mem16 Reg16
 lea16 ctx mem reg = do
     offset <- getEA (ctxReg ctx) (unwrapMem mem)
     writeOp ctx reg offset
@@ -103,13 +103,13 @@ lea16 ctx mem reg = do
 
 -------------------------------------------------------------------------------
 
-lxs16 :: RegSeg -> Ctx -> Mem16 -> Reg16 -> PrismM
+lxs16 :: RegSeg -> FuncO2M Mem16 Reg16
 lxs16 regSeg1 ctx mem reg = do
     ptr <- getMemOffset memReg regSeg (unwrapMem mem)
     let segVal = fromIntegral $ shiftR ptr 16
         regVal = fromIntegral ptr
-    writeReg16 memReg reg regVal
-    writeSeg memReg regSeg1 segVal
+    writeOp ctx reg regVal
+    writeOp ctx regSeg1 segVal
     return ctx
     where
         memReg = ctxReg ctx
