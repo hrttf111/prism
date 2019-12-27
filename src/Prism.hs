@@ -10,15 +10,15 @@
 
 module Prism where
 
+import Control.Monad.Trans
+
 import Data.Word (Word8, Word16, Word32)
 import Data.Bits (FiniteBits, Bits)
 import Data.Maybe (Maybe)
 
 import Foreign.Ptr
-
-import Control.Monad.Trans
-
 import GHC.Generics
+import Data.Array.Unboxed
 
 -------------------------------------------------------------------------------
 
@@ -89,6 +89,33 @@ class (MemDecoder a, Operand a b) => OperandMem a b | a -> b where
 
 -------------------------------------------------------------------------------
 
+newtype MemIO = MemIO (UArray MemOffset Bool) deriving (Show)
+
+class MemIOHandler a where
+    memIORead8 :: MonadIO m => a -> Ctx -> MemOffset -> m Uint8
+    memIOWrite8 :: MonadIO m => a -> Ctx -> MemOffset -> Uint8 -> m ()
+    memIORead16 :: MonadIO m => a -> Ctx -> MemOffset -> m Uint16
+    memIOWrite16 :: MonadIO m => a -> Ctx -> MemOffset -> Uint16 -> m ()
+
+data EmptyMemIOH = EmptyMemIOH deriving (Show)
+
+instance MemIOHandler EmptyMemIOH where
+    memIORead8 _ _ _ = return 0
+    memIOWrite8 _ _ _ _ = return ()
+    memIORead16 _ _ _ = return 0
+    memIOWrite16 _ _ _ _ = return ()
+
+data MemIOCtx = MemIOCtx {
+        memIOHandler :: EmptyMemIOH,
+        memIOPageSize :: Int,
+        memIORegion :: MemIO
+    }
+
+instance Show MemIOCtx where
+    show c = "MemIOCtx " ++ (show $ memIORegion c)
+
+-------------------------------------------------------------------------------
+
 -- Note: Max size of instruction is 6 bytes
 type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
 
@@ -130,7 +157,9 @@ data PrismInterrupts = PrismInterrupts {
     } deriving (Show)
 
 emptyPrismInterrupts = PrismInterrupts [] [] [] [] False
-makePrismCtx memReg memMain = Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop emptyPrismInterrupts
+emptyMemIO = MemIO $ array (0, 0) [(0, False)]
+emptyMemIOCtx = MemIOCtx EmptyMemIOH (1024 * 1024) emptyMemIO
+makePrismCtx memReg memMain = Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop emptyMemIOCtx emptyPrismInterrupts
 
 noReplaceSeg ::  Maybe RegSeg
 noReplaceSeg = Nothing
@@ -144,6 +173,7 @@ data Ctx = Ctx {
         ctxEFlags :: EFlags,
         ctxReplaceSeg :: Maybe RegSeg,
         ctxStop :: Bool,
+        ctxMemIO :: MemIOCtx,
         ctxInterrupts :: PrismInterrupts
     } deriving (Show)
 

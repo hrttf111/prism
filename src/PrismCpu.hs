@@ -16,11 +16,12 @@ import Data.Maybe (fromMaybe)
 import Data.Bits
 import Data.Int
 
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.Trans (MonadIO, liftIO, lift)
 import Numeric (showHex)
 
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
+import Data.Array.Unboxed ((!))
 
 import Prism
 
@@ -118,8 +119,18 @@ convertReg = decodeReg . decodeRegVal
 -------------------------------------------------------------------------------
 
 instance Operand Mem8 Word8 where
-    readOp ctx (Mem8 mem) = readMem8 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
-    writeOp ctx (Mem8 mem) val = writeMem8 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
+    readOp ctx (Mem8 mem) = do
+        offset <- getMemOffset1 ctx mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIORead8 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+            else 
+                readMemMain8 (ctxMem ctx) offset
+    writeOp ctx (Mem8 mem) val = do
+        offset <- getMemOffset1 ctx mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIOWrite8 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+            else 
+                writeMemMain8 (ctxMem ctx) offset val
 
 instance MemDecoder Mem8 where
     decodeMem1 v off = Mem8 $ decodeMem v off
@@ -128,12 +139,32 @@ instance MemDecoder Mem8 where
     wrapMem m = Mem8 m
 
 instance OperandMem Mem8 Word8 where
-    readMemOp ctx regSeg (Mem8 mem) = readMem8 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem
-    writeMemOp ctx regSeg (Mem8 mem) val = writeMem8 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem val
+    readMemOp ctx regSeg (Mem8 mem) = do
+        offset <- getMemOffset2 ctx regSeg mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIORead8 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+            else 
+                readMemMain8 (ctxMem ctx) offset
+    writeMemOp ctx regSeg (Mem8 mem) val = do
+        offset <- getMemOffset2 ctx regSeg mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIOWrite8 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+            else 
+                writeMemMain8 (ctxMem ctx) offset val
 
 instance Operand Mem16 Word16 where
-    readOp ctx (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem
-    writeOp ctx (Mem16 mem) val = writeMem16 (ctxReg ctx) (ctxMem ctx) (ctxReplaceSeg ctx) mem val
+    readOp ctx (Mem16 mem) = do
+        offset <- getMemOffset1 ctx mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIORead16 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+            else 
+                readMemMain16 (ctxMem ctx) offset
+    writeOp ctx (Mem16 mem) val = do
+        offset <- getMemOffset1 ctx mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIOWrite16 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+            else 
+                writeMemMain16 (ctxMem ctx) offset val
 
 instance MemDecoder Mem16 where
     decodeMem1 v off = Mem16 $ decodeMem v off
@@ -142,12 +173,30 @@ instance MemDecoder Mem16 where
     wrapMem m = Mem16 m
 
 instance OperandMem Mem16 Word16 where
-    readMemOp ctx regSeg (Mem16 mem) = readMem16 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem
-    writeMemOp ctx regSeg (Mem16 mem) val = writeMem16 (ctxReg ctx) (ctxMem ctx) (Just regSeg) mem val
+    readMemOp ctx regSeg (Mem16 mem) = do
+        offset <- getMemOffset2 ctx regSeg mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIORead16 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+            else 
+                readMemMain16 (ctxMem ctx) offset
+    writeMemOp ctx regSeg (Mem16 mem) val = do
+        offset <- getMemOffset2 ctx regSeg mem
+        if isMemIOMapped (ctxMemIO ctx) offset then
+                memIOWrite16 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+            else 
+                writeMemMain16 (ctxMem ctx) offset val
 
 convertMem :: (OperandVal b1, OperandVal b2, OperandMem a1 b1, OperandMem a2 b2) =>
     a1 -> a2
 convertMem = wrapMem . unwrapMem
+
+-------------------------------------------------------------------------------
+
+isMemIOMapped :: MemIOCtx -> MemOffset -> Bool
+isMemIOMapped memIOCtx memOffset = inMemRegion (memIORegion memIOCtx)
+    where
+        pageNumber = div memOffset (memIOPageSize memIOCtx)
+        inMemRegion (MemIO arr) = arr ! pageNumber
 
 -------------------------------------------------------------------------------
 
@@ -315,6 +364,12 @@ findRegSegData = ctxReplaceSeg
 findRegSeg1 :: RegSeg -> Maybe RegSeg -> RegSeg
 findRegSeg1 = fromMaybe
 
+getMemOffset1 :: MonadIO m => Ctx -> Mem -> m MemOffset
+getMemOffset1 ctx mem = getMemOffset (ctxReg ctx) (ctxReplaceSeg ctx) mem
+
+getMemOffset2 :: MonadIO m => Ctx -> RegSeg -> Mem -> m MemOffset
+getMemOffset2 ctx regSeg mem = getMemOffset (ctxReg ctx) (Just regSeg) mem
+
 getMemOffset :: MonadIO m => MemReg -> Maybe RegSeg -> Mem -> m MemOffset
 getMemOffset memReg regSeg (MemBxSi disp) = getMemReg3 memReg bx si (findRegSeg1 ds regSeg) disp
 getMemOffset memReg regSeg (MemBxDi disp) = getMemReg3 memReg bx di (findRegSeg1 ds regSeg) disp
@@ -325,6 +380,22 @@ getMemOffset memReg regSeg (MemDi disp) = getMemReg2 memReg di (findRegSeg1 ds r
 getMemOffset memReg regSeg (MemBp disp) = getMemReg2 memReg bp (findRegSeg1 ss regSeg) disp
 getMemOffset memReg regSeg (MemBx disp) = getMemReg2 memReg bx (findRegSeg1 ds regSeg) disp
 getMemOffset memReg regSeg (MemDirect disp) = getMemReg1 memReg (findRegSeg1 ds regSeg) disp
+
+readMemMain8 :: MonadIO m => MemMain -> MemOffset -> m Uint8
+readMemMain8 (MemMain mm) offset = 
+    liftIO $ peekByteOff mm offset
+
+writeMemMain8 :: MonadIO m => MemMain -> MemOffset -> Uint8 -> m ()
+writeMemMain8 (MemMain mm) offset val =
+    liftIO $ pokeByteOff mm offset val
+
+readMemMain16 :: MonadIO m => MemMain -> MemOffset -> m Uint16
+readMemMain16 (MemMain mm) offset = 
+    liftIO $ peekByteOff mm offset
+
+writeMemMain16 :: MonadIO m => MemMain -> MemOffset -> Uint16 -> m ()
+writeMemMain16 (MemMain mm) offset val =
+    liftIO $ pokeByteOff mm offset val
 
 readMem8 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m Uint8
 readMem8 memReg (MemMain mm) regSeg mem = do
