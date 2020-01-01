@@ -425,25 +425,27 @@ readMemDirect32 (MemMain mm) offset = do
     val2 <- liftIO $ peekByteOff mm (offset + 2)
     return (val1, val2)
 
-writeMemSp8 :: MonadIO m => MemReg -> MemMain -> Uint8 -> m () 
-writeMemSp8 memReg (MemMain mm) val = do
+writeMemSp :: (MonadIO m, OperandVal b) => MemReg -> MemMain -> b -> m () 
+writeMemSp memReg (MemMain mm) val = do
     offset <- getMemReg2 memReg sp ss 0
     liftIO $ pokeByteOff mm offset val
+
+readMemSp :: (MonadIO m, OperandVal b) => MemReg -> MemMain -> m b
+readMemSp memReg (MemMain mm) = do
+    offset <- getMemReg2 memReg sp ss 0
+    liftIO $ peekByteOff mm offset
+
+writeMemSp8 :: MonadIO m => MemReg -> MemMain -> Uint8 -> m () 
+writeMemSp8 = writeMemSp
 
 writeMemSp16 :: MonadIO m => MemReg -> MemMain -> Uint16 -> m () 
-writeMemSp16 memReg (MemMain mm) val = do
-    offset <- getMemReg2 memReg sp ss 0
-    liftIO $ pokeByteOff mm offset val
+writeMemSp16 = writeMemSp
 
 readMemSp8 :: MonadIO m => MemReg -> MemMain -> m Uint8
-readMemSp8 memReg (MemMain mm) = do
-    offset <- getMemReg2 memReg sp ss 0
-    liftIO $ peekByteOff mm offset
+readMemSp8 = readMemSp
 
 readMemSp16 :: MonadIO m => MemReg -> MemMain -> m Uint16
-readMemSp16 memReg (MemMain mm) = do
-    offset <- getMemReg2 memReg sp ss 0
-    liftIO $ peekByteOff mm offset
+readMemSp16 = readMemSp
 
 showMem3 :: Reg16 -> Reg16 -> RegSeg -> Disp -> String
 showMem3 reg1 reg2 regSeg@(RegSeg 3) 0 =
