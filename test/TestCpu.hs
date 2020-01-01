@@ -13,8 +13,11 @@ import Instruction.Arithmetic
 
 testDiv = do
     describe "DIV" $ do
-        let ctx = makePrismCtx (MemReg nullPtr) (MemMain nullPtr)
         it "Unt8" $ do
+            queue <- createIOQueue
+            let 
+                ioCtx = emptyIOCtx queue
+                ctx = makePrismCtx (MemReg nullPtr) (MemMain nullPtr) ioCtx
             (snd $ div8 ctx 1000 50) `shouldBe` 20
 
 testSign = do
