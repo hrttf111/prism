@@ -11,6 +11,7 @@
 module Prism where
 
 import Control.Monad.Trans
+import Control.Concurrent.STM.TQueue
 
 import Data.Word (Word8, Word16, Word32)
 import Data.Bits (FiniteBits, Bits)
@@ -89,30 +90,52 @@ class (MemDecoder a, Operand a b) => OperandMem a b | a -> b where
 
 -------------------------------------------------------------------------------
 
-newtype MemIO = MemIO (UArray MemOffset Bool) deriving (Show)
+data IOCmdType = IOMemType | IOPortType
 
-class MemIOHandler a where
-    memIORead8 :: MonadIO m => a -> Ctx -> MemOffset -> m Uint8
-    memIOWrite8 :: MonadIO m => a -> Ctx -> MemOffset -> Uint8 -> m ()
-    memIORead16 :: MonadIO m => a -> Ctx -> MemOffset -> m Uint16
-    memIOWrite16 :: MonadIO m => a -> Ctx -> MemOffset -> Uint16 -> m ()
+data IOCmd = IOCmdRead8 IOCmdType MemOffset
+             | IOCmdRead16 IOCmdType MemOffset 
+             | IOCmdWrite8 IOCmdType MemOffset Uint8 
+             | IOCmdWrite16 IOCmdType MemOffset Uint16 
 
-data EmptyMemIOH = EmptyMemIOH deriving (Show)
+data IOCmdData = IOCmdData8 Uint8
+                 | IOCmdData16 Uint16
 
-instance MemIOHandler EmptyMemIOH where
-    memIORead8 _ _ _ = return 0
-    memIOWrite8 _ _ _ _ = return ()
-    memIORead16 _ _ _ = return 0
-    memIOWrite16 _ _ _ _ = return ()
-
-data MemIOCtx = MemIOCtx {
-        memIOHandler :: EmptyMemIOH,
-        memIOPageSize :: Int,
-        memIORegion :: MemIO
+data IOQueue = IOQueue {
+        ioQueueReq :: TQueue IOCmd,
+        ioQueueRsp :: TQueue IOCmdData
     }
 
-instance Show MemIOCtx where
-    show c = "MemIOCtx " ++ (show $ memIORegion c)
+class (OperandVal a) => IOVal a where
+    ioValRead :: MonadIO m => IOQueue -> IOCmdType -> MemOffset -> m a
+    ioValWrite :: MonadIO m => IOQueue -> IOCmdType -> MemOffset -> a -> m ()
+    ioValRespond :: MonadIO m => IOQueue -> a -> m ()
+
+class IOMem a where
+    ioMemRead :: (MonadIO m, IOVal b, OperandVal b) => a -> Int -> m b
+    ioMemWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> Int -> b -> m ()
+
+class IOPort a where
+    ioPortRead :: (MonadIO m, IOVal b, OperandVal b) => a -> Uint16 -> m b
+    ioPortWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> Uint16 -> b -> m ()
+
+newtype MemIORegion = MemIORegion (UArray MemOffset Bool) deriving (Show)
+
+data IOCtx = IOCtx {
+        ioCtxQueue :: IOQueue,
+        ioCtxPageSize :: Int,
+        ioCtxMemRegion :: MemIORegion
+    }
+
+instance Show IOCtx where
+    show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
+
+instance IOMem IOCtx where
+    ioMemRead ctx offset = ioValRead (ioCtxQueue ctx) IOMemType offset
+    ioMemWrite ctx offset val = ioValWrite (ioCtxQueue ctx) IOMemType offset val
+
+instance IOPort IOCtx where
+    ioPortRead ctx offset = ioValRead (ioCtxQueue ctx) IOPortType (fromIntegral offset)
+    ioPortWrite ctx offset val = ioValWrite (ioCtxQueue ctx) IOPortType (fromIntegral offset) val
 
 -------------------------------------------------------------------------------
 
@@ -156,10 +179,12 @@ data PrismInterrupts = PrismInterrupts {
         intInterruptUp :: Bool
     } deriving (Show)
 
+createIOQueue = IOQueue <$> newTQueueIO <*> newTQueueIO
 emptyPrismInterrupts = PrismInterrupts [] [] [] [] False
-emptyMemIO = MemIO $ array (0, 0) [(0, False)]
-emptyMemIOCtx = MemIOCtx EmptyMemIOH (1024 * 1024) emptyMemIO
-makePrismCtx memReg memMain = Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop emptyMemIOCtx emptyPrismInterrupts
+emptyMemIORegion = MemIORegion $ array (0, 0) [(0, False)]
+emptyIOCtx queue = IOCtx queue (1024 * 1024) emptyMemIORegion
+makePrismCtx memReg memMain ioCtx =
+    Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop ioCtx emptyPrismInterrupts
 
 noReplaceSeg ::  Maybe RegSeg
 noReplaceSeg = Nothing
@@ -173,7 +198,7 @@ data Ctx = Ctx {
         ctxEFlags :: EFlags,
         ctxReplaceSeg :: Maybe RegSeg,
         ctxStop :: Bool,
-        ctxMemIO :: MemIOCtx,
+        ctxIO :: IOCtx,
         ctxInterrupts :: PrismInterrupts
     } deriving (Show)
 

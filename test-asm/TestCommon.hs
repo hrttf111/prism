@@ -43,8 +43,10 @@ createTestEnv1 decoder = liftIO $ do
         codeStart = 12000
         execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
         execP ptrReg ptrMem decoder mainCode = do
+            queue <- createIOQueue
             let codeLen = B.length mainCode
-                ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem)
+                ioCtx = emptyIOCtx queue
+                ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
                 array = B.unpack mainCode
                 f (MemMain p) = p
                 f1 (MemReg p) = p

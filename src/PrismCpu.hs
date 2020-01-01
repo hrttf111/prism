@@ -16,7 +16,10 @@ import Data.Maybe (fromMaybe)
 import Data.Bits
 import Data.Int
 
+import Control.Exception (Exception, throwIO)
 import Control.Monad.Trans (MonadIO, liftIO, lift)
+import Control.Concurrent.STM.TQueue
+import Control.Monad.STM (atomically)
 import Numeric (showHex)
 
 import Foreign.Ptr
@@ -118,17 +121,65 @@ convertReg = decodeReg . decodeRegVal
 
 -------------------------------------------------------------------------------
 
+data IOCtxException = IOCtxException deriving Show
+
+instance Exception IOCtxException
+
+instance IOVal Uint8 where
+    ioValRead (IOQueue req rsp) cmdType offset = liftIO $ do
+        val <- atomically $ do
+            writeTQueue req $ IOCmdRead8 cmdType offset
+            readTQueue rsp
+        case val of
+            IOCmdData8 d -> return d
+            _ -> throwIO IOCtxException
+    ioValWrite (IOQueue req _) cmdType offset val = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdWrite8 cmdType offset val
+    ioValRespond (IOQueue _ rsp) val = liftIO $ do
+        atomically $ writeTQueue rsp $ IOCmdData8 val
+
+instance IOVal Uint16 where
+    ioValRead (IOQueue req rsp) cmdType offset = liftIO $ do
+        val <- atomically $ do
+            writeTQueue req $ IOCmdRead16 cmdType offset
+            readTQueue rsp
+        case val of
+            IOCmdData16 d -> return d
+            _ -> throwIO IOCtxException
+    ioValWrite (IOQueue req _) cmdType offset val = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdWrite16 cmdType offset val
+    ioValRespond (IOQueue _ rsp) val = liftIO $ do
+        atomically $ writeTQueue rsp $ IOCmdData16 val
+
+-------------------------------------------------------------------------------
+
+{-
+readMem :: (OperandVal b, MonadIO m) => Ctx -> MemOffset -> m b
+readMem ctx offset =
+    if isMemIOMapped (ctxIO ctx) offset then
+            ioMemRead (ctxIO ctx) offset
+        else 
+            readMemMain (ctxMem ctx) offset
+
+writeMem :: (OperandVal b, MonadIO m) => Ctx -> MemOffset -> b -> m ()
+writeMem ctx offset val = 
+    if isMemIOMapped (ctxIO ctx) offset then
+            ioMemWrite (ctxIO ctx) offset val
+        else 
+            writeMemMain (ctxMem ctx) offset val
+-}
+
 instance Operand Mem8 Word8 where
     readOp ctx (Mem8 mem) = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIORead8 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemRead (ctxIO ctx) offset
             else 
                 readMemMain8 (ctxMem ctx) offset
     writeOp ctx (Mem8 mem) val = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIOWrite8 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemWrite (ctxIO ctx) offset val
             else 
                 writeMemMain8 (ctxMem ctx) offset val
 
@@ -141,28 +192,28 @@ instance MemDecoder Mem8 where
 instance OperandMem Mem8 Word8 where
     readMemOp ctx regSeg (Mem8 mem) = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIORead8 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemRead (ctxIO ctx) offset
             else 
                 readMemMain8 (ctxMem ctx) offset
     writeMemOp ctx regSeg (Mem8 mem) val = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIOWrite8 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemWrite (ctxIO ctx) offset val
             else 
                 writeMemMain8 (ctxMem ctx) offset val
 
 instance Operand Mem16 Word16 where
     readOp ctx (Mem16 mem) = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIORead16 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemRead (ctxIO ctx) offset
             else 
                 readMemMain16 (ctxMem ctx) offset
     writeOp ctx (Mem16 mem) val = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIOWrite16 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemWrite (ctxIO ctx) offset val
             else 
                 writeMemMain16 (ctxMem ctx) offset val
 
@@ -175,14 +226,14 @@ instance MemDecoder Mem16 where
 instance OperandMem Mem16 Word16 where
     readMemOp ctx regSeg (Mem16 mem) = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIORead16 (memIOHandler $ ctxMemIO $ ctx) ctx offset
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemRead (ctxIO ctx) offset
             else 
                 readMemMain16 (ctxMem ctx) offset
     writeMemOp ctx regSeg (Mem16 mem) val = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxMemIO ctx) offset then
-                memIOWrite16 (memIOHandler $ ctxMemIO $ ctx) ctx offset val
+        if isMemIOMapped (ctxIO ctx) offset then
+                ioMemWrite (ctxIO ctx) offset val
             else 
                 writeMemMain16 (ctxMem ctx) offset val
 
@@ -192,11 +243,11 @@ convertMem = wrapMem . unwrapMem
 
 -------------------------------------------------------------------------------
 
-isMemIOMapped :: MemIOCtx -> MemOffset -> Bool
-isMemIOMapped memIOCtx memOffset = inMemRegion (memIORegion memIOCtx)
+isMemIOMapped :: IOCtx -> MemOffset -> Bool
+isMemIOMapped ioCtx memOffset = inMemRegion (ioCtxMemRegion ioCtx)
     where
-        pageNumber = div memOffset (memIOPageSize memIOCtx)
-        inMemRegion (MemIO arr) = arr ! pageNumber
+        pageNumber = div memOffset (ioCtxPageSize ioCtx)
+        inMemRegion (MemIORegion arr) = arr ! pageNumber
 
 -------------------------------------------------------------------------------
 

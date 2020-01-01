@@ -26,6 +26,13 @@ readPort16 handlers port =
 
 -------------------------------------------------------
 
+ - variable size of memIO page
+ - support b and 16b reads/writes
+ - should support local operations(not comm with remote thread)
+ - could be merged with ports later
+ - should be fast when working with mem only (short path for non-IO accesses)
+ - page of 256 bytes should cover most memory mapped regions
+
 data MemMapPage = MemMapPage {
         pageStart :: Offset,
         pageSize :: Int,
