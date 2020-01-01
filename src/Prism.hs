@@ -17,6 +17,7 @@ import Data.Word (Word8, Word16, Word32)
 import Data.Bits (FiniteBits, Bits)
 import Data.Maybe (Maybe)
 
+import Foreign.Storable
 import Foreign.Ptr
 import GHC.Generics
 import Data.Array.Unboxed
@@ -39,7 +40,7 @@ class Operand a b | a -> b where
     readOp :: MonadIO m => Ctx -> a -> m b
     writeOp :: MonadIO m => Ctx -> a -> b -> m ()
 
-type OperandVal a = (Bounded a, Integral a, FiniteBits a, Num a, Bits a)
+type OperandVal a = (Storable a, Bounded a, Integral a, FiniteBits a, Num a, Bits a)
 
 class ImmDecoder a where
     decodeImm :: Uint8 -> Uint8 -> a

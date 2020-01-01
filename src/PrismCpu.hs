@@ -153,35 +153,33 @@ instance IOVal Uint16 where
 
 -------------------------------------------------------------------------------
 
-{-
-readMem :: (OperandVal b, MonadIO m) => Ctx -> MemOffset -> m b
+readMem :: (OperandVal b, IOVal b, MonadIO m) => Ctx -> MemOffset -> m b
 readMem ctx offset =
     if isMemIOMapped (ctxIO ctx) offset then
             ioMemRead (ctxIO ctx) offset
         else 
             readMemMain (ctxMem ctx) offset
+    where
+        readMemMain (MemMain mm) offset = 
+            liftIO $ peekByteOff mm offset
 
-writeMem :: (OperandVal b, MonadIO m) => Ctx -> MemOffset -> b -> m ()
+writeMem :: (OperandVal b, IOVal b, MonadIO m) => Ctx -> MemOffset -> b -> m ()
 writeMem ctx offset val = 
     if isMemIOMapped (ctxIO ctx) offset then
             ioMemWrite (ctxIO ctx) offset val
         else 
             writeMemMain (ctxMem ctx) offset val
--}
+    where
+        writeMemMain (MemMain mm) offset val =
+            liftIO $ pokeByteOff mm offset val
 
 instance Operand Mem8 Word8 where
     readOp ctx (Mem8 mem) = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemRead (ctxIO ctx) offset
-            else 
-                readMemMain8 (ctxMem ctx) offset
+        readMem ctx offset
     writeOp ctx (Mem8 mem) val = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemWrite (ctxIO ctx) offset val
-            else 
-                writeMemMain8 (ctxMem ctx) offset val
+        writeMem ctx offset val
 
 instance MemDecoder Mem8 where
     decodeMem1 v off = Mem8 $ decodeMem v off
@@ -192,30 +190,18 @@ instance MemDecoder Mem8 where
 instance OperandMem Mem8 Word8 where
     readMemOp ctx regSeg (Mem8 mem) = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemRead (ctxIO ctx) offset
-            else 
-                readMemMain8 (ctxMem ctx) offset
+        readMem ctx offset
     writeMemOp ctx regSeg (Mem8 mem) val = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemWrite (ctxIO ctx) offset val
-            else 
-                writeMemMain8 (ctxMem ctx) offset val
+        writeMem ctx offset val
 
 instance Operand Mem16 Word16 where
     readOp ctx (Mem16 mem) = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemRead (ctxIO ctx) offset
-            else 
-                readMemMain16 (ctxMem ctx) offset
+        readMem ctx offset
     writeOp ctx (Mem16 mem) val = do
         offset <- getMemOffset1 ctx mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemWrite (ctxIO ctx) offset val
-            else 
-                writeMemMain16 (ctxMem ctx) offset val
+        writeMem ctx offset val
 
 instance MemDecoder Mem16 where
     decodeMem1 v off = Mem16 $ decodeMem v off
@@ -226,16 +212,10 @@ instance MemDecoder Mem16 where
 instance OperandMem Mem16 Word16 where
     readMemOp ctx regSeg (Mem16 mem) = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemRead (ctxIO ctx) offset
-            else 
-                readMemMain16 (ctxMem ctx) offset
+        readMem ctx offset
     writeMemOp ctx regSeg (Mem16 mem) val = do
         offset <- getMemOffset2 ctx regSeg mem
-        if isMemIOMapped (ctxIO ctx) offset then
-                ioMemWrite (ctxIO ctx) offset val
-            else 
-                writeMemMain16 (ctxMem ctx) offset val
+        writeMem ctx offset val
 
 convertMem :: (OperandVal b1, OperandVal b2, OperandMem a1 b1, OperandMem a2 b2) =>
     a1 -> a2
@@ -431,42 +411,6 @@ getMemOffset memReg regSeg (MemDi disp) = getMemReg2 memReg di (findRegSeg1 ds r
 getMemOffset memReg regSeg (MemBp disp) = getMemReg2 memReg bp (findRegSeg1 ss regSeg) disp
 getMemOffset memReg regSeg (MemBx disp) = getMemReg2 memReg bx (findRegSeg1 ds regSeg) disp
 getMemOffset memReg regSeg (MemDirect disp) = getMemReg1 memReg (findRegSeg1 ds regSeg) disp
-
-readMemMain8 :: MonadIO m => MemMain -> MemOffset -> m Uint8
-readMemMain8 (MemMain mm) offset = 
-    liftIO $ peekByteOff mm offset
-
-writeMemMain8 :: MonadIO m => MemMain -> MemOffset -> Uint8 -> m ()
-writeMemMain8 (MemMain mm) offset val =
-    liftIO $ pokeByteOff mm offset val
-
-readMemMain16 :: MonadIO m => MemMain -> MemOffset -> m Uint16
-readMemMain16 (MemMain mm) offset = 
-    liftIO $ peekByteOff mm offset
-
-writeMemMain16 :: MonadIO m => MemMain -> MemOffset -> Uint16 -> m ()
-writeMemMain16 (MemMain mm) offset val =
-    liftIO $ pokeByteOff mm offset val
-
-readMem8 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m Uint8
-readMem8 memReg (MemMain mm) regSeg mem = do
-    offset <- getMemOffset memReg regSeg mem
-    liftIO $ peekByteOff mm offset
-
-writeMem8 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> Uint8 -> m ()
-writeMem8 memReg (MemMain mm) regSeg mem val = do
-    offset <- getMemOffset memReg regSeg mem
-    liftIO $ pokeByteOff mm offset val
-
-readMem16 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m Uint16
-readMem16 memReg (MemMain mm) regSeg mem = do
-    offset <- getMemOffset memReg regSeg mem
-    liftIO $ peekByteOff mm offset
-
-writeMem16 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> Uint16 -> m ()
-writeMem16 memReg (MemMain mm) regSeg mem val = do
-    offset <- getMemOffset memReg regSeg mem
-    liftIO $ pokeByteOff mm offset val
 
 readMem32 :: MonadIO m => MemReg -> MemMain -> Maybe RegSeg -> Mem -> m (Uint16, Uint16)
 readMem32 memReg (MemMain mm) regSeg mem = do
