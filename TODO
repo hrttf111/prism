@@ -9,12 +9,12 @@
     - initial CPU test
     - test timers/video/keyboard
  - peripheral
+    - PIT
+    - PIC
     - video
     - keyboard
     - flopy
     - HDD
-    - PIC
-    - PIT
 
 -------------------------------------------------------
 
@@ -31,3 +31,141 @@ PrismPeripheral
  - communicate via IOQueue
  - send interrupts
  - check if thread can wait on queue
+
+ - two parts of peripheral infra
+    - remote part (full config and data)
+    - local part (short config, only performance critical parts)
+        - read write registers/memory is critical code, it cannot be messed with chaning peripherals state
+ - CPU can call remote part via queue or local part via direct call
+ - most peripherals will be remote only
+ - some parts will be local (reading timer counter value)
+    - in this case MVar can be used to read values
+    - in some cases read will be done + sending write to remote part
+        - this is needed when read invalidates/stops certain value in device
+ - writes will be async
+ - reads have to be sync
+
+type WriteHandler8 = Peripheral -> Offset -> Uint8 -> IO Peripheral
+type WriteHandlerLocal8 = Peripheral -> Offset Uint8 -> IO ()
+
+data PeripheralHandler = PeripheralHandler {
+        handlerRead8 :: Maybe ReadHander8,
+        handlerRead16 :: Maybe ReadHander16,
+        handlerWrite8 :: Maybe WriteHandler8,
+        handlerWrite16 :: Maybe WriteHandler16
+    }
+
+data PeripheralEntry = PeripheralPort {
+        peripheralPortLoc :: Uint16,
+        peripheralPortHandlers :: PeripheralHandlerPort
+    } | PeripheralMem {
+        peripheralMemLoc :: (MemOffset, MemOffset),
+        peripheralMemHandlers :: PeripheralHandlerMem
+    }
+
+listPeripheral = [
+        peripheralMemS 100 videoRead videoWrite,
+        peripheralMemR 1000 1100 ...,
+        peripheralPort8 0x345 pitRead pitWrite,
+    ]
+
+ - MemIOHandler contains read/write operations for memory mapped devices
+ - IOHandlerIndex is an index of MemIOHandler
+ - IOPage is an array that points from memory address to IO handler index
+ - IOPageIndex points to item in array where IOPage resides
+    - can be sent via IOQueue to another thread
+ - having two arrays of PageIndexes and Pages supposed to improve perofmance
+    - as array of unboxed Ints will be faster and it will be hit more often
+    - than mmapped regions
+    - with sufficient page size there will be no non-mmapped address on page
+ - ioRegionL1 size is known in compile time
+ - ioRegionL2 size will be determined in run-time
+    - it depends on number of IO handlers
+ - size of page is known in compile time
+    - but if needed can be configured in run-time either
+
+IOPage = UArray PageInternalOffset IOHandlerIndex
+type IOHandlerIndex = Uint16 -- index of handler in handlers array
+type IOPageIndex = Int -- index of page in pages array
+type PageInternalOffset = Uint16 -- offset inside of a page (address `mod` pageSize)
+
+address -> (%pageSize) -> IOPageIndex -> IOPage -> IOHandlerIndex -> MemIOHandler
+
+emptyHandler :: HandlerIndex
+emptyHandler = 0 -- handler without IO operations
+emptyPage = 0 -- no page for this address
+
+data MemIORegion = MemIORegion {
+        ioPageSize :: Int,
+        ioRegionL1 :: UArray Int IOPageIndex,
+        ioRegionL2 :: UArray IOPageIndex IOPage
+    }
+
+findMemIndex :: MemIORegion -> MemOffset -> HandlerIndex
+findMemIndex (MemIORegion pageSize l1 l2) memOffset = 
+    if pageIndex != emptyPage then
+        l2 ! (mod memOffset pageSize)
+        else emptyHandler
+    where
+        pageIndex = l1 ! (div memOffset pageSize)
+
+ioMemRead :: IOCtx -> IOHandlerIndex -> Int -> m b
+ioMemRead ctx handlerIndex offset =
+    if (canReadLocal ctx handlerIndex) then
+            ioMemRead (ioMem ctx) handlerIndex offset
+        else
+            ioMemRead (ioQueue ctx) handlerIndex offset
+
+readMem :: Ctx -> MemOffset -> m a
+readMem ctx offset = do
+    let ctxIO = ctxIO ctx
+        handlerIndex = findMemIndex (memIORegion ctxIO) offset
+    if handlerIndex == emptyHandler then
+        readMemMain ctx offset
+        else
+            ioMemRead ctxIO handlerIndex offset
+
+data IOCtx = IOCtx {
+        pages :: Array Int MemIORegion,
+    }
+
+data PeripheralHandlerMem = PeripheralHandlerMem {
+        handlers,
+    }
+
+newtype PitMode = PitMode Uint8
+
+MVar or IORef
+
+data PitCounter = PitCounter {
+        pitMode :: PitMode,
+        pitCounter :: MVar Word64,
+        pitTimeout :: Int, -- timeout in us
+        pitScale :: Uint16, -- mapping between system time and counter
+        pitPreset :: Uint16, -- value which is loaded into counter
+        pitThreadId :: Maybe ThreadId
+    }
+
+data PIT = PIT {
+        pitCounters :: [PitCounter]
+    }
+
+data PeripheralDevices = PeripheralDevices {
+        peripheralPIT :: PIT,
+    }
+
+data PeripheralCtx = PeripheralCtx {
+        ioRegion :: MemIORegion,
+        ioPorts :: PortIORegion,
+        ioHandlersPort :: Array HandlerIndex PeripheralHandlerPort,
+        ioHandlersMem :: Array HandlerIndex PeripheralHandlerMem,
+        ioDevices :: PeripheralDevices
+    }
+
+data LocalPeripheralCtx = LocalPeripheralCtx {
+        ioQueue :: IOQueue,
+        ioMem :: MemIORegion,
+        ioPorts :: PortIORegion
+    }
+
+-------------------------------------------------------

@@ -20,7 +20,8 @@ import Data.Maybe (Maybe)
 import Foreign.Storable
 import Foreign.Ptr
 import GHC.Generics
-import Data.Array.Unboxed
+import Data.Array.Unboxed (UArray, array)
+import Data.Array (Array)
 
 -------------------------------------------------------------------------------
 
@@ -88,6 +89,33 @@ class MemDecoder a where
 class (MemDecoder a, Operand a b) => OperandMem a b | a -> b where
     readMemOp :: MonadIO m => Ctx -> RegSeg -> a -> m b
     writeMemOp :: MonadIO m => Ctx -> RegSeg -> a -> b -> m ()
+
+-------------------------------------------------------------------------------
+
+type IOHandlerIndex = Uint16
+type IOPageIndex = Int -- div offset pageSize (or) shiftR n $ offset .&. mask
+type IOPageOffset = Int -- mod offset pageSize (or) offset - IOPageIndex
+
+type PortIORegion = UArray Uint16 IOHandlerIndex
+
+data MemIORegion1 = MemIORegion1 {
+        ioPageSize :: Int,
+        ioRegionL1 :: UArray Int IOPageIndex,
+        ioRegionL2 :: Array IOPageIndex IOPage
+    }
+
+type IOPage = UArray IOPageOffset IOHandlerIndex
+
+-- fill 3 arrays:
+-- 1. L1 which is Int -> Int
+--    is fixed size == memorySize/pageSize
+--    unused indexes are occupied by emptyPage
+-- 2. L2 which is Int -> IOPage
+--    is variable size, depends on mapped pages count
+--    indexes for pages are generated in run-time
+-- 3. IOPage which is Uint16 -> Uint16
+--    is fixed size
+--    unused indexes are occupied by emptyHandler
 
 -------------------------------------------------------------------------------
 
