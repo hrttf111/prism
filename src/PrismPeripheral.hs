@@ -154,3 +154,12 @@ createPeripherals devices memSize pageSize portEntries memEntries =
                     (Array.array (1, (pageCounter builder)) (regionL2 builder))
         memHandlers = Array.array (1, (fromIntegral $ length memPairs)) 
                       (map (\(i, (PeripheralMem _ handlers)) -> (fromIntegral i, handlers)) memPairs)
+
+
+findMemIndex :: MemIORegion1 -> MemOffset -> IOHandlerIndex
+findMemIndex (MemIORegion1 pageSize l1 l2) memOffset = 
+    if pageIndex /= emptyPage then
+        (l2 Array.! pageIndex) UArray.! (mod memOffset pageSize)
+        else emptyHandler
+    where
+        pageIndex = l1 UArray.! (div memOffset pageSize)

@@ -17,6 +17,9 @@ makePairs start offsets = zip [start..]
                         $ map (flip PeripheralMem emptyMemHandler)
                         $ sortOn fst offsets
 
+makeMemPeripherals:: [(MemOffset, MemOffset)] -> [PeripheralMem]
+makeMemPeripherals offsets = map (flip PeripheralMem emptyMemHandler) offsets
+
 pairs1 = makePairs 1 [(1, 2), (4, 4)]
 pairs2 = makePairs 1 [(0, 9)]
 pairs3 = makePairs 1 [(9, 9)] 
@@ -93,3 +96,19 @@ testPeripherals = do
             (pageStubs result) `shouldBe` []
             (memPairs result) `shouldBe` []
             (regionL1 result) `shouldBe` [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    describe "Test createPeripherals" $ do
+        it "Read mem handler" $ do
+            let pairs = makeMemPeripherals [(8, 27), (98, 99)]
+                peripherals = createPeripherals PeripheralDevices 100 10 [] pairs
+                memRegion = peripheralMemRegion peripherals
+            (findMemIndex memRegion 0) `shouldBe` (emptyHandler)
+            (findMemIndex memRegion 97) `shouldBe` (emptyHandler)
+            (findMemIndex memRegion 100) `shouldBe` (emptyHandler)
+            (findMemIndex memRegion 7) `shouldBe` (0)
+            (findMemIndex memRegion 8) `shouldBe` (1)
+            (findMemIndex memRegion 9) `shouldBe` (1)
+            (findMemIndex memRegion 10) `shouldBe` (1)
+            (findMemIndex memRegion 11) `shouldBe` (1)
+            (findMemIndex memRegion 27) `shouldBe` (1)
+            (findMemIndex memRegion 98) `shouldBe` (2)
+            (findMemIndex memRegion 99) `shouldBe` (2)
