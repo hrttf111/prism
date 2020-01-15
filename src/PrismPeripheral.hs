@@ -45,6 +45,13 @@ data PeripheralMem = PeripheralMem {
         peripheralMemHandlers :: PeripheralHandlerMem
     }
 
+instance Show PeripheralMem where
+    show (PeripheralMem (start, end) _) = 
+        "(" ++ (show start) ++ "," ++ (show end) ++ ")"
+
+instance Eq PeripheralMem where
+    item1 == item2 = (peripheralMemLoc item1) == (peripheralMemLoc item2)
+
 -------------------------------------------------------------------------------
 
 data PeripheralDevices = PeripheralDevices {
@@ -77,7 +84,7 @@ data PagesBuilder = PagesBuilder {
     }
 
 
-makePageArray :: Int -> Int -> MemPairs -> [IOHandlerIndex] -> [IOHandlerIndex]
+makePageArray :: MemOffset -> MemOffset -> MemPairs -> [IOHandlerIndex] -> [IOHandlerIndex]
 makePageArray memOffset end [] indexes =
     indexes ++ replicate (end - memOffset) emptyHandler
 makePageArray memOffset end pairs indexes | memOffset == end =
