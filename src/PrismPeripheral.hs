@@ -81,7 +81,14 @@ data PagesBuilder = PagesBuilder {
         memPairs :: MemPairs,
         regionL1 :: [IOPageIndex],
         regionL2 :: [(IOPageIndex, IOPage)]
-    }
+    } deriving (Show, Eq)
+
+--instance Show PagesBuilder where
+    --show (PagesBuilder counter stubs pairs l1 l2) = 
+        --"(" ++ (show start) ++ "," ++ (show end) ++ ")"
+
+--instance Eq PagesBuilder where
+    --item1 == item2 = (peripheralMemLoc item1) == (peripheralMemLoc item2)
 
 
 makePageArray :: MemOffset -> MemOffset -> MemPairs -> [IOHandlerIndex] -> [IOHandlerIndex]
@@ -112,7 +119,10 @@ makePage start end pairs = (remain, page)
 
 makeMemP :: PagesBuilder -> PagesBuilder
 makeMemP b@(PagesBuilder _ [] _ _ _) = b
-makeMemP b@(PagesBuilder _ _ [] _ _) = b -- fill pages with 0`s
+makeMemP b@(PagesBuilder _ stubs [] l1 _) =
+    b { pageStubs = [], regionL1 = l1_ }
+    where
+        l1_ = l1 ++ replicate (length stubs) emptyPage
 makeMemP (PagesBuilder counter stubs pairs@(pairHead:_) l1 l2) = 
     if null occupiedStubs then
         makeMemP $ PagesBuilder counter [] pairs l1_ l2
