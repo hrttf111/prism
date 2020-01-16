@@ -29,6 +29,10 @@ emptyMemHandler :: PeripheralHandlerMem
 emptyMemHandler = 
     PeripheralHandlerMem emptyWriteH emptyWriteH emptyReadH emptyReadH
 
+emptyPortHandler :: PeripheralHandlerPort
+emptyPortHandler =
+    PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH emptyReadH
+
 data PeripheralHandlerPort = PeripheralHandlerPort {
         peripheralPortWrite8 :: Peripheral -> Uint16 -> Uint8 -> IO Peripheral,
         peripheralPortWrite16 :: Peripheral -> Uint16 -> Uint16 -> IO Peripheral,
@@ -58,9 +62,9 @@ data PeripheralDevices = PeripheralDevices {
     }
 
 data Peripheral = Peripheral {
-        --peripheralPortRegion :: PortIORegion,
+        peripheralPortRegion :: PortIORegion,
         peripheralMemRegion :: MemIORegion1,
-        --peripheralPort :: Array.Array IOHandlerIndex PeripheralHandlerPort,
+        peripheralPort :: Array.Array IOHandlerIndex PeripheralHandlerPort,
         peripheralMem :: Array.Array IOHandlerIndex PeripheralHandlerMem,
         peripheralDevices :: PeripheralDevices
     }
@@ -132,6 +136,18 @@ makeMemP (PagesBuilder counter stubs pairs@(pairHead:_) l1 l2) =
         l1_ = l1 ++ map (\_ -> emptyPage) emptyStubs
         newCounter = counter + 1
 
+makePortArray :: [(Uint16, PeripheralPort)] -> [IOHandlerIndex] -> [IOHandlerIndex]
+makePortArray [] indexes = 
+    indexes ++ replicate (0x10000 - length indexes) emptyHandler
+makePortArray ((index, peripheral):tail) indexes =
+    let
+        toReplicate = fromIntegral (peripheralPortLoc peripheral) - length indexes
+        newIndexes = indexes 
+                     ++ replicate toReplicate emptyHandler
+                     ++ [index]
+        in
+    makePortArray tail newIndexes
+
 
 createPeripherals :: PeripheralDevices 
                      -> Int
@@ -140,20 +156,28 @@ createPeripherals :: PeripheralDevices
                      -> [PeripheralMem] 
                      -> Peripheral
 createPeripherals devices memSize pageSize portEntries memEntries = 
-        Peripheral memRegion memHandlers devices
+        Peripheral portRegion memRegion portHandlers memHandlers devices
     where
         stubs =
             takeWhile ((<= memSize) . snd) [((i-1) * pageSize, i * pageSize) | i <- [1..]]
         portPairs = 
             zip [1..] $ sortOn (\(PeripheralPort port _) -> port) portEntries
+        portRegion =
+            UArray.listArray (0, 0xFFFF) $ makePortArray portPairs [] 
+        portHandlers = 
+            Array.array (1, fromIntegral $ length portEntries) 
+            $ map (\(i, (PeripheralPort _ h)) -> (i, h)) portPairs
         memPairs = 
             zip [1..] $ sortOn (\(PeripheralMem (start, _) _) -> start) memEntries
-        builder = makeMemP $ PagesBuilder 0 stubs memPairs [] []
-        memRegion = MemIORegion1 pageSize
-                    (UArray.listArray (0, (length stubs)) (regionL1 builder))
-                    (Array.array (1, (pageCounter builder)) (regionL2 builder))
-        memHandlers = Array.array (1, (fromIntegral $ length memPairs)) 
-                      (map (\(i, (PeripheralMem _ handlers)) -> (fromIntegral i, handlers)) memPairs)
+        builder =
+            makeMemP $ PagesBuilder 0 stubs memPairs [] []
+        memRegion = 
+            MemIORegion1 pageSize
+                (UArray.listArray (0, (length stubs)) (regionL1 builder))
+                (Array.array (1, (pageCounter builder)) (regionL2 builder))
+        memHandlers =
+            Array.array (1, (fromIntegral $ length memPairs)) 
+                (map (\(i, (PeripheralMem _ handlers)) -> (fromIntegral i, handlers)) memPairs)
 
 
 findMemIndex :: MemIORegion1 -> MemOffset -> IOHandlerIndex

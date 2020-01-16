@@ -17,8 +17,11 @@ makePairs start offsets = zip [start..]
                         $ map (flip PeripheralMem emptyMemHandler)
                         $ sortOn fst offsets
 
-makeMemPeripherals:: [(MemOffset, MemOffset)] -> [PeripheralMem]
+makeMemPeripherals :: [(MemOffset, MemOffset)] -> [PeripheralMem]
 makeMemPeripherals offsets = map (flip PeripheralMem emptyMemHandler) offsets
+
+makePortPeripherals :: [Uint16] -> [PeripheralPort]
+makePortPeripherals ports = map (flip PeripheralPort emptyPortHandler) ports
 
 pairs1 = makePairs 1 [(1, 2), (4, 4)]
 pairs2 = makePairs 1 [(0, 9)]
@@ -112,3 +115,16 @@ testPeripherals = do
             (findMemIndex memRegion 27) `shouldBe` (1)
             (findMemIndex memRegion 98) `shouldBe` (2)
             (findMemIndex memRegion 99) `shouldBe` (2)
+    describe "Test makePortArray" $ do
+        it "makeArray" $ do
+            let ports = zip [1..] $ makePortPeripherals [8, 192, 0xFFFE]
+                portArray = makePortArray ports []
+            (length portArray) `shouldBe` 0x10000
+            (portArray !! 0) `shouldBe` 0
+            (portArray !! 7) `shouldBe` 0
+            (portArray !! 8) `shouldBe` 1
+            (portArray !! 9) `shouldBe` 0
+            (portArray !! 10) `shouldBe` 0
+            (portArray !! 192) `shouldBe` 2
+            (portArray !! 0xFFFE) `shouldBe` 3
+            (portArray !! 0xFFFF) `shouldBe` 0
