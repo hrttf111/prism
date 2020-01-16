@@ -96,6 +96,8 @@ type IOHandlerIndex = Uint16
 type IOPageIndex = Int -- div offset pageSize (or) shiftR n $ offset .&. mask
 type IOPageOffset = Int -- mod offset pageSize (or) offset - IOPageIndex
 
+newtype IOPage = IOPage (UArray IOPageOffset IOHandlerIndex) deriving (Show, Eq)
+
 newtype PortIORegion = PortIORegion (UArray Uint16 IOHandlerIndex) deriving (Show, Eq)
 
 data MemIORegion1 = MemIORegion1 {
@@ -103,8 +105,6 @@ data MemIORegion1 = MemIORegion1 {
         ioRegionL1 :: UArray Int IOPageIndex,
         ioRegionL2 :: Array IOPageIndex IOPage
     }
-
-newtype IOPage = IOPage (UArray IOPageOffset IOHandlerIndex) deriving (Show, Eq)
 
 -- fill 3 arrays:
 -- 1. L1 which is Int -> Int

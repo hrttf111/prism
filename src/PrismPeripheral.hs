@@ -184,9 +184,18 @@ findMemIndex :: MemIORegion1 -> MemOffset -> IOHandlerIndex
 findMemIndex (MemIORegion1 pageSize l1 l2) memOffset = 
     if pageIndex /= emptyPage then
         let IOPage pageArray = l2 Array.! pageIndex
-        --(l2 Array.! pageIndex) UArray.! (mod memOffset pageSize)
             in
         pageArray UArray.! (mod memOffset pageSize)
         else emptyHandler
     where
         pageIndex = l1 UArray.! (div memOffset pageSize)
+
+
+makeEmptyPeripherals :: Int -> Peripheral
+makeEmptyPeripherals memSize =
+    createPeripherals PeripheralDevices memSize memSize [] [] 
+
+
+makeEmptyIOCtx :: Int -> IOQueue -> IOCtx
+makeEmptyIOCtx memSize queue =
+    IOCtx queue memSize emptyMemIORegion
