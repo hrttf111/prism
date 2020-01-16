@@ -31,7 +31,7 @@ pairs5 = makePairs 1 [(1, 10)]
 pairs6 = makePairs 1 []
 pairs7 = makePairs 1 [(1, 2), (4, 10)]
 
-makeUArrayTest lst = UArray.listArray (0, (length lst)) lst
+makeIOPageTest lst = IOPage $ UArray.listArray (0, (length lst)) lst
 
 makeTestPageBuilder :: MemOffset -> Int -> Int -> MemPairs -> PagesBuilder
 makeTestPageBuilder start pageSize memSize pairs =
@@ -57,19 +57,19 @@ testPeripherals = do
             (makePageArray 0 10 pairs6 []) `shouldBe` [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     describe "Test makePage" $ do
         it "1" $ do
-            (makePage 0 10 pairs1) `shouldBe` ([], makeUArrayTest [0, 1, 1, 0, 2, 0, 0, 0, 0, 0])
+            (makePage 0 10 pairs1) `shouldBe` ([], makeIOPageTest [0, 1, 1, 0, 2, 0, 0, 0, 0, 0])
         it "2" $ do
-            (makePage 0 10 pairs2) `shouldBe` ([], makeUArrayTest [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
+            (makePage 0 10 pairs2) `shouldBe` ([], makeIOPageTest [1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
         it "3" $ do
-            (makePage 0 10 pairs3) `shouldBe` ([], makeUArrayTest [0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
+            (makePage 0 10 pairs3) `shouldBe` ([], makeIOPageTest [0, 0, 0, 0, 0, 0, 0, 0, 0, 1])
         it "4" $ do
-            (makePage 5 10 pairs4) `shouldBe` ([], makeUArrayTest [1, 1, 1, 1, 0])
+            (makePage 5 10 pairs4) `shouldBe` ([], makeIOPageTest [1, 1, 1, 1, 0])
         it "5" $ do
-            (makePage 0 5 pairs5) `shouldBe` (pairs5, makeUArrayTest [0, 1, 1, 1, 1])
+            (makePage 0 5 pairs5) `shouldBe` (pairs5, makeIOPageTest [0, 1, 1, 1, 1])
         it "6" $ do
-            (makePage 0 10 pairs6) `shouldBe` ([], makeUArrayTest [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+            (makePage 0 10 pairs6) `shouldBe` ([], makeIOPageTest [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
         it "7" $ do
-            (makePage 0 8 pairs7) `shouldBe` (makePairs 2 [(4, 10)], makeUArrayTest [0, 1, 1, 0, 2, 2, 2, 2])
+            (makePage 0 8 pairs7) `shouldBe` (makePairs 2 [(4, 10)], makeIOPageTest [0, 1, 1, 0, 2, 2, 2, 2])
     describe "Test makeMemPages" $ do
         it "Two first pages occupied, multi pages mem handler" $ do
             let pairs = makePairs 1 [(1, 2), (4, 12)]

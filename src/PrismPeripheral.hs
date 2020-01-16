@@ -109,7 +109,7 @@ makePage start end pairs = (remain, page)
         startInPage = (<= end) . fst . peripheralMemLoc . snd
         endOutsidePage = (<= end) . snd . peripheralMemLoc . snd
         indexes = makePageArray start end covered []
-        page = UArray.listArray (0, (end - start)) indexes
+        page = IOPage $ UArray.listArray (0, (end - start)) indexes
 
 
 makeMemP :: PagesBuilder -> PagesBuilder
@@ -163,7 +163,7 @@ createPeripherals devices memSize pageSize portEntries memEntries =
         portPairs = 
             zip [1..] $ sortOn (\(PeripheralPort port _) -> port) portEntries
         portRegion =
-            UArray.listArray (0, 0xFFFF) $ makePortArray portPairs [] 
+            PortIORegion $ UArray.listArray (0, 0xFFFF) $ makePortArray portPairs [] 
         portHandlers = 
             Array.array (1, fromIntegral $ length portEntries) 
             $ map (\(i, (PeripheralPort _ h)) -> (i, h)) portPairs
@@ -183,7 +183,10 @@ createPeripherals devices memSize pageSize portEntries memEntries =
 findMemIndex :: MemIORegion1 -> MemOffset -> IOHandlerIndex
 findMemIndex (MemIORegion1 pageSize l1 l2) memOffset = 
     if pageIndex /= emptyPage then
-        (l2 Array.! pageIndex) UArray.! (mod memOffset pageSize)
+        let IOPage pageArray = l2 Array.! pageIndex
+        --(l2 Array.! pageIndex) UArray.! (mod memOffset pageSize)
+            in
+        pageArray UArray.! (mod memOffset pageSize)
         else emptyHandler
     where
         pageIndex = l1 UArray.! (div memOffset pageSize)
