@@ -3,10 +3,13 @@
 
 module PrismPeripheral where
 
-import Prism
+import Control.Concurrent.STM.TQueue
+
 import qualified Data.Array as Array
 import qualified Data.Array.Unboxed as UArray
 import Data.List (partition, sortOn, zip, takeWhile)
+
+import Prism
 
 -------------------------------------------------------------------------------
 
@@ -63,7 +66,7 @@ data PeripheralDevices = PeripheralDevices {
 
 data Peripheral = Peripheral {
         peripheralPortRegion :: PortIORegion,
-        peripheralMemRegion :: MemIORegion1,
+        peripheralMemRegion :: MemIORegion,
         peripheralPort :: Array.Array IOHandlerIndex PeripheralHandlerPort,
         peripheralMem :: Array.Array IOHandlerIndex PeripheralHandlerMem,
         peripheralDevices :: PeripheralDevices
@@ -172,7 +175,7 @@ createPeripherals devices memSize pageSize portEntries memEntries =
         builder =
             makeMemP $ PagesBuilder 0 stubs memPairs [] []
         memRegion = 
-            MemIORegion1 pageSize
+            MemIORegion pageSize
                 (UArray.listArray (0, (length stubs)) (regionL1 builder))
                 (Array.array (1, (pageCounter builder)) (regionL2 builder))
         memHandlers =
@@ -180,8 +183,8 @@ createPeripherals devices memSize pageSize portEntries memEntries =
                 (map (\(i, (PeripheralMem _ handlers)) -> (fromIntegral i, handlers)) memPairs)
 
 
-findMemIndex :: MemIORegion1 -> MemOffset -> IOHandlerIndex
-findMemIndex (MemIORegion1 pageSize l1 l2) memOffset = 
+findMemIndex :: MemIORegion -> MemOffset -> IOHandlerIndex
+findMemIndex (MemIORegion pageSize l1 l2) memOffset = 
     if pageIndex /= emptyPage then
         let IOPage pageArray = l2 Array.! pageIndex
             in
@@ -195,7 +198,11 @@ makeEmptyPeripherals :: Int -> Peripheral
 makeEmptyPeripherals memSize =
     createPeripherals PeripheralDevices memSize memSize [] [] 
 
+createIOQueue = IOQueue <$> newTQueueIO <*> newTQueueIO
 
-makeEmptyIOCtx :: Int -> IOQueue -> IOCtx
-makeEmptyIOCtx memSize queue =
-    IOCtx queue memSize emptyMemIORegion
+makeEmptyIO :: Int -> IO (IOCtx, Peripheral)
+makeEmptyIO memSize = do
+    queue <- createIOQueue
+    let peripheral = makeEmptyPeripherals memSize
+        ioCtx = IOCtx queue (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
+    return (ioCtx, peripheral)

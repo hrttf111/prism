@@ -1,13 +1,5 @@
 module TestCommon where
 
-import Prism
-import PrismCpu
-import PrismDecoder
-
-import Instruction.Processor
-
-import Assembler
-
 import Test.Hspec
 import Test.Hspec.Expectations
 
@@ -23,6 +15,17 @@ import Foreign.Marshal.Array (allocaArray, callocArray, pokeArray)
 import Foreign.Marshal.Alloc (callocBytes)
 import Foreign.Marshal.Utils (fillBytes)
 
+import Prism
+import PrismCpu
+import PrismDecoder
+import PrismPeripheral
+
+import Instruction.Processor
+
+import Assembler
+
+-------------------------------------------------------------------------------
+
 type CodeExecutor = (Text -> IO MemReg)
 
 data TestEnv = TestEnv {
@@ -35,17 +38,17 @@ data TestEnv = TestEnv {
 createTestEnv1 :: MonadIO m => PrismDecoder -> m TestEnv
 createTestEnv1 decoder = liftIO $ do
     ptrReg <- callocBytes 64
-    ptrMem <- callocBytes 65000
+    ptrMem <- callocBytes memSize
     asmTest <- makeAsmTest
     ptrA <- callocArray 64
     return $ TestEnv makeAsmStr makeAsmStr16 (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
     where
+        memSize = 65000
         codeStart = 12000
         execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
         execP ptrReg ptrMem decoder mainCode = do
-            queue <- createIOQueue
+            (ioCtx, peripheral) <- makeEmptyIO (1024*1024)
             let codeLen = B.length mainCode
-                ioCtx = emptyIOCtx queue
                 ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
                 array = B.unpack mainCode
                 f (MemMain p) = p

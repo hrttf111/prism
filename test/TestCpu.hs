@@ -8,15 +8,15 @@ import Foreign.Ptr
 
 import Prism
 import PrismCpu
+import PrismPeripheral
 
 import Instruction.Arithmetic
 
 testDiv = do
     describe "DIV" $ do
         it "Unt8" $ do
-            queue <- createIOQueue
+            (ioCtx, _) <- makeEmptyIO (1024*1024)
             let 
-                ioCtx = emptyIOCtx queue
                 ctx = makePrismCtx (MemReg nullPtr) (MemMain nullPtr) ioCtx
             (snd $ div8 ctx 1000 50) `shouldBe` 20
 

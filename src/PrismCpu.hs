@@ -27,6 +27,7 @@ import Foreign.Storable (peekByteOff, pokeByteOff)
 import Data.Array.Unboxed ((!))
 
 import Prism
+import PrismPeripheral
 
 -------------------------------------------------------------------------------
 
@@ -126,28 +127,28 @@ data IOCtxException = IOCtxException deriving Show
 instance Exception IOCtxException
 
 instance IOVal Uint8 where
-    ioValRead (IOQueue req rsp) cmdType offset = liftIO $ do
+    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
         val <- atomically $ do
-            writeTQueue req $ IOCmdRead8 cmdType offset
+            writeTQueue req $ IOCmdRead8 cmdType handler offset
             readTQueue rsp
         case val of
             IOCmdData8 d -> return d
             _ -> throwIO IOCtxException
-    ioValWrite (IOQueue req _) cmdType offset val = liftIO $ do
-        atomically $ writeTQueue req $ IOCmdWrite8 cmdType offset val
+    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdWrite8 cmdType handler offset val
     ioValRespond (IOQueue _ rsp) val = liftIO $ do
         atomically $ writeTQueue rsp $ IOCmdData8 val
 
 instance IOVal Uint16 where
-    ioValRead (IOQueue req rsp) cmdType offset = liftIO $ do
+    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
         val <- atomically $ do
-            writeTQueue req $ IOCmdRead16 cmdType offset
+            writeTQueue req $ IOCmdRead16 cmdType handler offset
             readTQueue rsp
         case val of
             IOCmdData16 d -> return d
             _ -> throwIO IOCtxException
-    ioValWrite (IOQueue req _) cmdType offset val = liftIO $ do
-        atomically $ writeTQueue req $ IOCmdWrite16 cmdType offset val
+    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdWrite16 cmdType handler offset val
     ioValRespond (IOQueue _ rsp) val = liftIO $ do
         atomically $ writeTQueue rsp $ IOCmdData16 val
 
@@ -155,21 +156,25 @@ instance IOVal Uint16 where
 
 readMem :: (OperandVal b, IOVal b, MonadIO m) => Ctx -> MemOffset -> m b
 readMem ctx offset =
-    if isMemIOMapped (ctxIO ctx) offset then
-            ioMemRead (ctxIO ctx) offset
-        else 
+    if ioHandlerIndex == emptyHandler then
             readMemMain (ctxMem ctx) offset
+        else 
+            ioMemRead ioCtx ioHandlerIndex offset
     where
+        ioCtx = ctxIO ctx
+        ioHandlerIndex = findMemIndex (ioCtxMemRegion ioCtx) offset
         readMemMain (MemMain mm) offset = 
             liftIO $ peekByteOff mm offset
 
 writeMem :: (OperandVal b, IOVal b, MonadIO m) => Ctx -> MemOffset -> b -> m ()
 writeMem ctx offset val = 
-    if isMemIOMapped (ctxIO ctx) offset then
-            ioMemWrite (ctxIO ctx) offset val
-        else 
+    if ioHandlerIndex == emptyHandler then
             writeMemMain (ctxMem ctx) offset val
+        else 
+            ioMemWrite ioCtx ioHandlerIndex offset val
     where
+        ioCtx = ctxIO ctx
+        ioHandlerIndex = findMemIndex (ioCtxMemRegion ioCtx) offset
         writeMemMain (MemMain mm) offset val =
             liftIO $ pokeByteOff mm offset val
 
@@ -220,14 +225,6 @@ instance OperandMem Mem16 Word16 where
 convertMem :: (OperandVal b1, OperandVal b2, OperandMem a1 b1, OperandMem a2 b2) =>
     a1 -> a2
 convertMem = wrapMem . unwrapMem
-
--------------------------------------------------------------------------------
-
-isMemIOMapped :: IOCtx -> MemOffset -> Bool
-isMemIOMapped ioCtx memOffset = inMemRegion (ioCtxMemRegion ioCtx)
-    where
-        pageNumber = div memOffset (ioCtxPageSize ioCtx)
-        inMemRegion (MemIORegion arr) = arr ! pageNumber
 
 -------------------------------------------------------------------------------
 

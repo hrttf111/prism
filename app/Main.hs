@@ -7,6 +7,7 @@ import PrismIO
 import PrismShow
 import PrismInterrupt
 import PrismCommand
+import PrismPeripheral
 
 import Instruction.Transfer
 import Instruction.Arithmetic
@@ -87,10 +88,9 @@ runBinary instrList binPath_  enableGDB_ = do
             return ()
     ptrReg <- callocBytes regSize
     ptrMem <- callocBytes maxMemorySize
-    queue <- createIOQueue
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
-    let ioCtx = emptyIOCtx queue
-        ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
+    (ioCtx, peripheral) <- makeEmptyIO maxMemorySize
+    let ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
     configureInterrups (ctxMem ctx) 0xFF000 [(1, PrismInt 0x10)]
     writeRegIP (ctxReg ctx) bootloaderStart
     ctxNew <- runPrism $ decodeHaltCpu decoder comm ctx

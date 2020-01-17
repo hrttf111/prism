@@ -100,11 +100,11 @@ newtype IOPage = IOPage (UArray IOPageOffset IOHandlerIndex) deriving (Show, Eq)
 
 newtype PortIORegion = PortIORegion (UArray Uint16 IOHandlerIndex) deriving (Show, Eq)
 
-data MemIORegion1 = MemIORegion1 {
+data MemIORegion = MemIORegion {
         ioPageSize :: Int,
         ioRegionL1 :: UArray Int IOPageIndex,
         ioRegionL2 :: Array IOPageIndex IOPage
-    }
+    } deriving (Show)
 
 -- fill 3 arrays:
 -- 1. L1 which is Int -> Int
@@ -121,10 +121,10 @@ data MemIORegion1 = MemIORegion1 {
 
 data IOCmdType = IOMemType | IOPortType
 
-data IOCmd = IOCmdRead8 IOCmdType MemOffset
-             | IOCmdRead16 IOCmdType MemOffset 
-             | IOCmdWrite8 IOCmdType MemOffset Uint8 
-             | IOCmdWrite16 IOCmdType MemOffset Uint16 
+data IOCmd = IOCmdRead8 IOCmdType IOHandlerIndex MemOffset
+             | IOCmdRead16 IOCmdType IOHandlerIndex MemOffset 
+             | IOCmdWrite8 IOCmdType IOHandlerIndex MemOffset Uint8 
+             | IOCmdWrite16 IOCmdType IOHandlerIndex MemOffset Uint16 
 
 data IOCmdData = IOCmdData8 Uint8
                  | IOCmdData16 Uint16
@@ -135,36 +135,38 @@ data IOQueue = IOQueue {
     }
 
 class (OperandVal a) => IOVal a where
-    ioValRead :: MonadIO m => IOQueue -> IOCmdType -> MemOffset -> m a
-    ioValWrite :: MonadIO m => IOQueue -> IOCmdType -> MemOffset -> a -> m ()
+    ioValRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
+    ioValWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
     ioValRespond :: MonadIO m => IOQueue -> a -> m ()
 
 class IOMem a where
-    ioMemRead :: (MonadIO m, IOVal b, OperandVal b) => a -> Int -> m b
-    ioMemWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> Int -> b -> m ()
+    ioMemRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> m b
+    ioMemWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
 
 class IOPort a where
-    ioPortRead :: (MonadIO m, IOVal b, OperandVal b) => a -> Uint16 -> m b
-    ioPortWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> Uint16 -> b -> m ()
-
-newtype MemIORegion = MemIORegion (UArray MemOffset Bool) deriving (Show)
+    ioPortRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> m b
+    ioPortWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
 
 data IOCtx = IOCtx {
         ioCtxQueue :: IOQueue,
-        ioCtxPageSize :: Int,
-        ioCtxMemRegion :: MemIORegion
+        ioCtxMemRegion :: MemIORegion,
+        ioCtxPortRegion :: PortIORegion
     }
 
 instance Show IOCtx where
     show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
 
 instance IOMem IOCtx where
-    ioMemRead ctx offset = ioValRead (ioCtxQueue ctx) IOMemType offset
-    ioMemWrite ctx offset val = ioValWrite (ioCtxQueue ctx) IOMemType offset val
+    ioMemRead ctx handler offset =
+        ioValRead (ioCtxQueue ctx) IOMemType handler offset
+    ioMemWrite ctx handler offset val =
+        ioValWrite (ioCtxQueue ctx) IOMemType handler offset val
 
 instance IOPort IOCtx where
-    ioPortRead ctx offset = ioValRead (ioCtxQueue ctx) IOPortType (fromIntegral offset)
-    ioPortWrite ctx offset val = ioValWrite (ioCtxQueue ctx) IOPortType (fromIntegral offset) val
+    ioPortRead ctx handler offset = 
+        ioValRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
+    ioPortWrite ctx handler offset val =
+        ioValWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
 
 -------------------------------------------------------------------------------
 
@@ -208,10 +210,7 @@ data PrismInterrupts = PrismInterrupts {
         intInterruptUp :: Bool
     } deriving (Show)
 
-createIOQueue = IOQueue <$> newTQueueIO <*> newTQueueIO
 emptyPrismInterrupts = PrismInterrupts [] [] [] [] False
-emptyMemIORegion = MemIORegion $ array (0, 0) [(0, False)]
-emptyIOCtx queue = IOCtx queue (1024 * 1024) emptyMemIORegion
 makePrismCtx memReg memMain ioCtx =
     Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop ioCtx emptyPrismInterrupts
 
