@@ -8,6 +8,7 @@ import Data.Bits (shiftR)
 import Prism
 import PrismDecoder
 import PrismCpu
+import PrismPeripheral
 
 -------------------------------------------------------------------------------
 
@@ -133,24 +134,24 @@ xlat ctx = do
 -------------------------------------------------------------------------------
 
 portIn8 :: MonadIO m => Ctx -> Uint16 -> m Uint8
-portIn8 ctx portNum =
-    --todo
-    return 0
+portIn8 ctx portNum = do
+    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
+    ioPortRead (ctxIO ctx) handler portNum
 
 portIn16 :: MonadIO m => Ctx -> Uint16 -> m Uint16
-portIn16 ctx portNum =
-    --todo
-    return 0
+portIn16 ctx portNum = do
+    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
+    ioPortRead (ctxIO ctx) handler portNum
 
 portOut8 :: MonadIO m => Ctx -> Uint16 -> Uint8 -> m ()
-portOut8 ctx portNum val =
-    --todo
-    return ()
+portOut8 ctx portNum val = do
+    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
+    ioPortWrite (ctxIO ctx) handler portNum val
 
 portOut16 :: MonadIO m => Ctx -> Uint16 -> Uint16 -> m ()
-portOut16 ctx portNum val =
-    --todo
-    return ()
+portOut16 ctx portNum val = do
+    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
+    ioPortWrite (ctxIO ctx) handler portNum val
 
 portInAlDx :: FuncImplicit
 portInAlDx ctx = do

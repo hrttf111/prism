@@ -193,6 +193,9 @@ findMemIndex (MemIORegion pageSize l1 l2) memOffset =
     where
         pageIndex = l1 UArray.! (div memOffset pageSize)
 
+findPortIndex :: PortIORegion -> Uint16 -> IOHandlerIndex
+findPortIndex (PortIORegion arr) port =
+    arr UArray.! port
 
 makeEmptyPeripherals :: Int -> Peripheral
 makeEmptyPeripherals memSize =
