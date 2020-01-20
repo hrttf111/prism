@@ -63,16 +63,10 @@ createTestEnv1 decoder = liftIO $ do
             writeSeg (ctxReg ctx) cs (div codeStart 16)
             decodeMemIp decoder (fromIntegral codeStart + codeLen) ctx
 
-createTestEnv2 :: MonadIO m => [PrismInstruction] -> m TestEnv
-createTestEnv2 instrList = createTestEnv1 $ makeDecoderList combinedList
+createTestEnv :: MonadIO m => [PrismInstruction] -> m TestEnv
+createTestEnv instrList = createTestEnv1 $ makeDecoderList combinedList
     where
         combinedList = instrList ++ (segmentInstrList instrList)
-
-createTestEnv :: MonadIO m => m CodeExecutor
-createTestEnv = liftIO $ do
-    asmTest <- makeAsmTest
-    ptrA <- callocArray 100
-    return $ execCodeTest asmTest (MemReg ptrA)
 
 class RegTest a where
     shouldEq :: (HasCallStack) => a -> Int -> MemReg -> Expectation
