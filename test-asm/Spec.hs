@@ -47,10 +47,10 @@ doTests env = do
         testControl env
         testProcessor env
         testString env
-        testPeripheral env
 
 main :: IO ()
 main = do
     env <- createTestEnv instrList
     runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
+    runSpec (testPeripheral instrList) defaultConfig {configConcurrentJobs=(Just 1)}
     return ()

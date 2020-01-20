@@ -8,6 +8,7 @@ import Data.Text (Text)
 import qualified Data.ByteString as B
 
 import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Concurrent
 
 import Data.Word (Word8, Word16)
 import Foreign.Ptr (plusPtr)
@@ -29,25 +30,25 @@ import Assembler
 type CodeExecutor = (Text -> IO MemReg)
 
 data TestEnv = TestEnv {
+        peripheralThreadId :: Maybe ThreadId,
         assembleNative :: (Text -> IO B.ByteString),
         assembleNative16 :: (Text -> IO B.ByteString),
         executeNative :: (B.ByteString -> IO MemReg),
         executePrism :: (B.ByteString -> IO Ctx)
     }
 
-createTestEnv1 :: MonadIO m => PrismDecoder -> m TestEnv
-createTestEnv1 decoder = liftIO $ do
+createTestEnv1 :: MonadIO m => IOCtx -> Maybe ThreadId -> PrismDecoder -> m TestEnv
+createTestEnv1 ioCtx threadId decoder = liftIO $ do
     ptrReg <- callocBytes 64
     ptrMem <- callocBytes memSize
     asmTest <- makeAsmTest
     ptrA <- callocArray 64
-    return $ TestEnv makeAsmStr makeAsmStr16 (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
+    return $ TestEnv threadId makeAsmStr makeAsmStr16 (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
     where
         memSize = 65000
         codeStart = 12000
         execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
         execP ptrReg ptrMem decoder mainCode = do
-            (ioCtx, peripheral) <- makeEmptyIO (1024*1024)
             let codeLen = B.length mainCode
                 ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
                 array = B.unpack mainCode
@@ -64,9 +65,30 @@ createTestEnv1 decoder = liftIO $ do
             decodeMemIp decoder (fromIntegral codeStart + codeLen) ctx
 
 createTestEnv :: MonadIO m => [PrismInstruction] -> m TestEnv
-createTestEnv instrList = createTestEnv1 $ makeDecoderList combinedList
+createTestEnv instrList = do
+    (ioCtx, _) <- liftIO $ makeEmptyIO (1024*1024)
+    createTestEnv1 ioCtx Nothing $ makeDecoderList combinedList
     where
         combinedList = instrList ++ (segmentInstrList instrList)
+
+
+createPeripheralsTestEnv :: MonadIO m => 
+                            [PrismInstruction] -> 
+                            PeripheralDevices ->
+                            [PeripheralPort] ->
+                            [PeripheralMem] ->
+                            m TestEnv
+createPeripheralsTestEnv instrList devices ports mems = do
+    queue <- liftIO $ createIOQueue
+    let ioCtx = IOCtx queue (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
+    threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheral
+    createTestEnv1 ioCtx (Just threadId) $ makeDecoderList combinedList
+    where
+        memSize = 1024 * 1024
+        pageSize = 1024
+        combinedList = instrList ++ (segmentInstrList instrList)
+        peripheral = createPeripherals devices memSize pageSize ports mems
+
 
 class RegTest a where
     shouldEq :: (HasCallStack) => a -> Int -> MemReg -> Expectation

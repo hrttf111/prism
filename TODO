@@ -84,6 +84,20 @@ listPeripheral = [
  - size of page is known in compile time
     - but if needed can be configured in run-time either
 
+
+execPeripherals :: IOQueue -> Peripheral -> IO ()
+execPeripherals (IOQueue req rsp) peripheral = do
+    msg <- readTQueue req
+    per <- (case msg of
+        IOCmdRead8 IOMemType index offset ->
+            (per, val) <- (peripheralMemRead8 ((peripheralMem peripheral) ! index)) peripheral offset
+            writeQ rsp $ ... val
+            return per
+        ...
+    )
+    execPeripherals per
+
+
 IOPage = UArray PageInternalOffset IOHandlerIndex
 type IOHandlerIndex = Uint16 -- index of handler in handlers array
 type IOPageIndex = Int -- index of page in pages array

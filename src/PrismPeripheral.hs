@@ -4,6 +4,7 @@
 module PrismPeripheral where
 
 import Control.Concurrent.STM.TQueue
+import Control.Monad.STM (atomically)
 
 import qualified Data.Array as Array
 import qualified Data.Array.Unboxed as UArray
@@ -209,3 +210,24 @@ makeEmptyIO memSize = do
     let peripheral = makeEmptyPeripherals memSize
         ioCtx = IOCtx queue (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
     return (ioCtx, peripheral)
+
+-------------------------------------------------------------------------------
+
+execPeripheralsOnce :: IOQueue -> Peripheral -> IO ()
+execPeripheralsOnce queue@(IOQueue req rsp) peripheral = do
+    msg <- atomically $ readTQueue req
+    putStrLn "Got message"
+    peripheralNew <- (case msg of
+        IOCmdRead8 IOMemType handlerIndex memOffset -> do
+            let handler = (peripheralMem peripheral) Array.! handlerIndex
+            (per, val) <- (peripheralMemRead8 handler) peripheral memOffset
+            atomically $ writeTQueue rsp $ IOCmdData8 val
+            return per
+        IOCmdRead16 IOMemType handlerIndex memOffset -> do
+            let handler = (peripheralMem peripheral) Array.! handlerIndex
+            (per, val) <- (peripheralMemRead16 handler) peripheral memOffset
+            atomically $ writeTQueue rsp $ IOCmdData16 val
+            return per
+        _ -> return peripheral
+        )
+    return ()

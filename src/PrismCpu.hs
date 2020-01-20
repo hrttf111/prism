@@ -128,9 +128,9 @@ instance Exception IOCtxException
 
 instance IOVal Uint8 where
     ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
-        val <- atomically $ do
-            writeTQueue req $ IOCmdRead8 cmdType handler offset
-            readTQueue rsp
+        putStrLn "Write Queue"
+        atomically $ writeTQueue req $ IOCmdRead8 cmdType handler offset
+        val <- atomically $ readTQueue rsp
         case val of
             IOCmdData8 d -> return d
             _ -> throwIO IOCtxException
@@ -141,9 +141,8 @@ instance IOVal Uint8 where
 
 instance IOVal Uint16 where
     ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
-        val <- atomically $ do
-            writeTQueue req $ IOCmdRead16 cmdType handler offset
-            readTQueue rsp
+        atomically $ writeTQueue req $ IOCmdRead16 cmdType handler offset
+        val <- atomically $ readTQueue rsp
         case val of
             IOCmdData16 d -> return d
             _ -> throwIO IOCtxException
