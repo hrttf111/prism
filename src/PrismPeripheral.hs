@@ -14,8 +14,6 @@ import Prism
 
 -------------------------------------------------------------------------------
 
-type PeripheralWrite8 = Peripheral -> MemOffset -> Uint8 -> IO Peripheral
-
 data PeripheralHandlerMem = PeripheralHandlerMem {
         peripheralMemWrite8 :: Peripheral -> MemOffset -> Uint8 -> IO Peripheral,
         peripheralMemWrite16 :: Peripheral -> MemOffset -> Uint16 -> IO Peripheral,
@@ -216,7 +214,7 @@ makeEmptyIO memSize = do
 execPeripheralsOnce :: IOQueue -> Peripheral -> IO ()
 execPeripheralsOnce queue@(IOQueue req rsp) peripheral = do
     msg <- atomically $ readTQueue req
-    putStrLn "Got message"
+    putStrLn $ "Got message " ++ (show msg)
     peripheralNew <- (case msg of
         IOCmdRead8 IOMemType handlerIndex memOffset -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
@@ -228,6 +226,33 @@ execPeripheralsOnce queue@(IOQueue req rsp) peripheral = do
             (per, val) <- (peripheralMemRead16 handler) peripheral memOffset
             atomically $ writeTQueue rsp $ IOCmdData16 val
             return per
+        IOCmdWrite8 IOMemType handlerIndex memOffset val -> do
+            let handler = (peripheralMem peripheral) Array.! handlerIndex
+            per <- (peripheralMemWrite8 handler) peripheral memOffset val
+            return per
+        IOCmdWrite16 IOMemType handlerIndex memOffset val -> do
+            let handler = (peripheralMem peripheral) Array.! handlerIndex
+            per <- (peripheralMemWrite16 handler) peripheral memOffset val
+            return per
+        IOCmdRead8 IOPortType handlerIndex memOffset -> do
+            let handler = (peripheralPort peripheral) Array.! handlerIndex
+            (per, val) <- (peripheralPortRead8 handler) peripheral $ fromIntegral memOffset
+            atomically $ writeTQueue rsp $ IOCmdData8 val
+            return per
+        IOCmdRead16 IOPortType handlerIndex memOffset -> do
+            let handler = (peripheralPort peripheral) Array.! handlerIndex
+            (per, val) <- (peripheralPortRead16 handler) peripheral $ fromIntegral memOffset
+            atomically $ writeTQueue rsp $ IOCmdData16 val
+            return per
+        IOCmdWrite8 IOPortType handlerIndex memOffset val -> do
+            let handler = (peripheralPort peripheral) Array.! handlerIndex
+            per <- (peripheralPortWrite8 handler) peripheral (fromIntegral memOffset) val
+            return per
+        IOCmdWrite16 IOPortType handlerIndex memOffset val -> do
+            let handler = (peripheralPort peripheral) Array.! handlerIndex
+            per <- (peripheralPortWrite16 handler) peripheral (fromIntegral memOffset) val
+            return per
         _ -> return peripheral
         )
+    putStrLn "Thread end"
     return ()

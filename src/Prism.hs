@@ -119,12 +119,13 @@ data MemIORegion = MemIORegion {
 
 -------------------------------------------------------------------------------
 
-data IOCmdType = IOMemType | IOPortType
+data IOCmdType = IOMemType | IOPortType deriving (Show)
 
 data IOCmd = IOCmdRead8 IOCmdType IOHandlerIndex MemOffset
              | IOCmdRead16 IOCmdType IOHandlerIndex MemOffset 
              | IOCmdWrite8 IOCmdType IOHandlerIndex MemOffset Uint8 
              | IOCmdWrite16 IOCmdType IOHandlerIndex MemOffset Uint16 
+             deriving (Show)
 
 data IOCmdData = IOCmdData8 Uint8
                  | IOCmdData16 Uint16

@@ -128,7 +128,6 @@ instance Exception IOCtxException
 
 instance IOVal Uint8 where
     ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
-        putStrLn "Write Queue"
         atomically $ writeTQueue req $ IOCmdRead8 cmdType handler offset
         val <- atomically $ readTQueue rsp
         case val of
@@ -765,6 +764,18 @@ instrOI1 func ctx op imm = do
 {-# SPECIALISE instrOI1 :: FuncV2 Word8 -> FuncOI1M Mem8 Word8 #-}
 {-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M Mem16 Word16 #-}
 
+instrOI1w :: OperandFunc1 a b => FuncV2 b -> FuncOI1M a b
+instrOI1w func ctx op imm = do
+    let (ctxNew, valNew) = func ctx imm 0
+    writeOp ctxNew op valNew
+    return ctxNew
+
+{-# SPECIALISE instrOI1w :: FuncV2 Word8 -> FuncOI1M Reg8 Word8 #-}
+{-# SPECIALISE instrOI1w :: FuncV2 Word16 -> FuncOI1M Reg16 Word16 #-}
+{-# SPECIALISE instrOI1w :: FuncV2 Word16 -> FuncOI1M RegSeg Word16 #-}
+{-# SPECIALISE instrOI1w :: FuncV2 Word8 -> FuncOI1M Mem8 Word8 #-}
+{-# SPECIALISE instrOI1w :: FuncV2 Word16 -> FuncOI1M Mem16 Word16 #-}
+
 instrO2 :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
 instrO2 func ctx op1 op2 = do
     val1 <- readOp ctx op1
@@ -784,6 +795,24 @@ instrO2 func ctx op1 op2 = do
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M RegSeg Mem16 #-}
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Mem16 RegSeg #-}
 
+instrO2w :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrO2w func ctx op1 op2 = do
+    val1 <- readOp ctx op1
+    let (ctxNew, valNew) = func ctx val1 0
+    writeOp ctx op2 valNew
+    return ctxNew
+
+{-# SPECIALISE instrO2w :: FuncV2 Word8 -> FuncO2M Reg8 Reg8 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M Reg16 Reg16 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word8 -> FuncO2M Mem8 Reg8 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word8 -> FuncO2M Reg8 Mem8#-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M Reg16 Mem16 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M Mem16 Reg16 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M RegSeg Reg16 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M Reg16 RegSeg #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M RegSeg Mem16 #-}
+{-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M Mem16 RegSeg #-}
+
 -------------------------------------------------------------------------------
 
 instrOp1ToOp2 :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
@@ -797,6 +826,22 @@ instrRmToReg = instrOp1ToOp2
 
 instrRegToRm :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
 instrRegToRm = instrOp2ToOp1
+
+-------------------------------------------------------------------------------
+
+instrOp1ToOp2w :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrOp1ToOp2w = instrO2w
+
+instrOp2ToOp1w :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrOp2ToOp1w func ctx op1 op2 = instrO2w func ctx op2 op1
+
+instrRmToRegw :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrRmToRegw = instrOp1ToOp2w
+
+instrRegToRmw :: OperandFunc2 a1 a2 b => FuncV2 b -> FuncO2M a1 a2
+instrRegToRmw = instrOp2ToOp1w
+
+-------------------------------------------------------------------------------
 
 emptyRegReg :: Ctx -> a -> a -> PrismM
 emptyRegReg ctx _ _ = return ctx
