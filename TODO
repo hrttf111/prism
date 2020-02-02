@@ -29,6 +29,11 @@ Q
     - It might take some time for CPU to start processing interrupt,
       higher priority IRQ might raise
     - What to do if interrupt goes away while CPU is doing something?
+      - When interrupt goes before CPU ack then IRQ 7 is generated
+        and returned to CPU. So, CPU always get a response.
+        It is possible to distinct real IRQ 7 and this placeholder
+        in real IRQ 7 there will be IRR bit high
+      - Bochs just clears IRR bit and when CPU does ack IRQ 7 is returned
     - In case of queue it might take some time for CPU to process it,
       as the result another interrupt might occur (higher priority)
       How to notifiy CPU about it?
@@ -38,17 +43,103 @@ Q
       ack it send interrupt number. If interrupt number was changed
       8259 will send different number after second ack
     - CPU can emulate handshake mechanism. There will be special message
-      data InterruptReq
+      data InterruptReq, it will raise interrupt request in CPU.
+      Once CPU is ready to process interrupt, it sends ack and waits for
+      response with an actual interrupt number
     - Virtual 8259 can send two messages: InterruptUp, InterruptDown
       First adds interrupt to IRQ queue, second removes it
       Higher prio IRQs will delete low prio IRQs
       CPU sends ACK right before processing IRQ
       Virtual 8259 will send lower prio IRQ if they were canceled
+      - there could be race condition, higher prio interrupt raise
+        when ACK message is being transmitted in queue
     - Virtual 8259 can send one message: InterruptUp
       It will hold MVar with number of IRQ
       This MVar is shared with 8259, which will update it once new IRQ
       arrives or old one goes down.
       CPU read MVar before processing IRQ and sends ack
+    - Another solution is to implement PIC/PIT in context of CPU itself
+      this way we solve all problems: reading current value of PIT`s
+      counter, AOI race condtion and short counter of PIT
+      In this case we need to implement local peripheral infra, it will
+      handle PIT and PIC. There will be no PIC/PIT in remote infra.
+      But Peripheral and PeripheralDevices should be different for
+      local and remote infras. And handlers have to be different too
+    - Need to solve unit test problem: they require PeripheralDevices 
+      to be implemented and complete. Unit test should not know about
+      peripheral devices at all. One way to solve is to implement
+      iteration without real Peripheral object
+
+-------------------------------------------------------
+
+data Peripheral = Peripheral {
+        peripheralPortRegion :: PortIORegion,
+        peripheralMemRegion :: MemIORegion,
+        peripheralPort :: Array.Array IOHandlerIndex PeripheralHandlerPort,
+        peripheralMem :: Array.Array IOHandlerIndex PeripheralHandlerMem,
+        peripheralDevices :: PeripheralDevices
+    }
+
+data PeripheralLocal = PeripheralLocal {
+        peripheralPort :: Array.Array IOHandlerIndex PeripheralHandlerPort,
+        peripheralMem :: Array.Array IOHandlerIndex PeripheralHandlerMem,
+        peripheralDevices :: PeripheralDevices
+    }
+
+ - Problem 1 is how to define generalized callbacks of local and remote
+   infras
+   - Solution 1. As peripheral is only local or only remote, then
+     we do not need generalization
+   - Solution 2. Separate general handlers from specific handlers.
+     In this case there will be handlers which accept specific
+     peripheral device type and general handler which know how to
+     unpack/pack specific peripheral type from general peripheral
+     structure. It will be necessary to write converters for all
+     specific peripheral types
+
+ - Ctx depends on IOCtx which should know about local peripherals
+ - Peripherals should know about remote peripherals
+ - need to make IOCtx and Ctx both to be generalized and do not depend
+   on specific peripherals
+ - generalization can be done via existential types or type families
+ - alternatively GADT can be used
+
+ - first task is to generalize IOCtx
+   - can split IOCtx
+     - upper part will be two arrays which will containt specific data
+     - lower part will be existential and will contain queue + local peripherals
+   - can make local peripherals part of same ADT
+     - IOCtx will have list of same type which can be extended
+ - local operations in context of CPU
+   - IOCtx lower part will have IORef on local peripherals
+   - this way we can work with memory and peripherals
+ - IOCtx lower will be used to process incomming interrupts ("dispatch")
+   - there will be explicit knowledge about PIC inside of IOCtx lower
+ - separation of local and remote IO handlers
+   - handlers can be parameterized
+   - local/remote peripherals structure will be a parameter
+   - specific implementations will be written for each peripheral type
+ - remote peripherals implementation, should be generalized too
+   - remote peripherals structure can be parameterized with specific container
+   - container will have specific structure inside
+   - unlike CPU we can pass parameter along with Peripherals context
+ - AOI
+   - aoi will be part of IOCtxLocals interface
+   - it will be called from processInterrupts function before processing int
+ - interrupt input
+   - interrupts will be sent to CPU via command queue
+   - they will be handled by dispatch function of IOCtxLocals interface
+
+class IOCtxLocals s where
+    read :: s -> ...
+    write :: s -> ...
+    dispatch :: s -> ...
+    aoi :: s -> ...
+
+class IORemote s where
+    ...
+
+-------------------------------------------------------
 
 data Pic8259A = Pic8259A {
         picIRR :: Uint8, -- Interrupt Request Register
