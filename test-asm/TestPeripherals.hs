@@ -17,12 +17,15 @@ import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
+data PeripheralDevices = PeripheralDevices {
+    }
+
 testPeriphRead :: (OperandVal a, Integral b) =>
-    a -> Peripheral -> b -> IO (Peripheral, a)
+    a -> p -> b -> IO (p, a)
 testPeriphRead val peripheral offset = return (peripheral, val)
 
 testPeriphWrite :: (OperandVal a, Integral b) => 
-    IORef a -> Peripheral -> b -> a -> IO Peripheral
+    IORef a -> p -> b -> a -> IO p
 testPeriphWrite ref peripheral offset val =
     atomicWriteIORef ref val >> return peripheral
 

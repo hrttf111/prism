@@ -12,15 +12,15 @@ import PrismPeripheral
 
 -------------------------------------------------------------------------------
 
-makePairs :: Uint16 -> [(MemOffset, MemOffset)] -> MemPairs
+makePairs :: Uint16 -> [(MemOffset, MemOffset)] -> MemPairs p
 makePairs start offsets = zip [start..] 
                         $ map (flip PeripheralMem emptyMemHandler)
                         $ sortOn fst offsets
 
-makeMemPeripherals :: [(MemOffset, MemOffset)] -> [PeripheralMem]
+makeMemPeripherals :: [(MemOffset, MemOffset)] -> [PeripheralMem p]
 makeMemPeripherals offsets = map (flip PeripheralMem emptyMemHandler) offsets
 
-makePortPeripherals :: [Uint16] -> [PeripheralPort]
+makePortPeripherals :: [Uint16] -> [PeripheralPort p]
 makePortPeripherals ports = map (flip PeripheralPort emptyPortHandler) ports
 
 pairs1 = makePairs 1 [(1, 2), (4, 4)]
@@ -33,7 +33,7 @@ pairs7 = makePairs 1 [(1, 2), (4, 10)]
 
 makeIOPageTest lst = IOPage $ UArray.listArray (0, (length lst)) lst
 
-makeTestPageBuilder :: MemOffset -> Int -> Int -> MemPairs -> PagesBuilder
+makeTestPageBuilder :: MemOffset -> Int -> Int -> MemPairs p -> PagesBuilder p
 makeTestPageBuilder start pageSize memSize pairs =
     PagesBuilder 0 stubs pairs [] []
     where
@@ -102,7 +102,7 @@ testPeripherals = do
     describe "Test createPeripherals" $ do
         it "Read mem handler" $ do
             let pairs = makeMemPeripherals [(8, 27), (98, 99)]
-                peripherals = createPeripherals PeripheralDevices 100 10 [] pairs
+                peripherals = createPeripherals (0 :: Int) 100 10 [] pairs
                 memRegion = peripheralMemRegion peripherals
             (findMemIndex memRegion 0) `shouldBe` (emptyHandler)
             (findMemIndex memRegion 97) `shouldBe` (emptyHandler)

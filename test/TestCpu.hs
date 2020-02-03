@@ -15,7 +15,7 @@ import Instruction.Arithmetic
 testDiv = do
     describe "DIV" $ do
         it "Unt8" $ do
-            (ioCtx, _) <- makeEmptyIO (1024*1024)
+            (ioCtx, _) <- makeEmptyIO (1024*1024) (0 :: Int)
             let 
                 ctx = makePrismCtx (MemReg nullPtr) (MemMain nullPtr) ioCtx
             (snd $ div8 ctx 1000 50) `shouldBe` 20

@@ -14,81 +14,89 @@ import Prism
 
 -------------------------------------------------------------------------------
 
-data PeripheralHandlerMem = PeripheralHandlerMem {
-        peripheralMemWrite8 :: Peripheral -> MemOffset -> Uint8 -> IO Peripheral,
-        peripheralMemWrite16 :: Peripheral -> MemOffset -> Uint16 -> IO Peripheral,
-        peripheralMemRead8 :: Peripheral -> MemOffset -> IO (Peripheral, Uint8),
-        peripheralMemRead16 :: Peripheral -> MemOffset -> IO (Peripheral, Uint16)
+data PeripheralHandlerMem p = PeripheralHandlerMem {
+        peripheralMemWrite8 :: p -> MemOffset -> Uint8 -> IO p,
+        peripheralMemWrite16 :: p -> MemOffset -> Uint16 -> IO p,
+        peripheralMemRead8 :: p -> MemOffset -> IO (p, Uint8),
+        peripheralMemRead16 :: p -> MemOffset -> IO (p, Uint16)
     }
 
-emptyReadH :: OperandVal b => Peripheral -> a -> IO (Peripheral, b)
+emptyReadH :: OperandVal b => p -> a -> IO (p, b)
 emptyReadH p _ = return (p, 0)
 
-emptyWriteH :: Peripheral -> a -> b -> IO Peripheral
+emptyWriteH :: p -> a -> b -> IO p
 emptyWriteH p _ _ = return p
 
-emptyMemHandler :: PeripheralHandlerMem
+emptyMemHandler :: PeripheralHandlerMem p
 emptyMemHandler = 
     PeripheralHandlerMem emptyWriteH emptyWriteH emptyReadH emptyReadH
 
-emptyPortHandler :: PeripheralHandlerPort
+emptyPortHandler :: PeripheralHandlerPort p
 emptyPortHandler =
     PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH emptyReadH
 
-data PeripheralHandlerPort = PeripheralHandlerPort {
-        peripheralPortWrite8 :: Peripheral -> Uint16 -> Uint8 -> IO Peripheral,
-        peripheralPortWrite16 :: Peripheral -> Uint16 -> Uint16 -> IO Peripheral,
-        peripheralPortRead8 :: Peripheral -> Uint16 -> IO (Peripheral, Uint8),
-        peripheralPortRead16 :: Peripheral -> Uint16 -> IO (Peripheral, Uint16)
+data PeripheralHandlerPort p = PeripheralHandlerPort {
+        peripheralPortWrite8 :: p -> Uint16 -> Uint8 -> IO p,
+        peripheralPortWrite16 :: p -> Uint16 -> Uint16 -> IO p,
+        peripheralPortRead8 :: p -> Uint16 -> IO (p, Uint8),
+        peripheralPortRead16 :: p -> Uint16 -> IO (p, Uint16)
     }
 
-data PeripheralPort = PeripheralPort {
+data PeripheralPort p = PeripheralPort {
         peripheralPortLoc :: Uint16,
-        peripheralPortHandlers :: PeripheralHandlerPort
+        peripheralPortHandlers :: PeripheralHandlerPort p
     }
-data PeripheralMem = PeripheralMem {
+data PeripheralMem p = PeripheralMem {
         peripheralMemLoc :: (MemOffset, MemOffset),
-        peripheralMemHandlers :: PeripheralHandlerMem
+        peripheralMemHandlers :: PeripheralHandlerMem p
     }
 
-instance Show PeripheralMem where
+instance Show (PeripheralMem p) where
     show (PeripheralMem (start, end) _) = 
         "(" ++ (show start) ++ "," ++ (show end) ++ ")"
 
-instance Eq PeripheralMem where
+instance Eq (PeripheralMem p) where
     item1 == item2 = (peripheralMemLoc item1) == (peripheralMemLoc item2)
 
 -------------------------------------------------------------------------------
 
-data PeripheralDevices = PeripheralDevices {
-    }
+type PeripheralArray p = Array.Array IOHandlerIndex p
 
-data Peripheral = Peripheral {
+data Peripheral p = Peripheral {
         peripheralPortRegion :: PortIORegion,
         peripheralMemRegion :: MemIORegion,
-        peripheralPort :: Array.Array IOHandlerIndex PeripheralHandlerPort,
-        peripheralMem :: Array.Array IOHandlerIndex PeripheralHandlerMem,
-        peripheralDevices :: PeripheralDevices
+        peripheralPort :: PeripheralArray (PeripheralHandlerPort p),
+        peripheralMem :: PeripheralArray (PeripheralHandlerMem p),
+        peripheralDevices :: p
+    }
+
+data IOCtxLocal p = IOCtxLocal {
+        ioCtxMaxRemote :: IOHandlerIndex,
+        localRunCounter :: Int,
+        localPeripheralPort :: PeripheralArray (PeripheralHandlerPort p),
+        localPeripheralMem :: PeripheralArray (PeripheralHandlerMem p),
+        localIOQueue :: IOQueue,
+        localPeripherals :: p
     }
 
 -------------------------------------------------------------------------------
 
-type MemPairs = [(Uint16, PeripheralMem)]
+type MemPairs p = [(Uint16, PeripheralMem p)]
 type MemPageStubs = [(MemOffset, MemOffset)]
 
 emptyPage = 0
 emptyHandler = 0
 
-data PagesBuilder = PagesBuilder {
+data PagesBuilder p = PagesBuilder {
         pageCounter :: IOPageIndex,
         pageStubs :: MemPageStubs,
-        memPairs :: MemPairs,
+        memPairs :: MemPairs p,
         regionL1 :: [IOPageIndex],
         regionL2 :: [(IOPageIndex, IOPage)]
     } deriving (Show, Eq)
 
 
-makePageArray :: MemOffset -> MemOffset -> MemPairs -> [IOHandlerIndex] -> [IOHandlerIndex]
+makePageArray :: MemOffset -> MemOffset -> MemPairs p -> [IOHandlerIndex] -> [IOHandlerIndex]
 makePageArray memOffset end [] indexes =
     indexes ++ replicate (end - memOffset) emptyHandler
 makePageArray memOffset end pairs indexes | memOffset == end =
@@ -103,7 +111,7 @@ makePageArray memOffset end pairs indexes =
         index = if memOffset < s1 then emptyHandler else handlerIndex
 
 
-makePage :: MemOffset -> MemOffset -> MemPairs -> (MemPairs, IOPage)
+makePage :: MemOffset -> MemOffset -> MemPairs p -> (MemPairs p, IOPage)
 makePage start end pairs = (remain, page)
     where
         covered = takeWhile startInPage pairs
@@ -114,7 +122,7 @@ makePage start end pairs = (remain, page)
         page = IOPage $ UArray.listArray (0, (end - start)) indexes
 
 
-makeMemP :: PagesBuilder -> PagesBuilder
+makeMemP :: PagesBuilder p -> PagesBuilder p
 makeMemP b@(PagesBuilder _ [] _ _ _) = b
 makeMemP b@(PagesBuilder _ stubs [] l1 _) =
     b { pageStubs = [], regionL1 = l1_ }
@@ -138,7 +146,7 @@ makeMemP (PagesBuilder counter stubs pairs@(pairHead:_) l1 l2) =
         l1_ = l1 ++ map (\_ -> emptyPage) emptyStubs
         newCounter = counter + 1
 
-makePortArray :: [(Uint16, PeripheralPort)] -> [IOHandlerIndex] -> [IOHandlerIndex]
+makePortArray :: [(Uint16, PeripheralPort p )] -> [IOHandlerIndex] -> [IOHandlerIndex]
 makePortArray [] indexes = 
     indexes ++ replicate (0x10000 - length indexes) emptyHandler
 makePortArray ((index, peripheral):tail) indexes =
@@ -151,12 +159,12 @@ makePortArray ((index, peripheral):tail) indexes =
     makePortArray tail newIndexes
 
 
-createPeripherals :: PeripheralDevices 
+createPeripherals :: p
                      -> Int
                      -> Int
-                     -> [PeripheralPort] 
-                     -> [PeripheralMem] 
-                     -> Peripheral
+                     -> [PeripheralPort p] 
+                     -> [PeripheralMem p] 
+                     -> Peripheral p
 createPeripherals devices memSize pageSize portEntries memEntries = 
         Peripheral portRegion memRegion portHandlers memHandlers devices
     where
@@ -196,62 +204,63 @@ findPortIndex :: PortIORegion -> Uint16 -> IOHandlerIndex
 findPortIndex (PortIORegion arr) port =
     arr UArray.! port
 
-makeEmptyPeripherals :: Int -> Peripheral
-makeEmptyPeripherals memSize =
-    createPeripherals PeripheralDevices memSize memSize [] [] 
+makeEmptyPeripherals :: Int -> p -> Peripheral p
+makeEmptyPeripherals memSize devices =
+    createPeripherals devices memSize memSize [] [] 
 
 createIOQueue = IOQueue <$> newTQueueIO <*> newTQueueIO
 
-makeEmptyIO :: Int -> IO (IOCtx, Peripheral)
-makeEmptyIO memSize = do
+makeEmptyIO :: Int -> p -> IO (IOCtx, Peripheral p)
+makeEmptyIO memSize devices = do
     queue <- createIOQueue
-    let peripheral = makeEmptyPeripherals memSize
+    let peripheral = makeEmptyPeripherals memSize devices
         ioCtx = IOCtx queue (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
     return (ioCtx, peripheral)
 
 -------------------------------------------------------------------------------
 
-execPeripheralsOnce :: IOQueue -> Peripheral -> IO ()
+execPeripheralsOnce :: IOQueue -> Peripheral p -> IO ()
 execPeripheralsOnce queue@(IOQueue req rsp) peripheral = do
     msg <- atomically $ readTQueue req
     putStrLn $ "Got message " ++ (show msg)
+    let devices = peripheralDevices peripheral
     peripheralNew <- (case msg of
         IOCmdRead8 IOMemType handlerIndex memOffset -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralMemRead8 handler) peripheral memOffset
+            (per, val) <- (peripheralMemRead8 handler) devices memOffset
             atomically $ writeTQueue rsp $ IOCmdData8 val
-            return per
+            return $ peripheral { peripheralDevices = per }
         IOCmdRead16 IOMemType handlerIndex memOffset -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralMemRead16 handler) peripheral memOffset
+            (per, val) <- (peripheralMemRead16 handler) devices memOffset
             atomically $ writeTQueue rsp $ IOCmdData16 val
-            return per
+            return $ peripheral { peripheralDevices = per }
         IOCmdWrite8 IOMemType handlerIndex memOffset val -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            per <- (peripheralMemWrite8 handler) peripheral memOffset val
-            return per
+            per <- (peripheralMemWrite8 handler) devices memOffset val
+            return $ peripheral { peripheralDevices = per }
         IOCmdWrite16 IOMemType handlerIndex memOffset val -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            per <- (peripheralMemWrite16 handler) peripheral memOffset val
-            return per
+            per <- (peripheralMemWrite16 handler) devices memOffset val
+            return $ peripheral { peripheralDevices = per }
         IOCmdRead8 IOPortType handlerIndex memOffset -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralPortRead8 handler) peripheral $ fromIntegral memOffset
+            (per, val) <- (peripheralPortRead8 handler) devices $ fromIntegral memOffset
             atomically $ writeTQueue rsp $ IOCmdData8 val
-            return per
+            return $ peripheral { peripheralDevices = per }
         IOCmdRead16 IOPortType handlerIndex memOffset -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralPortRead16 handler) peripheral $ fromIntegral memOffset
+            (per, val) <- (peripheralPortRead16 handler) devices $ fromIntegral memOffset
             atomically $ writeTQueue rsp $ IOCmdData16 val
-            return per
+            return $ peripheral { peripheralDevices = per }
         IOCmdWrite8 IOPortType handlerIndex memOffset val -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            per <- (peripheralPortWrite8 handler) peripheral (fromIntegral memOffset) val
-            return per
+            per <- (peripheralPortWrite8 handler) devices (fromIntegral memOffset) val
+            return $ peripheral { peripheralDevices = per }
         IOCmdWrite16 IOPortType handlerIndex memOffset val -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            per <- (peripheralPortWrite16 handler) peripheral (fromIntegral memOffset) val
-            return per
+            per <- (peripheralPortWrite16 handler) devices (fromIntegral memOffset) val
+            return $ peripheral { peripheralDevices = per }
         _ -> return peripheral
         )
     putStrLn "Thread end"

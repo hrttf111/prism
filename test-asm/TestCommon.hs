@@ -66,17 +66,18 @@ createTestEnv1 ioCtx threadId decoder = liftIO $ do
 
 createTestEnv :: MonadIO m => [PrismInstruction] -> m TestEnv
 createTestEnv instrList = do
-    (ioCtx, _) <- liftIO $ makeEmptyIO (1024*1024)
+    (ioCtx, _) <- liftIO $ makeEmptyIO (1024*1024) devicesStub
     createTestEnv1 ioCtx Nothing $ makeDecoderList combinedList
     where
         combinedList = instrList ++ (segmentInstrList instrList)
+        devicesStub = 0 :: Int
 
 
 createPeripheralsTestEnv :: MonadIO m => 
                             [PrismInstruction] -> 
-                            PeripheralDevices ->
-                            [PeripheralPort] ->
-                            [PeripheralMem] ->
+                            p ->
+                            [PeripheralPort p] ->
+                            [PeripheralMem p] ->
                             m TestEnv
 createPeripheralsTestEnv instrList devices ports mems = do
     queue <- liftIO $ createIOQueue

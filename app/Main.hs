@@ -49,6 +49,9 @@ regSize = 64
 maxMemorySize = 1024 * 1024
 bootloaderStart = 0x7C00
 
+data PeripheralDevices = PeripheralDevices {
+    }
+
 writeTtyChar :: MonadIO m => Ctx -> m Ctx
 writeTtyChar ctx = do
     valAl <- readReg8 memReg al
@@ -89,7 +92,7 @@ runBinary instrList binPath_  enableGDB_ = do
     ptrReg <- callocBytes regSize
     ptrMem <- callocBytes maxMemorySize
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
-    (ioCtx, peripheral) <- makeEmptyIO maxMemorySize
+    (ioCtx, peripheral) <- makeEmptyIO maxMemorySize PeripheralDevices
     let ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
     configureInterrups (ctxMem ctx) 0xFF000 [(1, PrismInt 0x10)]
     writeRegIP (ctxReg ctx) bootloaderStart

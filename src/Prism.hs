@@ -3,6 +3,7 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
+{-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE LiberalTypeSynonyms #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -17,6 +18,7 @@ import Data.Word (Word8, Word16, Word32)
 import Data.Bits (FiniteBits, Bits)
 import Data.Maybe (Maybe)
 
+import Data.IORef
 import Foreign.Storable
 import Foreign.Ptr
 import GHC.Generics
@@ -119,6 +121,16 @@ data MemIORegion = MemIORegion {
 
 -------------------------------------------------------------------------------
 
+class InterruptDispatcher s where
+    dispatchRaise :: s -> PrismInt -> IO (s, Bool)
+    dispatchLower :: s -> PrismInt -> IO (s, Bool)
+    ackInterrupt :: s -> IO (s, PrismInt)
+
+class PeripheralRunner s where
+    runPeripherals :: s -> IO s
+
+-------------------------------------------------------------------------------
+
 data IOCmdType = IOMemType | IOPortType deriving (Show)
 
 data IOCmd = IOCmdRead8 IOCmdType IOHandlerIndex MemOffset
@@ -168,6 +180,16 @@ instance IOPort IOCtx where
         ioValRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
     ioPortWrite ctx handler offset val =
         ioValWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
+
+-------------------------------------------------------------------------------
+
+type IOCtxCpu a = (IOMem a, IOPort a, InterruptDispatcher a, PeripheralRunner a)
+
+data IOCtx1 = forall a . (IOCtxCpu a) => IOCtx1 {
+        ioCtxInternal :: IORef a,
+        ioCtxMemRegion1 :: MemIORegion,
+        ioCtxPortRegion1 :: PortIORegion
+    }
 
 -------------------------------------------------------------------------------
 
