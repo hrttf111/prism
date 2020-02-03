@@ -21,6 +21,7 @@ import PrismCpu
 import PrismDecoder
 import PrismPeripheral
 
+import Peripherals.Remote
 import Instruction.Processor
 
 import Assembler
