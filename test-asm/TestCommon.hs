@@ -81,7 +81,7 @@ createPeripheralsTestEnv :: MonadIO m =>
                             m TestEnv
 createPeripheralsTestEnv instrList devices ports mems = do
     queue <- liftIO $ createIOQueue
-    let ioCtx = IOCtx queue (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
+    let ioCtx = IOCtx (PeripheralsInternal queue) (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
     threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheral
     createTestEnv1 ioCtx (Just threadId) $ makeDecoderList combinedList
     where

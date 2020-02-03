@@ -18,21 +18,9 @@ import Prism
 
 -------------------------------------------------------------------------------
 
-data MemLocation = MemLocation {
-        memLocationStart :: MemOffset,
-        memLocationEnd :: MemOffset
-    } deriving (Eq)
-
 instance Show MemLocation where
     show (MemLocation start end) =
         "(" ++ (show start) ++ "," ++ (show end) ++ ")"
-
-data PeripheralHandlerMem p = PeripheralHandlerMem {
-        peripheralMemWrite8 :: p -> MemOffset -> Uint8 -> IO p,
-        peripheralMemWrite16 :: p -> MemOffset -> Uint16 -> IO p,
-        peripheralMemRead8 :: p -> MemOffset -> IO (p, Uint8),
-        peripheralMemRead16 :: p -> MemOffset -> IO (p, Uint16)
-    }
 
 emptyReadH :: OperandVal b => p -> a -> IO (p, b)
 emptyReadH p _ = return (p, 0)
@@ -47,13 +35,6 @@ emptyMemHandler =
 emptyPortHandler :: PeripheralHandlerPort p
 emptyPortHandler =
     PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH emptyReadH
-
-data PeripheralHandlerPort p = PeripheralHandlerPort {
-        peripheralPortWrite8 :: p -> Uint16 -> Uint8 -> IO p,
-        peripheralPortWrite16 :: p -> Uint16 -> Uint16 -> IO p,
-        peripheralPortRead8 :: p -> Uint16 -> IO (p, Uint8),
-        peripheralPortRead16 :: p -> Uint16 -> IO (p, Uint16)
-    }
 
 data PeripheralPort p = PeripheralPort {
         peripheralPortLoc :: Uint16,
@@ -72,40 +53,17 @@ instance Eq (PeripheralMem p) where
 
 -------------------------------------------------------------------------------
 
-type IOVal a = (IOValMem a, IOValPort a, IOValRemote a)
-
-class (OperandVal a) => IOValRemote a where
-    ioValRemoteRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
-    ioValRemoteWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
-    ioValRemoteRespond :: MonadIO m => IOQueue -> a -> m ()
-
-class (OperandVal a) => IOValMem a where
-    ioValMemRead :: MonadIO m => p -> PeripheralHandlerMem p -> MemOffset -> m (p, a)
-    ioValMemWrite :: MonadIO m => p -> PeripheralHandlerMem p -> MemOffset -> a -> m p
-
-class (OperandVal a) => IOValPort a where
-    ioValPortRead :: MonadIO m => p -> PeripheralHandlerPort p -> Uint16 -> m (p, a)
-    ioValPortWrite :: MonadIO m => p -> PeripheralHandlerPort p -> Uint16 -> a -> m p
-
-class IOMem a where
-    ioMemRead :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> MemOffset -> m b
-    ioMemWrite :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
-
-class IOPort a where
-    ioPortRead :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> Uint16 -> m b
-    ioPortWrite :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
-
 instance IOMem IOCtx where
-    ioMemRead ctx handler offset =
-        ioValRemoteRead (ioCtxQueue ctx) IOMemType handler offset
-    ioMemWrite ctx handler offset val =
-        ioValRemoteWrite (ioCtxQueue ctx) IOMemType handler offset val
+    ioMemRead (IOCtx i _ _) handler offset =
+        ioMemRead i handler offset
+    ioMemWrite (IOCtx i _ _) handler offset val =
+        ioMemWrite i handler offset val
 
 instance IOPort IOCtx where
-    ioPortRead ctx handler offset = 
-        ioValRemoteRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
-    ioPortWrite ctx handler offset val =
-        ioValRemoteWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
+    ioPortRead (IOCtx i _ _) handler offset = 
+        ioPortRead i handler offset
+    ioPortWrite (IOCtx i _ _) handler offset val =
+        ioPortWrite i handler offset val
 
 -------------------------------------------------------------------------------
 
@@ -163,8 +121,6 @@ instance IOValPort Uint16 where
 
 -------------------------------------------------------------------------------
 
-type IOCtxInternal a = (IOMem a, IOPort a) --, InterruptDispatcher a, PeripheralRunner a)
-
 type PeripheralArray p = Array.Array IOHandlerIndex p
 
 data Peripheral p = Peripheral {
@@ -175,7 +131,7 @@ data Peripheral p = Peripheral {
         peripheralDevices :: p
     }
 
-data IOCtxLocal p = IOCtxLocal {
+data PeripheralsLocal p = PeripheralsLocal {
         localMaxPort :: IOHandlerIndex,
         localMaxMem :: IOHandlerIndex,
         localRunCounter :: Int,
@@ -194,6 +150,24 @@ data PeripheralLocal p = PeripheralLocal {
         peripheralMemL :: PeripheralArray (PeripheralHandlerMem p),
         peripheralDevicesL :: p
     }
+
+-------------------------------------------------------------------------------
+
+data PeripheralsInternal = PeripheralsInternal {
+        localQueue :: IOQueue
+    }
+
+instance IOMem PeripheralsInternal where
+    ioMemRead peripherals handler offset =
+        ioValRemoteRead (localQueue peripherals) IOMemType handler offset
+    ioMemWrite peripherals handler offset val =
+        ioValRemoteWrite (localQueue peripherals) IOMemType handler offset val
+
+instance IOPort PeripheralsInternal where
+    ioPortRead peripherals handler offset = 
+        ioValRemoteRead (localQueue peripherals) IOPortType handler (fromIntegral offset)
+    ioPortWrite peripherals handler offset val =
+        ioValRemoteWrite (localQueue peripherals) IOPortType handler (fromIntegral offset) val
 
 -------------------------------------------------------------------------------
 
@@ -411,7 +385,7 @@ makeEmptyIO :: Int -> p -> IO (IOCtx, Peripheral p)
 makeEmptyIO memSize devices = do
     queue <- createIOQueue
     let peripheral = makeEmptyPeripherals memSize devices
-        ioCtx = IOCtx queue (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
+        ioCtx = IOCtx (PeripheralsInternal queue) (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
     return (ioCtx, peripheral)
 
 -------------------------------------------------------------------------------

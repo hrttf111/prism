@@ -98,6 +98,11 @@ type IOHandlerIndex = Uint16
 type IOPageIndex = Int -- div offset pageSize (or) shiftR n $ offset .&. mask
 type IOPageOffset = Int -- mod offset pageSize (or) offset - IOPageIndex
 
+data MemLocation = MemLocation {
+        memLocationStart :: MemOffset,
+        memLocationEnd :: MemOffset
+    } deriving (Eq)
+
 newtype IOPage = IOPage (UArray IOPageOffset IOHandlerIndex) deriving (Show, Eq)
 
 newtype PortIORegion = PortIORegion (UArray Uint16 IOHandlerIndex) deriving (Show, Eq)
@@ -118,6 +123,43 @@ data MemIORegion = MemIORegion {
 -- 3. IOPage which is Uint16 -> Uint16
 --    is fixed size
 --    unused indexes are occupied by emptyHandler
+
+data PeripheralHandlerMem p = PeripheralHandlerMem {
+        peripheralMemWrite8 :: p -> MemOffset -> Uint8 -> IO p,
+        peripheralMemWrite16 :: p -> MemOffset -> Uint16 -> IO p,
+        peripheralMemRead8 :: p -> MemOffset -> IO (p, Uint8),
+        peripheralMemRead16 :: p -> MemOffset -> IO (p, Uint16)
+    }
+
+data PeripheralHandlerPort p = PeripheralHandlerPort {
+        peripheralPortWrite8 :: p -> Uint16 -> Uint8 -> IO p,
+        peripheralPortWrite16 :: p -> Uint16 -> Uint16 -> IO p,
+        peripheralPortRead8 :: p -> Uint16 -> IO (p, Uint8),
+        peripheralPortRead16 :: p -> Uint16 -> IO (p, Uint16)
+    }
+
+type IOVal a = (IOValMem a, IOValPort a, IOValRemote a)
+
+class (OperandVal a) => IOValRemote a where
+    ioValRemoteRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
+    ioValRemoteWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
+    ioValRemoteRespond :: MonadIO m => IOQueue -> a -> m ()
+
+class (OperandVal a) => IOValMem a where
+    ioValMemRead :: MonadIO m => p -> PeripheralHandlerMem p -> MemOffset -> m (p, a)
+    ioValMemWrite :: MonadIO m => p -> PeripheralHandlerMem p -> MemOffset -> a -> m p
+
+class (OperandVal a) => IOValPort a where
+    ioValPortRead :: MonadIO m => p -> PeripheralHandlerPort p -> Uint16 -> m (p, a)
+    ioValPortWrite :: MonadIO m => p -> PeripheralHandlerPort p -> Uint16 -> a -> m p
+
+class IOMem a where
+    ioMemRead :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> MemOffset -> m b
+    ioMemWrite :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
+
+class IOPort a where
+    ioPortRead :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> Uint16 -> m b
+    ioPortWrite :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
 
 -------------------------------------------------------------------------------
 
@@ -147,14 +189,16 @@ data IOQueue = IOQueue {
         ioQueueRsp :: TQueue IOCmdData
     }
 
-data IOCtx = IOCtx {
-        ioCtxQueue :: IOQueue,
+data IOCtx = forall a . (IOCtxInternal a) => IOCtx {
+        ioCtxInternal :: a,
         ioCtxMemRegion :: MemIORegion,
         ioCtxPortRegion :: PortIORegion
     }
 
 instance Show IOCtx where
     show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
+
+type IOCtxInternal a = (IOMem a, IOPort a) --, InterruptDispatcher a, PeripheralRunner a)
 
 -------------------------------------------------------------------------------
 
