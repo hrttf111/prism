@@ -158,19 +158,6 @@ instance Show IOCtx where
 
 -------------------------------------------------------------------------------
 
-{-type IOCtxCpu a = (IOMem a, IOPort a, InterruptDispatcher a, PeripheralRunner a)
-
-data IOCtx1 = forall a . (IOCtxCpu a) => IOCtx1 {
-        ioCtxInternal :: IORef a,
-        ioCtxMaxPort :: IOHandlerIndex,
-        ioCtxMaxMem :: IOHandlerIndex,
-        ioCtxMemRegion1 :: MemIORegion,
-        ioCtxPortRegion1 :: PortIORegion
-    }
-    -}
-
--------------------------------------------------------------------------------
-
 -- Note: Max size of instruction is 6 bytes
 type InstrBytes = (Uint8, Uint8, Uint8, Uint8, Uint8, Uint8)
 

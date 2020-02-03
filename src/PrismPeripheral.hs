@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module PrismPeripheral where
 
@@ -71,30 +72,40 @@ instance Eq (PeripheralMem p) where
 
 -------------------------------------------------------------------------------
 
-class (OperandVal a) => IOVal a where
-    ioValRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
-    ioValWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
-    ioValRespond :: MonadIO m => IOQueue -> a -> m ()
+type IOVal a = (IOValMem a, IOValPort a, IOValRemote a)
+
+class (OperandVal a) => IOValRemote a where
+    ioValRemoteRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
+    ioValRemoteWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
+    ioValRemoteRespond :: MonadIO m => IOQueue -> a -> m ()
+
+class (OperandVal a) => IOValMem a where
+    ioValMemRead :: MonadIO m => p -> PeripheralHandlerMem p -> MemOffset -> m (p, a)
+    ioValMemWrite :: MonadIO m => p -> PeripheralHandlerMem p -> MemOffset -> a -> m p
+
+class (OperandVal a) => IOValPort a where
+    ioValPortRead :: MonadIO m => p -> PeripheralHandlerPort p -> Uint16 -> m (p, a)
+    ioValPortWrite :: MonadIO m => p -> PeripheralHandlerPort p -> Uint16 -> a -> m p
 
 class IOMem a where
-    ioMemRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> m b
-    ioMemWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
+    ioMemRead :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> MemOffset -> m b
+    ioMemWrite :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
 
 class IOPort a where
-    ioPortRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> m b
-    ioPortWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
+    ioPortRead :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> Uint16 -> m b
+    ioPortWrite :: (MonadIO m, IOVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
 
 instance IOMem IOCtx where
     ioMemRead ctx handler offset =
-        ioValRead (ioCtxQueue ctx) IOMemType handler offset
+        ioValRemoteRead (ioCtxQueue ctx) IOMemType handler offset
     ioMemWrite ctx handler offset val =
-        ioValWrite (ioCtxQueue ctx) IOMemType handler offset val
+        ioValRemoteWrite (ioCtxQueue ctx) IOMemType handler offset val
 
 instance IOPort IOCtx where
     ioPortRead ctx handler offset = 
-        ioValRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
+        ioValRemoteRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
     ioPortWrite ctx handler offset val =
-        ioValWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
+        ioValRemoteWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
 
 -------------------------------------------------------------------------------
 
@@ -102,31 +113,57 @@ data IOCtxException = IOCtxException deriving Show
 
 instance Exception IOCtxException
 
-instance IOVal Uint8 where
-    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
+instance IOValRemote Uint8 where
+    ioValRemoteRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
         atomically $ writeTQueue req $ IOCmdRead8 cmdType handler offset
         val <- atomically $ readTQueue rsp
         case val of
             IOCmdData8 d -> return d
             _ -> throwIO IOCtxException
-    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
+    ioValRemoteWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
         atomically $ writeTQueue req $ IOCmdWrite8 cmdType handler offset val
-    ioValRespond (IOQueue _ rsp) val = liftIO $ do
+    ioValRemoteRespond (IOQueue _ rsp) val = liftIO $ do
         atomically $ writeTQueue rsp $ IOCmdData8 val
 
-instance IOVal Uint16 where
-    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
+instance IOValRemote Uint16 where
+    ioValRemoteRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
         atomically $ writeTQueue req $ IOCmdRead16 cmdType handler offset
         val <- atomically $ readTQueue rsp
         case val of
             IOCmdData16 d -> return d
             _ -> throwIO IOCtxException
-    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
+    ioValRemoteWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
         atomically $ writeTQueue req $ IOCmdWrite16 cmdType handler offset val
-    ioValRespond (IOQueue _ rsp) val = liftIO $ do
+    ioValRemoteRespond (IOQueue _ rsp) val = liftIO $ do
         atomically $ writeTQueue rsp $ IOCmdData16 val
 
+instance IOValMem Uint8 where
+    ioValMemRead devices handler offset =
+        liftIO $ (peripheralMemRead8 handler) devices offset
+    ioValMemWrite devices handler offset val =
+        liftIO $ (peripheralMemWrite8 handler) devices offset val
+
+instance IOValPort Uint8 where
+    ioValPortRead devices handler port =
+        liftIO $ (peripheralPortRead8 handler) devices port
+    ioValPortWrite devices handler port val =
+        liftIO $ (peripheralPortWrite8 handler) devices port val
+
+instance IOValMem Uint16 where
+    ioValMemRead devices handler offset =
+        liftIO $ (peripheralMemRead16 handler) devices offset
+    ioValMemWrite devices handler offset val =
+        liftIO $ (peripheralMemWrite16 handler) devices offset val
+
+instance IOValPort Uint16 where
+    ioValPortRead devices handler port =
+        liftIO $ (peripheralPortRead16 handler) devices port
+    ioValPortWrite devices handler port val =
+        liftIO $ (peripheralPortWrite16 handler) devices port val
+
 -------------------------------------------------------------------------------
+
+type IOCtxInternal a = (IOMem a, IOPort a) --, InterruptDispatcher a, PeripheralRunner a)
 
 type PeripheralArray p = Array.Array IOHandlerIndex p
 
@@ -387,39 +424,39 @@ execPeripheralsOnce queue@(IOQueue req rsp) peripheral = do
     peripheralNew <- (case msg of
         IOCmdRead8 IOMemType handlerIndex memOffset -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralMemRead8 handler) devices memOffset
+            (per, val) <- ioValMemRead devices handler memOffset
             atomically $ writeTQueue rsp $ IOCmdData8 val
             return $ peripheral { peripheralDevices = per }
         IOCmdRead16 IOMemType handlerIndex memOffset -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralMemRead16 handler) devices memOffset
+            (per, val) <- ioValMemRead devices handler memOffset
             atomically $ writeTQueue rsp $ IOCmdData16 val
             return $ peripheral { peripheralDevices = per }
         IOCmdWrite8 IOMemType handlerIndex memOffset val -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            per <- (peripheralMemWrite8 handler) devices memOffset val
+            per <- ioValMemWrite devices handler memOffset val
             return $ peripheral { peripheralDevices = per }
         IOCmdWrite16 IOMemType handlerIndex memOffset val -> do
             let handler = (peripheralMem peripheral) Array.! handlerIndex
-            per <- (peripheralMemWrite16 handler) devices memOffset val
+            per <- ioValMemWrite devices handler memOffset val
             return $ peripheral { peripheralDevices = per }
         IOCmdRead8 IOPortType handlerIndex memOffset -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralPortRead8 handler) devices $ fromIntegral memOffset
+            (per, val) <- ioValPortRead devices handler $ fromIntegral memOffset
             atomically $ writeTQueue rsp $ IOCmdData8 val
             return $ peripheral { peripheralDevices = per }
         IOCmdRead16 IOPortType handlerIndex memOffset -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            (per, val) <- (peripheralPortRead16 handler) devices $ fromIntegral memOffset
+            (per, val) <- ioValPortRead devices handler $ fromIntegral memOffset
             atomically $ writeTQueue rsp $ IOCmdData16 val
             return $ peripheral { peripheralDevices = per }
         IOCmdWrite8 IOPortType handlerIndex memOffset val -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            per <- (peripheralPortWrite8 handler) devices (fromIntegral memOffset) val
+            per <- ioValPortWrite devices handler (fromIntegral memOffset) val
             return $ peripheral { peripheralDevices = per }
         IOCmdWrite16 IOPortType handlerIndex memOffset val -> do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
-            per <- (peripheralPortWrite16 handler) devices (fromIntegral memOffset) val
+            per <- ioValPortWrite devices handler (fromIntegral memOffset) val
             return $ peripheral { peripheralDevices = per }
         _ -> return peripheral
         )

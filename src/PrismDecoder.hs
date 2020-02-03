@@ -24,6 +24,7 @@ import Prism
 import PrismCpu
 import PrismInterrupt
 import PrismCommand
+import PrismPeripheral
 
 -------------------------------------------------------------------------------
 
