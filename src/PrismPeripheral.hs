@@ -1,8 +1,11 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module PrismPeripheral where
 
+import Control.Exception (Exception, throwIO)
+import Control.Monad.Trans
 import Control.Concurrent.STM.TQueue
 import Control.Monad.STM (atomically)
 
@@ -65,6 +68,63 @@ instance Show (PeripheralMem p) where
 
 instance Eq (PeripheralMem p) where
     item1 == item2 = (peripheralMemLoc item1) == (peripheralMemLoc item2)
+
+-------------------------------------------------------------------------------
+
+class (OperandVal a) => IOVal a where
+    ioValRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
+    ioValWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
+    ioValRespond :: MonadIO m => IOQueue -> a -> m ()
+
+class IOMem a where
+    ioMemRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> m b
+    ioMemWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
+
+class IOPort a where
+    ioPortRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> m b
+    ioPortWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
+
+instance IOMem IOCtx where
+    ioMemRead ctx handler offset =
+        ioValRead (ioCtxQueue ctx) IOMemType handler offset
+    ioMemWrite ctx handler offset val =
+        ioValWrite (ioCtxQueue ctx) IOMemType handler offset val
+
+instance IOPort IOCtx where
+    ioPortRead ctx handler offset = 
+        ioValRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
+    ioPortWrite ctx handler offset val =
+        ioValWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
+
+-------------------------------------------------------------------------------
+
+data IOCtxException = IOCtxException deriving Show
+
+instance Exception IOCtxException
+
+instance IOVal Uint8 where
+    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdRead8 cmdType handler offset
+        val <- atomically $ readTQueue rsp
+        case val of
+            IOCmdData8 d -> return d
+            _ -> throwIO IOCtxException
+    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdWrite8 cmdType handler offset val
+    ioValRespond (IOQueue _ rsp) val = liftIO $ do
+        atomically $ writeTQueue rsp $ IOCmdData8 val
+
+instance IOVal Uint16 where
+    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdRead16 cmdType handler offset
+        val <- atomically $ readTQueue rsp
+        case val of
+            IOCmdData16 d -> return d
+            _ -> throwIO IOCtxException
+    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
+        atomically $ writeTQueue req $ IOCmdWrite16 cmdType handler offset val
+    ioValRespond (IOQueue _ rsp) val = liftIO $ do
+        atomically $ writeTQueue rsp $ IOCmdData16 val
 
 -------------------------------------------------------------------------------
 

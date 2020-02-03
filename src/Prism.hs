@@ -147,19 +147,6 @@ data IOQueue = IOQueue {
         ioQueueRsp :: TQueue IOCmdData
     }
 
-class (OperandVal a) => IOVal a where
-    ioValRead :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> m a
-    ioValWrite :: MonadIO m => IOQueue -> IOCmdType -> IOHandlerIndex -> MemOffset -> a -> m ()
-    ioValRespond :: MonadIO m => IOQueue -> a -> m ()
-
-class IOMem a where
-    ioMemRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> m b
-    ioMemWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> MemOffset -> b -> m ()
-
-class IOPort a where
-    ioPortRead :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> m b
-    ioPortWrite :: (MonadIO m, IOVal b, OperandVal b) => a -> IOHandlerIndex -> Uint16 -> b -> m ()
-
 data IOCtx = IOCtx {
         ioCtxQueue :: IOQueue,
         ioCtxMemRegion :: MemIORegion,
@@ -169,27 +156,18 @@ data IOCtx = IOCtx {
 instance Show IOCtx where
     show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
 
-instance IOMem IOCtx where
-    ioMemRead ctx handler offset =
-        ioValRead (ioCtxQueue ctx) IOMemType handler offset
-    ioMemWrite ctx handler offset val =
-        ioValWrite (ioCtxQueue ctx) IOMemType handler offset val
-
-instance IOPort IOCtx where
-    ioPortRead ctx handler offset = 
-        ioValRead (ioCtxQueue ctx) IOPortType handler (fromIntegral offset)
-    ioPortWrite ctx handler offset val =
-        ioValWrite (ioCtxQueue ctx) IOPortType handler (fromIntegral offset) val
-
 -------------------------------------------------------------------------------
 
-type IOCtxCpu a = (IOMem a, IOPort a, InterruptDispatcher a, PeripheralRunner a)
+{-type IOCtxCpu a = (IOMem a, IOPort a, InterruptDispatcher a, PeripheralRunner a)
 
 data IOCtx1 = forall a . (IOCtxCpu a) => IOCtx1 {
         ioCtxInternal :: IORef a,
+        ioCtxMaxPort :: IOHandlerIndex,
+        ioCtxMaxMem :: IOHandlerIndex,
         ioCtxMemRegion1 :: MemIORegion,
         ioCtxPortRegion1 :: PortIORegion
     }
+    -}
 
 -------------------------------------------------------------------------------
 

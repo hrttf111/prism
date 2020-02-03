@@ -16,7 +16,6 @@ import Data.Maybe (fromMaybe)
 import Data.Bits
 import Data.Int
 
-import Control.Exception (Exception, throwIO)
 import Control.Monad.Trans (MonadIO, liftIO, lift)
 import Control.Concurrent.STM.TQueue
 import Control.Monad.STM (atomically)
@@ -119,36 +118,6 @@ instance RegDecoder RegSeg where
 convertReg :: (OperandVal b1, OperandVal b2, OperandReg a1 b1, OperandReg a2 b2) =>
     a1 -> a2
 convertReg = decodeReg . decodeRegVal
-
--------------------------------------------------------------------------------
-
-data IOCtxException = IOCtxException deriving Show
-
-instance Exception IOCtxException
-
-instance IOVal Uint8 where
-    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
-        atomically $ writeTQueue req $ IOCmdRead8 cmdType handler offset
-        val <- atomically $ readTQueue rsp
-        case val of
-            IOCmdData8 d -> return d
-            _ -> throwIO IOCtxException
-    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
-        atomically $ writeTQueue req $ IOCmdWrite8 cmdType handler offset val
-    ioValRespond (IOQueue _ rsp) val = liftIO $ do
-        atomically $ writeTQueue rsp $ IOCmdData8 val
-
-instance IOVal Uint16 where
-    ioValRead (IOQueue req rsp) cmdType handler offset = liftIO $ do
-        atomically $ writeTQueue req $ IOCmdRead16 cmdType handler offset
-        val <- atomically $ readTQueue rsp
-        case val of
-            IOCmdData16 d -> return d
-            _ -> throwIO IOCtxException
-    ioValWrite (IOQueue req _) cmdType handler offset val = liftIO $ do
-        atomically $ writeTQueue req $ IOCmdWrite16 cmdType handler offset val
-    ioValRespond (IOQueue _ rsp) val = liftIO $ do
-        atomically $ writeTQueue rsp $ IOCmdData16 val
 
 -------------------------------------------------------------------------------
 
