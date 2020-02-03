@@ -76,7 +76,7 @@ testPeripheral instrList = do
             ref <- newIORef 0
             let devices = PeripheralDevices
                 handler = PeripheralHandlerMem emptyWriteH (testPeriphWrite ref) emptyReadH emptyReadH
-                mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
+                mem = [(PeripheralMem (9000, 9200) handler)]
             env <- createPeripheralsTestEnv instrList devices [] mem
             execPrism [] env $ [text|
                 xor bx, bx

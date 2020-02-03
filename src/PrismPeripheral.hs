@@ -14,6 +14,15 @@ import Prism
 
 -------------------------------------------------------------------------------
 
+data MemLocation = MemLocation {
+        memLocationStart :: MemOffset,
+        memLocationEnd :: MemOffset
+    } deriving (Eq)
+
+instance Show MemLocation where
+    show (MemLocation start end) =
+        "(" ++ (show start) ++ "," ++ (show end) ++ ")"
+
 data PeripheralHandlerMem p = PeripheralHandlerMem {
         peripheralMemWrite8 :: p -> MemOffset -> Uint8 -> IO p,
         peripheralMemWrite16 :: p -> MemOffset -> Uint16 -> IO p,
@@ -47,13 +56,12 @@ data PeripheralPort p = PeripheralPort {
         peripheralPortHandlers :: PeripheralHandlerPort p
     }
 data PeripheralMem p = PeripheralMem {
-        peripheralMemLoc :: (MemOffset, MemOffset),
+        peripheralMemLoc :: MemLocation,
         peripheralMemHandlers :: PeripheralHandlerMem p
     }
 
 instance Show (PeripheralMem p) where
-    show (PeripheralMem (start, end) _) = 
-        "(" ++ (show start) ++ "," ++ (show end) ++ ")"
+    show (PeripheralMem loc _) = show loc
 
 instance Eq (PeripheralMem p) where
     item1 == item2 = (peripheralMemLoc item1) == (peripheralMemLoc item2)
@@ -81,22 +89,21 @@ data IOCtxLocal p = IOCtxLocal {
 
 -------------------------------------------------------------------------------
 
-type MemPairs p = [(Uint16, PeripheralMem p)]
-type MemPageStubs = [(MemOffset, MemOffset)]
-
 emptyPage = 0
 emptyHandler = 0
 
-data PagesBuilder p = PagesBuilder {
+type MemPairs = [(Uint16, MemLocation)]
+
+data PagesBuilder = PagesBuilder {
         pageCounter :: IOPageIndex,
-        pageStubs :: MemPageStubs,
-        memPairs :: MemPairs p,
+        pageStubs :: [MemLocation],
+        memPairs :: MemPairs,
         regionL1 :: [IOPageIndex],
         regionL2 :: [(IOPageIndex, IOPage)]
     } deriving (Show, Eq)
 
 
-makePageArray :: MemOffset -> MemOffset -> MemPairs p -> [IOHandlerIndex] -> [IOHandlerIndex]
+makePageArray :: MemOffset -> MemOffset -> MemPairs -> [IOHandlerIndex] -> [IOHandlerIndex]
 makePageArray memOffset end [] indexes =
     indexes ++ replicate (end - memOffset) emptyHandler
 makePageArray memOffset end pairs indexes | memOffset == end =
@@ -107,22 +114,22 @@ makePageArray memOffset end pairs indexes =
     else
         makePageArray memOffset end (tail pairs) indexes
     where
-        (handlerIndex, (PeripheralMem (s1, s2) _)) = head pairs
+        (handlerIndex, MemLocation s1 s2) = head pairs
         index = if memOffset < s1 then emptyHandler else handlerIndex
 
 
-makePage :: MemOffset -> MemOffset -> MemPairs p -> (MemPairs p, IOPage)
+makePage :: MemOffset -> MemOffset -> MemPairs -> (MemPairs, IOPage)
 makePage start end pairs = (remain, page)
     where
         covered = takeWhile startInPage pairs
         remain = dropWhile endOutsidePage pairs
-        startInPage = (<= end) . fst . peripheralMemLoc . snd
-        endOutsidePage = (<= end) . snd . peripheralMemLoc . snd
+        startInPage = (<= end) . memLocationStart . snd
+        endOutsidePage = (<= end) . memLocationEnd . snd
         indexes = makePageArray start end covered []
         page = IOPage $ UArray.listArray (0, (end - start)) indexes
 
 
-makeMemP :: PagesBuilder p -> PagesBuilder p
+makeMemP :: PagesBuilder -> PagesBuilder
 makeMemP b@(PagesBuilder _ [] _ _ _) = b
 makeMemP b@(PagesBuilder _ stubs [] l1 _) =
     b { pageStubs = [], regionL1 = l1_ }
@@ -134,15 +141,15 @@ makeMemP (PagesBuilder counter stubs pairs@(pairHead:_) l1 l2) =
         else
             let
                 newCounter = counter + 1
-                ((start, end) : newStubs) = occupiedStubs
+                ((MemLocation start end) : newStubs) = occupiedStubs
                 (newPairs, page) = makePage start end pairs
                 newL1 = l1_ ++ [newCounter]
                 newL2 = l2 ++ [(newCounter, page)]
                 in
             makeMemP $ PagesBuilder newCounter newStubs newPairs newL1 newL2
     where
-        (nextMemStart, _) = peripheralMemLoc . snd $ pairHead
-        (emptyStubs, occupiedStubs) = span ((< nextMemStart) . snd) stubs
+        nextMemStart = memLocationStart . snd $ pairHead
+        (emptyStubs, occupiedStubs) = span ((< nextMemStart) . memLocationEnd) stubs
         l1_ = l1 ++ map (\_ -> emptyPage) emptyStubs
         newCounter = counter + 1
 
@@ -169,7 +176,7 @@ createPeripherals devices memSize pageSize portEntries memEntries =
         Peripheral portRegion memRegion portHandlers memHandlers devices
     where
         stubs =
-            takeWhile ((<= memSize) . snd) [((i-1) * pageSize, i * pageSize) | i <- [1..]]
+            takeWhile ((<= memSize) . memLocationEnd) [(MemLocation ((i-1) * pageSize) (i * pageSize)) | i <- [1..]]
         portPairs = 
             zip [1..] $ sortOn (\(PeripheralPort port _) -> port) portEntries
         portRegion =
@@ -178,9 +185,10 @@ createPeripherals devices memSize pageSize portEntries memEntries =
             Array.array (1, fromIntegral $ length portEntries) 
             $ map (\(i, (PeripheralPort _ h)) -> (i, h)) portPairs
         memPairs = 
-            zip [1..] $ sortOn (\(PeripheralMem (start, _) _) -> start) memEntries
+            zip [1..] $ sortOn (\(PeripheralMem loc _) -> memLocationStart loc) memEntries
+        memPairs1 = map (\(index, PeripheralMem loc _) -> (index, loc)) memPairs
         builder =
-            makeMemP $ PagesBuilder 0 stubs memPairs [] []
+            makeMemP $ PagesBuilder 0 stubs memPairs1 [] []
         memRegion = 
             MemIORegion pageSize
                 (UArray.listArray (0, (length stubs)) (regionL1 builder))
