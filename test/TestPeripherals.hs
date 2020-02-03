@@ -114,10 +114,10 @@ testPeripherals = do
             (findMemIndex memRegion 27) `shouldBe` (1)
             (findMemIndex memRegion 98) `shouldBe` (2)
             (findMemIndex memRegion 99) `shouldBe` (2)
-    describe "Test makePortArray" $ do
+    describe "Test makePortList" $ do
         it "makeArray" $ do
             let ports = zip [1..] $ makePortPeripherals [8, 192, 0xFFFE]
-                portArray = makePortArray ports []
+                portArray = makePortList ports []
             (length portArray) `shouldBe` 0x10000
             (portArray !! 0) `shouldBe` 0
             (portArray !! 7) `shouldBe` 0
