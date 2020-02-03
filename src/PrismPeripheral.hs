@@ -153,17 +153,31 @@ makeMemP (PagesBuilder counter stubs pairs@(pairHead:_) l1 l2) =
         l1_ = l1 ++ map (\_ -> emptyPage) emptyStubs
         newCounter = counter + 1
 
-makePortArray :: [(Uint16, PeripheralPort p )] -> [IOHandlerIndex] -> [IOHandlerIndex]
+makePortArray :: [(IOHandlerIndex, Uint16)] -> [IOHandlerIndex] -> [IOHandlerIndex]
 makePortArray [] indexes = 
     indexes ++ replicate (0x10000 - length indexes) emptyHandler
 makePortArray ((index, peripheral):tail) indexes =
     let
-        toReplicate = fromIntegral (peripheralPortLoc peripheral) - length indexes
+        toReplicate = fromIntegral peripheral - length indexes
         newIndexes = indexes 
                      ++ replicate toReplicate emptyHandler
                      ++ [index]
         in
     makePortArray tail newIndexes
+
+
+indexHandlers :: IOHandlerIndex
+                 -> IOHandlerIndex
+                 -> [PeripheralPort p]
+                 -> [PeripheralMem p]
+                 -> ([(IOHandlerIndex, PeripheralPort p)], [(IOHandlerIndex, PeripheralMem p)])
+indexHandlers portStart memStart portEntries memEntries =
+    (portPairs, memPairs)
+    where
+        portPairs = 
+            zip [portStart..] $ sortOn peripheralPortLoc portEntries
+        memPairs = 
+            zip [memStart..] $ sortOn (memLocationStart . peripheralMemLoc) memEntries
 
 
 createPeripherals :: p
@@ -177,15 +191,13 @@ createPeripherals devices memSize pageSize portEntries memEntries =
     where
         stubs =
             takeWhile ((<= memSize) . memLocationEnd) [(MemLocation ((i-1) * pageSize) (i * pageSize)) | i <- [1..]]
-        portPairs = 
-            zip [1..] $ sortOn (\(PeripheralPort port _) -> port) portEntries
+        (portPairs, memPairs) = indexHandlers 1 1 portEntries memEntries
+        portPairs1 = map (\(index, PeripheralPort loc _) -> (index, loc)) portPairs
         portRegion =
-            PortIORegion $ UArray.listArray (0, 0xFFFF) $ makePortArray portPairs [] 
+            PortIORegion $ UArray.listArray (0, 0xFFFF) $ makePortArray portPairs1 [] 
         portHandlers = 
             Array.array (1, fromIntegral $ length portEntries) 
             $ map (\(i, (PeripheralPort _ h)) -> (i, h)) portPairs
-        memPairs = 
-            zip [1..] $ sortOn (\(PeripheralMem loc _) -> memLocationStart loc) memEntries
         memPairs1 = map (\(index, PeripheralMem loc _) -> (index, loc)) memPairs
         builder =
             makeMemP $ PagesBuilder 0 stubs memPairs1 [] []

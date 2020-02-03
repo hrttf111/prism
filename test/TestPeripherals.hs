@@ -20,8 +20,7 @@ makePairs start offsets = zip [start..]
 makeMemPeripherals :: [MemLocation] -> [PeripheralMem p]
 makeMemPeripherals offsets = map (flip PeripheralMem emptyMemHandler) offsets
 
-makePortPeripherals :: [Uint16] -> [PeripheralPort p]
-makePortPeripherals ports = map (flip PeripheralPort emptyPortHandler) ports
+makePortPeripherals = id
 
 pairs1 = makePairs 1 [(1, 2), (4, 4)]
 pairs2 = makePairs 1 [(0, 9)]
