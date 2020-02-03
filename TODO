@@ -130,13 +130,54 @@ data PeripheralLocal = PeripheralLocal {
    - interrupts will be sent to CPU via command queue
    - they will be handled by dispatch function of IOCtxLocals interface
 
-class IOCtxLocals s where
+Handler bifurcation
+ - same operation can be handled in partially locally and remotely
+
+class IOMem s where
     read :: s -> ...
     write :: s -> ...
-    dispatch :: s -> ...
-    aoi :: s -> ...
+
+--class IOCtxLocals s where
+class IOInterruptDispatcher s where
+    dispatch :: s -> InterruptReq -> IO (s, Bool)
+    aoi :: s -> IO (s, Int)
 
 class IORemote s where
+    ...
+
+class IORunner s where
+    runPeripherals :: s -> ...
+
+type PeripheralArray p = Array.Array IOHandlerIndex p
+
+data IOCtx = forall a . (IOMem a, IOInterruptDispatcher a, IORunner a) => IOCtx {
+        IORef a
+    }
+
+data PeripheralLocal p = PeripheralLocal {
+        runPeripheralsCounter :: Int,
+        peripheralLocalRemoteMax :: Int,
+        --peripheralLocalPortRegion :: PortIORegion,
+        --peripheralLocalMemRegion :: MemIORegion,
+        peripheralLocalPort :: PeripheralArray (PeripheralHandlerPort p),
+        peripheralLocalMem :: PeripheralArray (PeripheralHandlerMem p),
+        queue,
+        devices :: p
+    }
+
+readMem local index offset = do
+    if index > (peripheralLocalRemoteMax local) then
+        --process local
+    else
+        --process remote
+
+instance IOInterruptDispatcher PeripheralLocal where
+    ...
+
+instance IOMem PeripheralLocal where
+    ...
+
+instance IORunner PeripheralLocal where
     ...
 
 -------------------------------------------------------
