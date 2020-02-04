@@ -100,13 +100,15 @@ testPeripherals = do
             (regionL1 result) `shouldBe` [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     describe "Test createPeripherals" $ do
         it "Read mem handler" $ do
-            let pairs = makeMemPeripherals [(MemLocation 8 27), (MemLocation 98 99)]
-                peripherals = createPeripherals (0 :: Int) 100 10 [] pairs
-                memRegion = peripheralMemRegion peripherals
+            let p1 = makeMemPeripherals [(MemLocation 8 27), (MemLocation 98 99)]
+                p2 = makeMemPeripherals [(MemLocation 28 38), (MemLocation 95 97)]
+                devices = 0 :: Int
+                (peripheralsR, peripheralsL) = 
+                    createPeripheralsLR devices devices 100 10 [] p1 [] p2
+                memRegion = peripheralMemRegion peripheralsR
             (findMemIndex memRegion 0) `shouldBe` (emptyHandler)
-            (findMemIndex memRegion 97) `shouldBe` (emptyHandler)
             (findMemIndex memRegion 100) `shouldBe` (emptyHandler)
-            (findMemIndex memRegion 7) `shouldBe` (0)
+            (findMemIndex memRegion 7) `shouldBe` (emptyHandler)
             (findMemIndex memRegion 8) `shouldBe` (1)
             (findMemIndex memRegion 9) `shouldBe` (1)
             (findMemIndex memRegion 10) `shouldBe` (1)
@@ -114,6 +116,11 @@ testPeripherals = do
             (findMemIndex memRegion 27) `shouldBe` (1)
             (findMemIndex memRegion 98) `shouldBe` (2)
             (findMemIndex memRegion 99) `shouldBe` (2)
+            (findMemIndex memRegion 28) `shouldBe` (3)
+            (findMemIndex memRegion 38) `shouldBe` (3)
+            (findMemIndex memRegion 39) `shouldBe` (emptyHandler)
+            (findMemIndex memRegion 95) `shouldBe` (4)
+            (findMemIndex memRegion 97) `shouldBe` (4)
     describe "Test makePortList" $ do
         it "makeArray" $ do
             let ports = zip [1..] $ makePortPeripherals [8, 192, 0xFFFE]
