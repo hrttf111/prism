@@ -66,6 +66,11 @@ instance IOPort IOCtx where
     ioPortWrite (IOCtx i _ _) handler offset val =
         ioPortWrite i handler offset val
 
+instance InterruptDispatcher IOCtx where
+    dispatchInterruptUp s int = return (s, False)
+    dispatchInterruptDown s int = return (s, False)
+    ackInterrupt s = return (s, PrismInt 0)
+
 -------------------------------------------------------------------------------
 
 data IOCtxException = IOCtxException deriving Show
@@ -373,5 +378,19 @@ makeEmptyIO memSize devices = do
     let peripheral = makeEmptyPeripherals memSize devices
         ioCtx = IOCtx (PeripheralsInternal queue) (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
     return (ioCtx, peripheral)
+
+-------------------------------------------------------------------------------
+
+instance PeripheralRunner IOCtx where
+    runPeripherals ctx s = return (ctx, s)
+    peripheralCycles _ = maxCycles
+
+decCycles :: Ctx -> PrismCtx IO Ctx
+decCycles ctx = return $ ctx { ctxCycles = (ctxCycles ctx - 1) }
+
+processPeripherals :: Ctx -> PrismCtx IO Ctx
+processPeripherals ctx = liftIO $ do
+    (ctx_, ctxIO_) <- runPeripherals ctx (ctxIO ctx)
+    return $ ctx_ { ctxIO = ctxIO_, ctxCycles = peripheralCycles ctxIO_ }
 
 -------------------------------------------------------------------------------

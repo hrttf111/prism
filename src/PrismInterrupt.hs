@@ -4,6 +4,7 @@ import Control.Monad.Trans (lift, liftIO, MonadIO)
 
 import Data.List
 import Data.Word
+import Data.Maybe (isJust)
 import Data.Bits ((.&.), (.|.), shiftR, shiftL)
 import qualified Data.Map.Strict (Map, lookup)
 
@@ -12,6 +13,7 @@ import Foreign.Storable (poke, pokeByteOff)
 
 import Prism
 import PrismCpu
+import PrismPeripheral
 
 addInterruptSingleStep :: PrismInterrupts -> PrismInterrupts
 addInterruptSingleStep interrupts = interrupts { intSingleStep = newList, intInterruptUp = True }
@@ -31,8 +33,8 @@ execTF ctx = if tf then ctx { ctxInterrupts = addInterruptSingleStep $ ctxInterr
 interruptActive :: Ctx -> Bool
 interruptActive = intInterruptUp . ctxInterrupts
 
-getNextInterrupt :: PrismInterrupts -> Maybe (PrismInterrupts, PrismInt)
-getNextInterrupt interrupts =
+getNextInterruptHigh :: PrismInterrupts -> Maybe (PrismInterrupts, PrismInt)
+getNextInterruptHigh interrupts =
     case uncons $ intListHigh interrupts of 
         Just (currentInt, interrupts_) ->
             Just (interrupts { intListHigh = interrupts_}, currentInt)
@@ -43,9 +45,23 @@ getNextInterrupt interrupts =
                 Nothing ->
                     Nothing
 
+getNextInterrupt :: (MonadIO m, InterruptDispatcher s) => s -> PrismInterrupts -> m (Maybe (PrismInterrupts, PrismInt))
+getNextInterrupt dispatcher interrupts =
+    let res = getNextInterruptHigh interrupts
+        in
+    if isJust res then
+        return res
+        --todo: check IF
+        else if intIntrOn interrupts then do
+            (_, int) <- liftIO $ ackInterrupt dispatcher
+            return $ Just (interrupts {intIntrOn = False}, int)
+            else
+                return Nothing
+
 processInterrupts :: MonadIO m => Ctx -> m Ctx
-processInterrupts ctx =
-    case (getNextInterrupt $ ctxInterrupts ctx) of
+processInterrupts ctx = do
+    res <- getNextInterrupt (ctxIO ctx) (ctxInterrupts ctx)
+    case res of
         Just (newInterrupts, (PrismInt val)) -> do
             (ipVal, csVal) <- readMemDirect32 (ctxMem ctx) (4 * (fromIntegral val))
             saveInterruptCtx ctx

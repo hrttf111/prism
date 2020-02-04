@@ -24,7 +24,8 @@ class PrismMsgQueue a b | a -> b where
     recvCpuMsgIO :: MonadIO m => a -> m b
     tryRecvCpuMsgIO :: MonadIO m => a -> m (Maybe b)
 
-data PrismCpuCommand = PCmdInterrupt PrismInt
+data PrismCpuCommand = PCmdInterruptUp PrismInt
+                       | PCmdInterruptDown PrismInt 
                        | PCmdPause
                        | PCmdStep
                        | PCmdCont
@@ -92,7 +93,8 @@ processComm comm ctx = do
         Just m -> case m of
             PCmdBreak addr -> cpuProcessBreak comm ctx addr
             PCmdBreakRemove addr -> cpuProcessBreakRemove comm ctx addr
-            PCmdInterrupt _ -> return Nothing
+            PCmdInterruptUp i -> cpuInterruptUp comm ctx i
+            PCmdInterruptDown i -> cpuInterruptDown comm ctx i 
             PCmdPause -> cpuProcessPause comm ctx
             PCmdStep -> cpuProcessStep comm ctx
             PCmdCont -> cpuProcessCont comm ctx
@@ -104,6 +106,20 @@ processComm comm ctx = do
         Nothing ->
             if commWaitResponse comm then processComm comm ctx
                 else return Nothing
+
+cpuInterruptUp :: PrismComm -> Ctx -> PrismInt -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuInterruptUp comm ctx int = do
+    (ioCtx_, intrOn) <- liftIO $ dispatchInterruptUp (ctxIO ctx) int
+    let interrupts = (ctxInterrupts ctx)
+        interrupts_ = if intrOn then interrupts {intIntrOn = True} else interrupts
+    return $ Just (comm, ctx { ctxIO = ioCtx_, ctxInterrupts = interrupts_})
+
+cpuInterruptDown :: PrismComm -> Ctx -> PrismInt -> PrismCtx IO (Maybe (PrismComm, Ctx))
+cpuInterruptDown comm ctx int = do
+    (ioCtx_, intrOn) <- liftIO $ dispatchInterruptDown (ctxIO ctx) int
+    let interrupts = (ctxInterrupts ctx)
+        interrupts_ = if not intrOn then interrupts {intIntrOn = False} else interrupts
+    return $ Just (comm, ctx { ctxIO = ioCtx_, ctxInterrupts = interrupts_})
 
 cpuProcessBreak :: PrismComm -> Ctx -> Int -> PrismCtx IO (Maybe (PrismComm, Ctx))
 cpuProcessBreak comm ctx b = 

@@ -95,7 +95,6 @@ data PeripheralLocal = PeripheralLocal {
    - interrupts will be sent to CPU via command queue
    - they will be handled by dispatch function of IOCtxLocals interface
 
-
 class IOMem s where
     read :: s -> ...
     write :: s -> ...

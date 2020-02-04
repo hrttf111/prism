@@ -401,14 +401,16 @@ decodeHaltCpu dec comm ctx = do
         Just (comm_, ctx_) -> decodeHaltCpu dec comm_ ctx_
         Nothing -> 
             if ctxStop ctx then return ctx
-            else do
-                if interruptActive ctx then processInterrupts ctx >>= decodeHaltCpu dec comm
+            else if (ctxCycles ctx) == 0 then
+                    processPeripherals ctx >>= decodeHaltCpu dec comm
                 else do
-                    instr <- peekInstrBytes (ctxMem ctx) offset
-                    let (b1, _, _, _, _, _) = instr
-                        func = instrFunc $ (decInstr dec) ! b1
-                    liftIO $ putStrLn (showHex b1 "")
-                    execTF <$> func instr ctx >>= decodeHaltCpu dec comm
+                    if interruptActive ctx then processInterrupts ctx >>= decodeHaltCpu dec comm
+                    else do
+                        instr <- peekInstrBytes (ctxMem ctx) offset
+                        let (b1, _, _, _, _, _) = instr
+                            func = instrFunc $ (decInstr dec) ! b1
+                        liftIO $ putStrLn (showHex b1 "")
+                        execTF <$> func instr ctx >>= decCycles >>= decodeHaltCpu dec comm
     where
         memReg = ctxReg ctx
 

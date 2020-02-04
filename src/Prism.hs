@@ -164,12 +164,13 @@ class IOPort a where
 -------------------------------------------------------------------------------
 
 class InterruptDispatcher s where
-    dispatchRaise :: s -> PrismInt -> IO (s, Bool)
-    dispatchLower :: s -> PrismInt -> IO (s, Bool)
+    dispatchInterruptUp :: s -> PrismInt -> IO (s, Bool)
+    dispatchInterruptDown :: s -> PrismInt -> IO (s, Bool)
     ackInterrupt :: s -> IO (s, PrismInt)
 
 class PeripheralRunner s where
-    runPeripherals :: s -> IO s
+    runPeripherals :: Ctx -> s -> IO (Ctx, s)
+    peripheralCycles :: s -> Int
 
 -------------------------------------------------------------------------------
 
@@ -237,19 +238,20 @@ instance Show PrismInt where
 data PrismInterrupts = PrismInterrupts {
         intListHigh :: [PrismInt],
         intListNmi :: [PrismInt],
-        intListIntr :: [PrismInt],
+        intIntrOn :: Bool,
         intSingleStep :: [PrismInt],
         intInterruptUp :: Bool
     } deriving (Show)
 
-emptyPrismInterrupts = PrismInterrupts [] [] [] [] False
+emptyPrismInterrupts = PrismInterrupts [] [] False [] False
 makePrismCtx memReg memMain ioCtx =
-    Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop ioCtx emptyPrismInterrupts
+    Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop maxCycles ioCtx emptyPrismInterrupts
 
 noReplaceSeg ::  Maybe RegSeg
 noReplaceSeg = Nothing
 
 noStop = False
+maxCycles = 999999999
 
 data Ctx = Ctx {
         ctxReg :: MemReg,
@@ -258,6 +260,7 @@ data Ctx = Ctx {
         ctxEFlags :: EFlags,
         ctxReplaceSeg :: Maybe RegSeg,
         ctxStop :: Bool,
+        ctxCycles :: Int,
         ctxIO :: IOCtx,
         ctxInterrupts :: PrismInterrupts
     } deriving (Show)
