@@ -76,20 +76,23 @@ createTestEnv instrList = do
 
 createPeripheralsTestEnv :: MonadIO m => 
                             [PrismInstruction] -> 
-                            p ->
-                            [PeripheralPort p] ->
-                            [PeripheralMem p] ->
+                            pR ->
+                            [PeripheralPort pR] ->
+                            [PeripheralMem pR] ->
+                            pL ->
+                            [PeripheralPort pL] ->
+                            [PeripheralMem pL] ->
                             m TestEnv
-createPeripheralsTestEnv instrList devices ports mems = do
+createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL = do
     queue <- liftIO $ createIOQueue
-    let ioCtx = IOCtx (PeripheralsInternal queue) (peripheralMemRegion peripheral) (peripheralPortRegion peripheral)
-    threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheral
+    let ioCtx = IOCtx (PeripheralsInternal queue) (peripheralMemRegion peripheralR) (peripheralPortRegion peripheralR)
+    threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
     createTestEnv1 ioCtx (Just threadId) $ makeDecoderList combinedList
     where
         memSize = 1024 * 1024
         pageSize = 1024
         combinedList = instrList ++ (segmentInstrList instrList)
-        peripheral = createPeripherals devices memSize pageSize ports mems
+        (peripheralR, _) = createPeripheralsLR devR devL memSize pageSize portsR memsR portsL memsL
 
 
 class RegTest a where

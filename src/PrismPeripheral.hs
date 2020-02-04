@@ -307,48 +307,43 @@ createPeripherals :: p
                      -> [PeripheralMem p] 
                      -> Peripheral p
 createPeripherals devices memSize pageSize portEntries memEntries = 
-        Peripheral portRegion memRegion portHandlers memHandlers devices
+    fst $ createPeripheralsLR devices devStub memSize pageSize portEntries memEntries [] []
     where
-        stubs = makePageStubs memSize pageSize
-        (portPairs, memPairs) = indexHandlers 1 1 portEntries memEntries
-        portRegion = makePortRegion $ convertPortPairs portPairs
-        memRegion = makeMemRegion pageSize stubs $ convertMemPairs memPairs
-        portHandlers = peripheralArrayPort portPairs
-        memHandlers = peripheralArrayMem memPairs
+        devStub = 0 :: Int
 
 
-createPeripheralsLR :: p1
-                     -> p2
+createPeripheralsLR :: pR
+                     -> pL
                      -> Int
                      -> Int
-                     -> [PeripheralPort p1] 
-                     -> [PeripheralMem p1] 
-                     -> [PeripheralPort p2] 
-                     -> [PeripheralMem p2] 
-                     -> (Peripheral p1, PeripheralLocal p2)
-createPeripheralsLR devicesP1 devicesP2 memSize pageSize portEntriesP1 memEntriesP1 portEntriesP2 memEntriesP2 = 
-        (Peripheral portRegion memRegion portHandlersP1 memHandlersP1 devicesP1
-        , PeripheralLocal portMax memMax portRegion memRegion portHandlersP2 memHandlersP2 devicesP2)
+                     -> [PeripheralPort pR] 
+                     -> [PeripheralMem pR] 
+                     -> [PeripheralPort pL] 
+                     -> [PeripheralMem pL] 
+                     -> (Peripheral pR, PeripheralLocal pL)
+createPeripheralsLR devicesR devicesL memSize pageSize portEntriesR memEntriesR portEntriesL memEntriesL = 
+        (Peripheral portRegion memRegion portHandlersR memHandlersR devicesR
+        , PeripheralLocal portMax memMax portRegion memRegion portHandlersL memHandlersL devicesL)
     where
         stubs = makePageStubs memSize pageSize
-        (portPairsP1, memPairsP1) =
-            indexHandlers 1 1 portEntriesP1 memEntriesP1
-        portMax = fromIntegral $ length portPairsP1
-        memMax = fromIntegral $ length memPairsP1
-        (portPairsP2, memPairsP2) =
-            indexHandlers (portMax+1) (memMax+1) portEntriesP2 memEntriesP2
+        (portPairsR, memPairsR) =
+            indexHandlers 1 1 portEntriesR memEntriesR
+        portMax = fromIntegral $ length portPairsR
+        memMax = fromIntegral $ length memPairsR
+        (portPairsL, memPairsL) =
+            indexHandlers (portMax+1) (memMax+1) portEntriesL memEntriesL
         portPairsM = 
             sortOn snd
-            $ (convertPortPairs portPairsP1) ++ (convertPortPairs portPairsP2)
+            $ (convertPortPairs portPairsR) ++ (convertPortPairs portPairsL)
         memPairsM =
             sortOn (memLocationStart . snd)
-            $ (convertMemPairs memPairsP1) ++ (convertMemPairs memPairsP2)
+            $ (convertMemPairs memPairsR) ++ (convertMemPairs memPairsL)
         portRegion = makePortRegion portPairsM
         memRegion = makeMemRegion pageSize stubs memPairsM
-        portHandlersP1 = peripheralArrayPort portPairsP1
-        memHandlersP1 = peripheralArrayMem memPairsP1
-        portHandlersP2 = peripheralArrayPort portPairsP2
-        memHandlersP2 = peripheralArrayMem memPairsP2
+        portHandlersR = peripheralArrayPort portPairsR
+        memHandlersR = peripheralArrayMem memPairsR
+        portHandlersL = peripheralArrayPort portPairsL
+        memHandlersL = peripheralArrayMem memPairsL
 
 
 findMemIndex :: MemIORegion -> MemOffset -> IOHandlerIndex
