@@ -130,5 +130,23 @@ testPeripheral instrList = do
             |]
             threadDelay 10000
             readIORef ref >>= (`shouldBe` 1890)
+    describe "Peripheral MMIO Local" $ do
+        let devR = PeripheralDevices
+        it "Read 8b" $ do
+            let devices = PeripheralDevices
+                val = 134
+                handlerL = PeripheralHandlerMem emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
+                memL = [(PeripheralMem (MemLocation 9000 9200) handlerL)]
+                handlerR = PeripheralHandlerMem emptyWriteH emptyWriteH (testPeriphRead 127) emptyReadH
+                memR = [(PeripheralMem (MemLocation 10300 10400) handlerR)]
+            env <- createPeripheralsTestEnv instrList devR [] memR devices [] memL
+            execPrism [(al `shouldEq` 134), (bl `shouldEq` 189), (cl `shouldEq` 127)] env $ [text|
+                xor bx, bx
+                mov ds, bx
+                mov [8999], BYTE 189
+                mov al, [9002]
+                mov bl, [8999]
+                mov cl, [10300]
+            |]
 
 -------------------------------------------------------------------------------

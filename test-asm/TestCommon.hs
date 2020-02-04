@@ -22,6 +22,7 @@ import PrismDecoder
 import PrismPeripheral
 
 import Peripherals.Remote
+import Peripherals.Local
 import Instruction.Processor
 
 import Assembler
@@ -85,14 +86,14 @@ createPeripheralsTestEnv :: MonadIO m =>
                             m TestEnv
 createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL = do
     queue <- liftIO $ createIOQueue
-    let ioCtx = IOCtx (PeripheralsInternal queue) (peripheralMemRegion peripheralR) (peripheralPortRegion peripheralR)
+    ioCtx <- liftIO $ createLocalPeripherals peripheralL queue
     threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
     createTestEnv1 ioCtx (Just threadId) $ makeDecoderList combinedList
     where
         memSize = 1024 * 1024
         pageSize = 1024
         combinedList = instrList ++ (segmentInstrList instrList)
-        (peripheralR, _) = createPeripheralsLR devR devL memSize pageSize portsR memsR portsL memsL
+        (peripheralR, peripheralL) = createPeripheralsLR devR devL memSize pageSize portsR memsR portsL memsL
 
 
 class RegTest a where

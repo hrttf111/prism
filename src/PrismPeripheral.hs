@@ -10,6 +10,7 @@ import Control.Monad.Trans
 import Control.Concurrent.STM.TQueue
 import Control.Monad.STM (atomically)
 
+import Data.List (uncons)
 import qualified Data.Array as Array
 import qualified Data.Array.Unboxed as UArray
 import Data.List (partition, sortOn, zip, takeWhile)
@@ -279,8 +280,8 @@ peripheralArrayMem memPairs =
     Array.array (start, end)
         $ map (\(i, (PeripheralMem _ handlers)) -> (fromIntegral i, handlers)) memPairs
     where
-        start = 1
-        end = (fromIntegral $ length memPairs)
+        start = maybe 1 (fst . fst) $ uncons memPairs
+        end = start + (fromIntegral $ length memPairs) - 1
 
 
 peripheralArrayPort :: [(IOHandlerIndex, PeripheralPort p)] 
