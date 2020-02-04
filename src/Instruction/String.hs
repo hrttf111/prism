@@ -7,8 +7,9 @@ module Instruction.String where
 import Control.Monad.Trans (liftIO, MonadIO)
 
 import Prism
-import PrismDecoder
 import PrismCpu
+import PrismDecoder
+import PrismRun
 
 -------------------------------------------------------------------------------
 

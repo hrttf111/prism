@@ -4,9 +4,10 @@ import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Bits (shiftR)
 
 import Prism
-import PrismDecoder
 import PrismCpu
+import PrismDecoder
 import PrismInterrupt
+import PrismRun
 
 -------------------------------------------------------------------------------
 

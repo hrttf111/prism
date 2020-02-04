@@ -20,6 +20,7 @@ import Prism
 import PrismCpu
 import PrismDecoder
 import PrismPeripheral
+import PrismRun
 
 import Peripherals.Remote
 import Peripherals.Local

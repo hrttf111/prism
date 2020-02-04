@@ -45,14 +45,13 @@ getNextInterruptHigh interrupts =
                 Nothing ->
                     Nothing
 
-getNextInterrupt :: (MonadIO m, InterruptDispatcher s) => s -> PrismInterrupts -> m (Maybe (PrismInterrupts, PrismInt))
-getNextInterrupt dispatcher interrupts =
+getNextInterrupt :: (MonadIO m, InterruptDispatcher s) => Bool -> s -> PrismInterrupts -> m (Maybe (PrismInterrupts, PrismInt))
+getNextInterrupt if_ dispatcher interrupts =
     let res = getNextInterruptHigh interrupts
         in
     if isJust res then
         return res
-        --todo: check IF
-        else if intIntrOn interrupts then do
+        else if if_ && (intIntrOn interrupts) then do
             (_, int) <- liftIO $ ackInterrupt dispatcher
             return $ Just (interrupts {intIntrOn = False}, int)
             else
@@ -60,7 +59,7 @@ getNextInterrupt dispatcher interrupts =
 
 processInterrupts :: MonadIO m => Ctx -> m Ctx
 processInterrupts ctx = do
-    res <- getNextInterrupt (ctxIO ctx) (ctxInterrupts ctx)
+    res <- getNextInterrupt (eflagIF . ctxEFlags $ ctx) (ctxIO ctx) (ctxInterrupts ctx)
     case res of
         Just (newInterrupts, (PrismInt val)) -> do
             (ipVal, csVal) <- readMemDirect32 (ctxMem ctx) (4 * (fromIntegral val))

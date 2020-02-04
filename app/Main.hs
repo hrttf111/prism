@@ -8,6 +8,7 @@ import PrismShow
 import PrismInterrupt
 import PrismCommand
 import PrismPeripheral
+import PrismRun
 
 import Instruction.Transfer
 import Instruction.Arithmetic
