@@ -290,8 +290,8 @@ peripheralArrayPort portPairs =
     Array.array (start, end)
         $ map (\(i, (PeripheralPort _ h)) -> (i, h)) portPairs
     where
-        start = 1
-        end = (fromIntegral $ length portPairs)
+        start = maybe 1 (fst . fst) $ uncons portPairs
+        end = start + (fromIntegral $ length portPairs) - 1
 
 
 convertPortPairs portPairs =

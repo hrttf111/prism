@@ -162,5 +162,20 @@ testPeripheral instrList = do
             |]
             threadDelay 100
             readIORef ref >>= (`shouldBe` 189)
+    describe "Peripheral Port Local" $ do
+        let devR = PeripheralDevices
+        it "Read 8b" $ do
+            let devices = PeripheralDevices
+                val = 134
+                handlerL = PeripheralHandlerPort emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
+                portL = [(PeripheralPort 120 handlerL)]
+                handlerR = PeripheralHandlerPort emptyWriteH emptyWriteH (testPeriphRead 150) emptyReadH
+                portR = [(PeripheralPort 121 handlerR)]
+            env <- createPeripheralsTestEnv instrList devR portR [] devices portL []
+            execPrism [(al `shouldEq` 134), (bl `shouldEq` 150)] env $ [text|
+                in al, 121
+                mov bl, al
+                in al, 120
+            |]
 
 -------------------------------------------------------------------------------
