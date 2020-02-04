@@ -148,5 +148,19 @@ testPeripheral instrList = do
                 mov bl, [8999]
                 mov cl, [10300]
             |]
+        it "Write 8b" $ do
+            ref <- newIORef 0
+            let devices = PeripheralDevices
+                handler = PeripheralHandlerMem (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
+                memL = [(PeripheralMem (MemLocation 9000 9200) handler)]
+                memR = []
+            env <- createPeripheralsTestEnv instrList devR [] memR devices [] memL
+            execPrism [] env $ [text|
+                xor bx, bx
+                mov ds, bx
+                mov [9008], BYTE 189
+            |]
+            threadDelay 100
+            readIORef ref >>= (`shouldBe` 189)
 
 -------------------------------------------------------------------------------
