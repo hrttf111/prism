@@ -24,6 +24,118 @@ PIC
  - ISR - serviced interrupts
  - IMR - masked interrupts
 
+ ICW1
+  - LTIM (Level trigger mode)
+    - 1 - Level
+    - 0 - Edge
+  - ADI (Call address interval)
+    - 1 - 4
+    - 0 - 8
+  - SNGL
+    - 1 - single
+    - 0 - cascade
+  - IC4
+    - 1 - ICW4 needed
+    - 0 - no ICW4 needed
+
+ ICW2 (interrupt address)
+  - bits 3-7 -> T3-T7
+
+ ICW3 (cascade config)
+  - S0-S7 - 1 has slave (master)
+  - ID0-ID2 - id (slave)
+
+ ICW4
+  - SFNM (speciall fully nested mode)
+    - 1 - yes
+  - BUF
+    - 1 - yes
+  - M/S (works only in BUF mode)
+    - 1 - master
+    - 0 - slave
+  - AEOI (automatic end of interrupt)
+    - 1 - yes
+  - uPM (microprocessor mode)
+    - 0 - 80/85
+    - 1 - 8086
+
+ OCW1 (configure IMR)
+  - 1 - mask (disable interrupt)
+  - 0 - unmask (enable interrupt)
+
+ OCW2
+  - R (rotate)
+    - 1 - yes
+  - SL (specific)
+    - 1 - yes
+  - EOI (end of interrupt)
+    - 1 - EOI
+    - 0 - AEOI
+  - L (interrupt level)
+    - 3 bits
+
+ OCW3
+  - RIS
+  - RR
+    - 11 - Read IS
+    - 01 - Read IR
+  - P (poll)
+    - 1 - poll command
+  - SMM
+  - ESMM
+    - 11 - set special mask
+    - 01 - reset special mask
+
+data PicCommand = PicSetIMR
+               | PicOp Rotate EOI Maybe(Level)
+               | PicReadIS
+               | PicReadIR
+
+newtype PicICW = PicICW Int
+
+picICW1 = PicICW 1
+picICW2 = PicICW 2
+picICW3 = PicICW 3
+picICW4 = PicICW 4
+picICWDone = PicICW 5
+
+data PicConfig = PicConfig {
+    picConfigLevel :: Bool,
+    picConfigSingle :: Bool,
+    picConfigADI :: Uint8,
+    picConfigAddr :: Uint8,
+    --picConfigSlaveMask :: Uint8, -- use slave array
+    --picConfigSlaveId :: Uint8,
+    picConfigNested :: Bool,
+    picConfigBuf :: Bool,
+    --picConfigMode :: Master/Slave,
+    picConfigAEOI :: Bool,
+    picICW4Enabled :: Bool,
+    picConfigUPM :: 8086
+}
+
+data PicState = PicState {
+    picStateIMR :: Uint8,
+    picStateIRR :: Uint8,
+    picStateISR :: Uint8,
+    picStateSMask :: Bool,
+    picStateLowestPrio :: Uint8,
+    picInitStage :: PicICW
+}
+
+data Pic = Pic {
+    picConfig :: PicConfig,
+    picState :: PicState
+}
+
+data PicPC = PicPC {
+    picPCMaster :: Pic,
+    picPCSlave :: Pic
+}
+
+processPicWrite :: Pic -> (Pic, Bool)
+processPicRead :: Pic -> (Pic, Uint8)
+
 Q
  - how to send interrupt request to CPU?
     - It might take some time for CPU to start processing interrupt,
@@ -118,12 +230,18 @@ runPeripherals ctx pc = do
 
 -------------------------------------------------------
 
+data PicConfigStep = PicConfigICW1
+                     | ...
+                     | PicConfigOCW1
+                     | ...
+
 data Pic8259A = Pic8259A {
         picIRR :: Uint8, -- Interrupt Request Register
         picISR :: Uint8, -- In-Service Register
         picIMR :: Uint8, -- Interrupt Mask Register
         picInitStep -- ICW step (1-4)
         picControlStep - OCW step (1-4)
+        --picConfigStep
     }
 
 --data Pic = Pic {
