@@ -95,50 +95,25 @@ data PeripheralLocal = PeripheralLocal {
    - interrupts will be sent to CPU via command queue
    - they will be handled by dispatch function of IOCtxLocals interface
 
-class IOMem s where
-    read :: s -> ...
-    write :: s -> ...
-
-class IOInterruptDispatcher s where
-    dispatch :: s -> InterruptReq -> IO (s, Bool)
-    aoi :: s -> IO (s, Int)
-
-class IORemote s where
-    ...
-
-class IORunner s where
-    runPeripherals :: Ctx -> s -> (s, Ctx)
-
-type PeripheralArray p = Array.Array IOHandlerIndex p
-
-data IOCtx = forall a . (IOMem a, IOInterruptDispatcher a, IORunner a) => IOCtx {
-        IORef a
+data PCPlatformLocal = PCPlatformLocal {
+        pcPic :: Pic,
+        pcPit :: Pit,
+        pcCycles :: Int,
     }
 
-data PeripheralLocal p = PeripheralLocal {
-        runPeripheralsCounter :: Int,
-        peripheralLocalRemoteMax :: Int,
-        --peripheralLocalPortRegion :: PortIORegion,
-        --peripheralLocalMemRegion :: MemIORegion,
-        peripheralLocalPort :: PeripheralArray (PeripheralHandlerPort p),
-        peripheralLocalMem :: PeripheralArray (PeripheralHandlerMem p),
-        queue,
-        devices :: p
-    }
-
-readMem local index offset = do
-    if index > (peripheralLocalRemoteMax local) then
-        --process local
-    else
-        --process remote
-
-instance IOInterruptDispatcher PeripheralLocal where
+dispatchInterruptUp :: PCPlatformLocal -> PrismInt -> IO (PCPlatformLocal, Bool)
+dispatchInterruptUp pc int = do
+    res <- picInterruptRaise (pcPic pc) int
     ...
 
-instance IOMem PeripheralLocal where
+ackInterrupt :: PCPlatformLocal -> IO (PCPlatformLocal, PrismInt)
+ackInterrupt pc = do
+    picAck (pcPic pc)
     ...
 
-instance IORunner PeripheralLocal where
+runPeripherals :: Ctx -> PCPlatformLocal -> IO (Ctx, PCPlatformLocal)
+runPeripherals ctx pc = do
+    picRun (pcPic pc)
     ...
 
 -------------------------------------------------------
