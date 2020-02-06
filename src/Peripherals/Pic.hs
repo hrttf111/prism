@@ -12,15 +12,19 @@ import PrismPeripheral
 
 -------------------------------------------------------------------------------
 
-data PicReadReg = PicIRR | PicISR deriving (Show)
+data PicReadReg = PicIRR | PicISR deriving (Show, Eq)
 data PicICW = PicICW1
               | PicICW2
               | PicICW3
               | PicICW4
               | PicICWDone
-              deriving (Show)
+              deriving (Show, Eq)
 
-data PicAction = PicClearInt | PicRaiseInt deriving (Show)
+data PicAction = PicNoAction
+                 | PicClearInt
+                 | PicRaiseInt
+                 deriving (Show)
+
 data PicCommand = PicRead PicReadReg
                   | PicSMCommand Bool
                   | PicPoll
@@ -37,6 +41,7 @@ data PicConfig = PicConfig {
     picConfigSingle :: Bool,
     picConfigADI :: Uint8,
     picConfigAddr :: Uint8,
+    picConfigLevelTriggered :: Bool,
     --picConfigSlaveMask :: Uint8, -- use slave array
     --picConfigSlaveId :: Uint8,
     picConfigNested :: Bool,
@@ -68,7 +73,7 @@ data Pic = Pic {
 
 -------------------------------------------------------------------------------
 
-defaultConfigPic = PicConfig False False 4 0 False False False PicICW2
+defaultConfigPic = PicConfig False False 4 0 False False False False PicICW2
 defaultStatePic = PicState 0 0 0 False 0 False False PicICW2 PicIRR
 
 isICW1 :: Uint8 -> Bool
@@ -80,6 +85,10 @@ isOCW3 = (== 0x08) . (.&. 0x18)
 isSetPrio = (== 0xC0) . (.&. 0xF0)
 isEIO = (== 0x60) . (.&. 0xF0)
 isREIO = (== 0xE0) . (.&. 0xF0)
+
+checkICWDone :: Pic -> Pic
+checkICWDone (Pic config state) | (picInitStage state) == (picLastICW config) =
+    (Pic config (state { picInitStage = PicICWDone } ))
 
 picDecodeCommand :: Uint8 -> Pic -> [PicCommand]
 picDecodeCommand val _ | isICW1(val) =
@@ -114,4 +123,59 @@ picDecodeData :: Uint8 -> PicICW -> [PicCommand]
 picDecodeData val PicICWDone = [(PicSetIMR val)]
 picDecodeData val icw = [(PicICWCommand icw val)]
 
---picWriteControl :: PicCommand -> Pic -> (Pic, PicAction)
+picWriteControl :: Pic -> PicCommand -> (Pic, PicAction)
+picWriteControl _ (PicICWCommand PicICW1 val) =
+    ((Pic config defaultStatePic), PicClearInt)
+    where
+        config = defaultConfigPic { 
+            picLastICW = if testBit val 0 then PicICW4 else PicICW2,
+            picConfigSingle = testBit val 1,
+            picConfigADI = if testBit val 2 then 4 else 8,
+            picConfigLevelTriggered = testBit val 3
+        }
+picWriteControl (Pic config state) (PicICWCommand PicICW2 val) =
+    (pic_, PicNoAction)
+    where
+        config_ = config { picConfigAddr = (val .&. 0xF8) }
+        pic_ = checkICWDone $ Pic config_ state
+picWriteControl pic (PicICWCommand PicICW3 val) =
+    (checkICWDone pic, PicNoAction)
+picWriteControl (Pic config state) (PicICWCommand PicICW4 val) =
+    (pic_, PicClearInt)
+    where
+        config_ = config { 
+            picConfigAEOI = testBit val 1,
+            picConfigBuf = False,
+            picConfigNested = testBit val 4
+        }
+        pic_ = checkICWDone $ Pic config_ state
+picWriteControl (Pic config state) PicPoll =
+    ((Pic config state { picStatePolled = True }), PicNoAction)
+picWriteControl (Pic config state) (PicSMCommand val) =
+    ((Pic config state { picStateSMask = val }), PicNoAction)
+picWriteControl (Pic config state) (PicRotateAEOI val) =
+    ((Pic config state { picRotateOnAeoi = val }), PicNoAction)
+picWriteControl (Pic config state) (PicSetPrio val) =
+    ((Pic config state { picStateLowestPrio = val}), PicNoAction)
+picWriteControl (Pic config state) (PicSetIMR val) =
+    ((Pic config state { picStateIMR = val }), PicNoAction)
+picWriteControl (Pic config state) (PicRead reg) =
+    ((Pic config state {picReadReg = reg}), PicNoAction)
+picWriteControl pic (PicEOI rotate Nothing) = -- non-specific EOI
+    (pic, PicNoAction)
+picWriteControl pic (PicEOI rotate (Just level)) = -- specific EOI
+    (pic, PicNoAction)
+picWriteControl pic _ = (pic, PicNoAction)
+
+picReadData :: Pic -> (Pic, PicAction, Uint8)
+picReadData (Pic config state) | picStatePolled state =
+    ((Pic config state { picStatePolled = False }), PicNoAction, 0)
+picReadData pic@(Pic _ state) =
+    (pic, PicNoAction, picStateIMR state)
+
+picReadControl :: Pic -> (Pic, PicAction, Uint8)
+picReadControl (Pic config state) | picStatePolled state =
+    ((Pic config state { picStatePolled = False }), PicNoAction, 0)
+picReadControl pic@(Pic _ state) =
+    (pic, PicNoAction, 
+        if picReadReg state == PicIRR then picStateIRR state else picStateISR state)
