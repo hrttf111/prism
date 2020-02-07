@@ -4,6 +4,7 @@ import Test.Hspec
 import TestFlags
 import TestCpu
 import TestPeripherals
+import TestPic
 
 main :: IO ()
 main = hspec $ do
@@ -16,3 +17,4 @@ main = hspec $ do
     testSign
     testDiv
     testPeripherals
+    testPic

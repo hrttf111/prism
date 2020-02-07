@@ -133,8 +133,35 @@ data PicPC = PicPC {
     picPCSlave :: Pic
 }
 
-processPicWrite :: Pic -> (Pic, Bool)
-processPicRead :: Pic -> (Pic, Uint8)
+getISRMask :: Uint8 -> Uint8 -> Uint8 -> Uint8 -> Uint8
+getISRMask _ _ val 0 = val
+getISRMask mask isr val n =
+    getISRMask mask_ isr val_ (n - 1)
+    where
+        mask_ = rotate mask 1
+        val_ = if val /= 0 then val .|. mask_ else (val .|. (mask .&. isr))
+
+
+picUpdate :: Pic -> (Pic, PicAction)
+picUpdate pic@(Pic config state) =
+    if picStateIntr state then
+        if interruptActive then 
+            (pic, PicNoAction) -- INTR active, wait for ack
+            else -- deactivate INTR
+                (Pic config state { picStateIntr = False }, PicClearInt)
+        else if interruptActive then
+            (pic config state { picStateIntr = True }, PicRaiseInt)
+            else -- INTR was not active and there is no new interrupt
+                (pic, PicNoAction)
+    {- case (picStateIntr state, interruptActive) of
+        (True, False) -> Clear
+        (False, True) -> Raise
+        _ -> NoAction
+        -}
+    where
+        interruptActive = (maskedIRR .&. getISRMask ...) /= 0
+        maskedIRR = picStateIRR pic .&. (not picStateIMR pic)
+
 
 Q
  - how to send interrupt request to CPU?
@@ -197,13 +224,12 @@ data PeripheralLocal = PeripheralLocal {
    - remote peripherals structure can be parameterized with specific container
    - container will have specific structure inside
    - unlike CPU we can pass parameter along with Peripherals context
- -----
- - IOCtx lower will be used to process incomming interrupts ("dispatch")
-   - there will be explicit knowledge about PIC inside of IOCtx lower
- - AOI
+ - IOCtx lower will be used to process incomming interrupts ("dispatch") (+)
+   - there will be explicit knowledge about PIC inside of IOCtx lower (+)
+ - AOI (+)
    - aoi will be part of IOCtxLocals interface
    - it will be called from processInterrupts function before processing int
- - interrupt input
+ - interrupt input (+)
    - interrupts will be sent to CPU via command queue
    - they will be handled by dispatch function of IOCtxLocals interface
 
