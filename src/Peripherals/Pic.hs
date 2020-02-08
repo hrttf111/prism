@@ -73,13 +73,6 @@ data Pic = Pic {
     picState :: PicState
 } deriving (Show)
 
-
-{-data PicPC = PicPC {
-    picPCMaster :: Pic,
-    picPCSlave :: Pic
-} deriving (Show)
--}
-
 -------------------------------------------------------------------------------
 
 defaultConfigPic = PicConfig False False 4 0 False False False False PicICW2
@@ -170,11 +163,31 @@ picWriteControl (Pic config state) (PicSetIMR val) =
     ((Pic config state { picStateIMR = val }), True)
 picWriteControl (Pic config state) (PicRead reg) =
     ((Pic config state {picReadReg = reg}), False)
-picWriteControl pic (PicEOI rotate Nothing) = -- non-specific EOI
-    (pic, True)
-picWriteControl pic (PicEOI rotate (Just level)) = -- specific EOI
-    (pic, True)
+picWriteControl (Pic config state) (PicEOI rotate Nothing) = -- non-specific EOI
+    let lowest = if rotate then picRotate (picStateLowestPrio state) else (picStateLowestPrio state)
+        in
+    case picFindHighest (picStateLowestPrio state) (picStateIRR state) of
+        Just irq ->
+            let isr_ = clearBit (picStateISR state) $ fromIntegral irq
+                in
+            (Pic config state { picStateISR = isr_, picStateLowestPrio = lowest }, True)
+        Nothing ->
+            (Pic config state { picStateLowestPrio = lowest} , True)
+picWriteControl (Pic config state) (PicEOI rotate (Just level)) = -- specific EOI
+    let lowest = if rotate then level else (picStateLowestPrio state)
+        isr_ = clearBit (picStateISR state) $ fromIntegral level
+        in
+    (Pic config state { picStateISR = isr_, picStateLowestPrio = lowest }, True)
 picWriteControl pic _ = (pic, False)
+
+picWriteCommands :: Pic -> [PicCommand] -> (Pic, Bool)
+picWriteCommands pic commands =
+    foldl fn (pic, False) commands
+    where
+        fn (pic_, update) cmd =
+            let (pic__, update_) = picWriteControl pic_ cmd
+                in
+            (pic__, update_ || update)
 
 picReadData :: Pic -> (Pic, Bool, Uint8)
 picReadData (Pic config state) | picStatePolled state =
@@ -216,6 +229,23 @@ picFindHighest lowestPriority irr =
 picGetIntNum :: PicConfig -> Uint8 -> Uint8
 picGetIntNum config irq = irq + picConfigAddr config
 
+picGetPrismInt :: Pic -> Uint8 -> PrismInt
+picGetPrismInt pic val = PrismInt $ picGetIntNum (picConfig pic) val
+
+picRaiseIrq :: Pic -> Uint8 -> Pic
+picRaiseIrq (Pic config state) irq =
+    Pic config state_
+    where
+        irr_ = setBit (picStateIRR state) $ 0x07 .&. (fromIntegral irq)
+        state_ = state { picStateIRR = irr_ }
+
+picLowerIrq :: Pic -> Uint8 -> Pic
+picLowerIrq (Pic config state) irq =
+    Pic config state_
+    where
+        irr_ = clearBit (picStateIRR state) $ 0x07 .&. (fromIntegral irq)
+        state_ = state { picStateIRR = irr_ }
+
 picUpdate :: Pic -> (Pic, PicAction)
 picUpdate pic@(Pic config state) =
     case (picStateIntr state, intrActive) of
@@ -228,6 +258,9 @@ picUpdate pic@(Pic config state) =
         intrActive = (maskedIRR .&. maskedISR) /= 0
         maskedISR = getISRMask (picStateLowestPrio state) (picStateISR state)
         maskedIRR = picStateIRR state .&. (complement $ picStateIMR state)
+
+picRotate :: Uint8 -> Uint8
+picRotate lowest = mod (lowest + 1) 8
 
 picAck :: Pic -> (Pic, Uint8)
 picAck pic@(Pic config state) =
@@ -250,8 +283,8 @@ picAck pic@(Pic config state) =
                 }
                 pic_ = Pic config state_
                 in
-            (pic_, picGetIntNum config num)
+            (pic_, num)
         Nothing ->
-            (pic, picGetIntNum config 7)
+            (pic, 7)
 
 -------------------------------------------------------------------------------

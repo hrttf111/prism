@@ -82,6 +82,8 @@ instance PeripheralRunner IOCtx where
             \(ctx_, i_) -> return (ctx_, IOCtx i_ m p)
     peripheralCycles (IOCtx i _ _) =
         peripheralCycles i
+    needUpdate (IOCtx i _ _) =
+        needUpdate i
 
 -------------------------------------------------------------------------------
 
@@ -185,6 +187,7 @@ instance InterruptDispatcher PeripheralsInternal where
 instance PeripheralRunner PeripheralsInternal where
     runPeripherals ctx s = return (ctx, s)
     peripheralCycles _ = maxCycles
+    needUpdate _ = return False
 
 -------------------------------------------------------------------------------
 
