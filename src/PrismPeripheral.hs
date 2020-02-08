@@ -67,9 +67,21 @@ instance IOPort IOCtx where
         ioPortWrite i handler offset val
 
 instance InterruptDispatcher IOCtx where
-    dispatchInterruptUp s int = return (s, False)
-    dispatchInterruptDown s int = return (s, False)
-    ackInterrupt s = return (s, PrismInt 0)
+    dispatchInterruptUp (IOCtx i m p) int =
+        dispatchInterruptUp i int >>=
+            \(i_, r) -> return (IOCtx i_ m p, r)
+    dispatchInterruptDown (IOCtx i m p) int =
+        dispatchInterruptDown i int >>=
+            \(i_, r) -> return (IOCtx i_ m p, r)
+    ackInterrupt (IOCtx i m p) =
+        ackInterrupt i >>= \(i_, r) -> return (IOCtx i_ m p, r)
+
+instance PeripheralRunner IOCtx where
+    runPeripherals ctx (IOCtx i m p) =
+        runPeripherals ctx i >>=
+            \(ctx_, i_) -> return (ctx_, IOCtx i_ m p)
+    peripheralCycles (IOCtx i _ _) =
+        peripheralCycles i
 
 -------------------------------------------------------------------------------
 
@@ -164,6 +176,15 @@ instance IOPort PeripheralsInternal where
         ioValRemoteRead (localQueue peripherals) IOPortType handler (fromIntegral offset)
     ioPortWrite peripherals handler offset val =
         ioValRemoteWrite (localQueue peripherals) IOPortType handler (fromIntegral offset) val
+
+instance InterruptDispatcher PeripheralsInternal where
+    dispatchInterruptUp s int = return (s, False)
+    dispatchInterruptDown s int = return (s, False)
+    ackInterrupt s = return (s, PrismInt 0)
+
+instance PeripheralRunner PeripheralsInternal where
+    runPeripherals ctx s = return (ctx, s)
+    peripheralCycles _ = maxCycles
 
 -------------------------------------------------------------------------------
 
@@ -380,10 +401,6 @@ makeEmptyIO memSize devices = do
     return (ioCtx, peripheral)
 
 -------------------------------------------------------------------------------
-
-instance PeripheralRunner IOCtx where
-    runPeripherals ctx s = return (ctx, s)
-    peripheralCycles _ = maxCycles
 
 decCycles :: Ctx -> PrismCtx IO Ctx
 decCycles ctx = return $ ctx { ctxCycles = (ctxCycles ctx - 1) }

@@ -1,3 +1,6 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module TestCommon where
 
 import Test.Hspec
@@ -10,6 +13,7 @@ import qualified Data.ByteString as B
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Concurrent
 
+import Data.IORef
 import Data.Word (Word8, Word16)
 import Foreign.Ptr (plusPtr)
 import Foreign.Marshal.Array (allocaArray, callocArray, pokeArray)
@@ -27,6 +31,26 @@ import Peripherals.Local
 import Instruction.Processor
 
 import Assembler
+
+-------------------------------------------------------------------------------
+
+data TestDev = TestDev deriving (Show)
+
+type PeripheralsTest = PeripheralsLocal TestDev 
+
+instance InterruptDispatcher PeripheralsTest where
+    dispatchInterruptUp peripherals int = return (peripherals, False)
+    dispatchInterruptDown peripherals int = return (peripherals, False)
+    ackInterrupt peripherals = return (peripherals, PrismInt 7)
+
+instance PeripheralRunner PeripheralsTest where
+    runPeripherals ctx peripherals = return (ctx, peripherals)
+    peripheralCycles peripherals = 99999999
+
+createTestPeripherals :: PeripheralLocal TestDev -> IOQueue -> IO IOCtx 
+createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue = do
+    ref <- newIORef devices
+    return $ IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue ref) memRegion portRegion
 
 -------------------------------------------------------------------------------
 
@@ -81,13 +105,13 @@ createPeripheralsTestEnv :: MonadIO m =>
                             pR ->
                             [PeripheralPort pR] ->
                             [PeripheralMem pR] ->
-                            pL ->
-                            [PeripheralPort pL] ->
-                            [PeripheralMem pL] ->
+                            TestDev ->
+                            [PeripheralPort TestDev] ->
+                            [PeripheralMem TestDev] ->
                             m TestEnv
 createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL = do
     queue <- liftIO $ createIOQueue
-    ioCtx <- liftIO $ createLocalPeripherals peripheralL queue
+    ioCtx <- liftIO $ createTestPeripherals peripheralL queue
     threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
     createTestEnv1 ioCtx (Just threadId) $ makeDecoderList combinedList
     where

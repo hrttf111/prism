@@ -73,6 +73,13 @@ data Pic = Pic {
     picState :: PicState
 } deriving (Show)
 
+
+{-data PicPC = PicPC {
+    picPCMaster :: Pic,
+    picPCSlave :: Pic
+} deriving (Show)
+-}
+
 -------------------------------------------------------------------------------
 
 defaultConfigPic = PicConfig False False 4 0 False False False False PicICW2
@@ -246,3 +253,5 @@ picAck pic@(Pic config state) =
             (pic_, picGetIntNum config num)
         Nothing ->
             (pic, picGetIntNum config 7)
+
+-------------------------------------------------------------------------------

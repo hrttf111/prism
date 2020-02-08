@@ -17,9 +17,6 @@ import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
-data PeripheralDevices = PeripheralDevices {
-    }
-
 testPeriphRead :: (OperandVal a, Integral b) =>
     a -> p -> b -> IO (p, a)
 testPeriphRead val peripheral offset = return (peripheral, val)
@@ -33,9 +30,9 @@ testPeriphWrite ref peripheral offset val =
 
 testPeripheral instrList = do
     describe "Peripheral MMIO Remote" $ do
-        let devL = PeripheralDevices
+        let devL = TestDev
         it "Read 8b" $ do
-            let devices = PeripheralDevices
+            let devices = TestDev
                 val = 134
                 handler = PeripheralHandlerMem emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
                 mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
@@ -48,7 +45,7 @@ testPeripheral instrList = do
                 mov bl, [8999]
             |]
         it "Read 16b" $ do
-            let devices = PeripheralDevices
+            let devices = TestDev
                 val = 0xFE19
                 handler = PeripheralHandlerMem emptyWriteH emptyWriteH emptyReadH (testPeriphRead val)
                 mem = [(PeripheralMem (MemLocation 8000 9200) handler)]
@@ -62,7 +59,7 @@ testPeripheral instrList = do
             |]
         it "Write 8b" $ do
             ref <- newIORef 0
-            let devices = PeripheralDevices
+            let devices = TestDev
                 handler = PeripheralHandlerMem (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
                 mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
             env <- createPeripheralsTestEnv instrList devices [] mem devL [] []
@@ -75,7 +72,7 @@ testPeripheral instrList = do
             readIORef ref >>= (`shouldBe` 189)
         it "Write 16b" $ do
             ref <- newIORef 0
-            let devices = PeripheralDevices
+            let devices = TestDev
                 handler = PeripheralHandlerMem emptyWriteH (testPeriphWrite ref) emptyReadH emptyReadH
                 mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
             env <- createPeripheralsTestEnv instrList devices [] mem devL [] []
@@ -87,9 +84,9 @@ testPeripheral instrList = do
             threadDelay 100
             readIORef ref >>= (`shouldBe` 0xFEAB)
     describe "Peripheral Port" $ do
-        let devL = PeripheralDevices
+        let devL = TestDev
         it "Read 8b" $ do
-            let devices = PeripheralDevices
+            let devices = TestDev
                 val = 134
                 handler = PeripheralHandlerPort emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
                 port = [(PeripheralPort 120 handler)]
@@ -98,7 +95,7 @@ testPeripheral instrList = do
                 in al, 120
             |]
         it "Read 16b" $ do
-            let devices = PeripheralDevices
+            let devices = TestDev
                 val = 1349
                 handler = PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH (testPeriphRead val)
                 port = [(PeripheralPort 80 handler)]
@@ -108,7 +105,7 @@ testPeripheral instrList = do
             |]
         it "Write 8b" $ do
             ref <- newIORef 0
-            let devices = PeripheralDevices
+            let devices = TestDev
                 handler = PeripheralHandlerPort (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
                 port = [(PeripheralPort 80 handler)]
             env <- createPeripheralsTestEnv instrList devices port [] devL [] []
@@ -120,7 +117,7 @@ testPeripheral instrList = do
             readIORef ref >>= (`shouldBe` 189)
         it "Write 16b" $ do
             ref <- newIORef 0
-            let devices = PeripheralDevices
+            let devices = TestDev
                 handler = PeripheralHandlerPort emptyWriteH (testPeriphWrite ref) emptyReadH emptyReadH
                 port = [(PeripheralPort 80 handler)]
             env <- createPeripheralsTestEnv instrList devices port [] devL [] []
@@ -131,9 +128,9 @@ testPeripheral instrList = do
             threadDelay 10000
             readIORef ref >>= (`shouldBe` 1890)
     describe "Peripheral MMIO Local" $ do
-        let devR = PeripheralDevices
+        let devR = TestDev
         it "Read 8b" $ do
-            let devices = PeripheralDevices
+            let devices = TestDev
                 val = 134
                 handlerL = PeripheralHandlerMem emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
                 memL = [(PeripheralMem (MemLocation 9000 9200) handlerL)]
@@ -150,7 +147,7 @@ testPeripheral instrList = do
             |]
         it "Write 8b" $ do
             ref <- newIORef 0
-            let devices = PeripheralDevices
+            let devices = TestDev
                 handler = PeripheralHandlerMem (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
                 memL = [(PeripheralMem (MemLocation 9000 9200) handler)]
                 memR = []
@@ -163,9 +160,9 @@ testPeripheral instrList = do
             threadDelay 100
             readIORef ref >>= (`shouldBe` 189)
     describe "Peripheral Port Local" $ do
-        let devR = PeripheralDevices
+        let devR = TestDev
         it "Read 8b" $ do
-            let devices = PeripheralDevices
+            let devices = TestDev
                 val = 134
                 handlerL = PeripheralHandlerPort emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
                 portL = [(PeripheralPort 120 handlerL)]

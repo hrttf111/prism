@@ -163,6 +163,15 @@ picUpdate pic@(Pic config state) =
         maskedIRR = picStateIRR pic .&. (not picStateIMR pic)
 
 
+writePicDataSlave :: PcDevices -> Addr -> Uint8 -> IO PcDevices
+writePicDataSlave devices _ val =
+    let pic = (pcPic devices)
+        picSlave = picSlave pic
+        command = picDecodeData val (picICW picSlave)
+        (picSlave_, update) = picWriteControl picSlave comand
+        (picSlave__, action) = picUpdate picSlave_
+        if action then picRaise picMaster 2 else picMaster
+
 Q
  - how to send interrupt request to CPU?
     - It might take some time for CPU to start processing interrupt,

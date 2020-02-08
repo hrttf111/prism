@@ -199,7 +199,7 @@ data IOCtx = forall a . (IOCtxInternal a) => IOCtx {
 instance Show IOCtx where
     show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
 
-type IOCtxInternal a = (IOMem a, IOPort a) --, InterruptDispatcher a, PeripheralRunner a)
+type IOCtxInternal a = (IOMem a, IOPort a, InterruptDispatcher a, PeripheralRunner a)
 
 -------------------------------------------------------------------------------
 
