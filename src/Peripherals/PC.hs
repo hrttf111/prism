@@ -26,18 +26,6 @@ data PC = PC {
 
 type PeripheralsPC = PeripheralsLocal PC
 
-instance IOMem PeripheralsPC where
-    ioMemRead peripherals handler offset =
-        ioValRemoteRead (localIOQueue peripherals) IOMemType handler offset
-    ioMemWrite peripherals handler offset val =
-        ioValRemoteWrite (localIOQueue peripherals) IOMemType handler offset val
-
-instance IOPort PeripheralsPC where
-    ioPortRead peripherals handler offset = 
-        ioValRemoteRead (localIOQueue peripherals) IOPortType handler (fromIntegral offset)
-    ioPortWrite peripherals handler offset val =
-        ioValRemoteWrite (localIOQueue peripherals) IOPortType handler (fromIntegral offset) val
-
 instance InterruptDispatcher PeripheralsPC where
     dispatchInterruptUp peripherals (PrismInt irq) = do
         pc <- readIORef (localPeripherals peripherals)

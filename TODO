@@ -284,11 +284,26 @@ data Pic8259A = Pic8259A {
 
 -------------------------------------------------------
 
+data RWMode = RLatch | RWLeast | RWMost | RWBoth
+data PITMode = PITMode0 | PITMode1 ... | PITMode5
+data SelectCounter = SelectCounter0 | ... | ReadBack
+data CounterMode = BinCounter | BCDCounter
+
+data ControlWord = ControlWord {
+        ctrLRWMode :: RWMode,
+        ctrlPitMode :: PITMode,
+        ctrlSC :: SelectCounter,
+        ctrlCM :: CounterMode
+    }
+
+data PITCommand = CWCommand | LatchCommand | ReadBack
+
 newtype PitMode = PitMode Uint8
 
 MVar or IORef
 
 data PitCounter = PitCounter {
+        pitCW :: ControlWord,
         pitMode :: PitMode,
         pitCounter :: MVar Word64,
         pitTimeout :: Int, -- timeout in us
