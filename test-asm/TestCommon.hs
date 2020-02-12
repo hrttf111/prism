@@ -45,7 +45,7 @@ instance InterruptDispatcher PeripheralsTest where
 
 instance PeripheralRunner PeripheralsTest where
     runPeripherals ctx peripherals = return (ctx, peripherals)
-    peripheralCycles peripherals = 99999999
+    peripheralCycles peripherals = return 99999999
     needUpdate peripherals = return False
 
 createTestPeripherals :: PeripheralLocal TestDev -> IOQueue -> IO IOCtx 

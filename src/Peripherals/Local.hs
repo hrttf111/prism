@@ -62,9 +62,3 @@ instance IOPort (PeripheralsLocal p) where
                 return ()
 
 -------------------------------------------------------------------------------
-{-
-createLocalPeripherals :: PeripheralLocal p -> IOQueue -> IO IOCtx 
-createLocalPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue = do
-    ref <- newIORef devices
-    return $ IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue ref) memRegion portRegion
-    -}

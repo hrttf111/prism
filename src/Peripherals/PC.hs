@@ -66,8 +66,16 @@ instance InterruptDispatcher PeripheralsPC where
             return (peripherals, picGetPrismInt picMaster int)
 
 instance PeripheralRunner PeripheralsPC where
-    runPeripherals ctx peripherals = return (ctx, peripherals)
-    peripheralCycles peripherals = 99999999
+    runPeripherals ctx peripherals = do
+        pc <- readIORef (localPeripherals peripherals)
+        let interrupts = ctxInterrupts ctx
+            intOn = (intIntrOn interrupts) && pcIntrUp pc
+            interrupts_ = interrupts { intIntrOn = intOn }
+            pc_ = pc { pcNeedUpdate = False }
+        writeIORef (localPeripherals peripherals) pc_
+        return (ctx { ctxInterrupts = interrupts_ } , peripherals)
+    peripheralCycles peripherals =
+        readIORef (localPeripherals peripherals) >>= return . pcCycles
     needUpdate peripherals =
         readIORef (localPeripherals peripherals) >>= return . pcNeedUpdate
 

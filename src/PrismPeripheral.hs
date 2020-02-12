@@ -186,7 +186,7 @@ instance InterruptDispatcher PeripheralsInternal where
 
 instance PeripheralRunner PeripheralsInternal where
     runPeripherals ctx s = return (ctx, s)
-    peripheralCycles _ = maxCycles
+    peripheralCycles _ = return maxCycles
     needUpdate _ = return False
 
 -------------------------------------------------------------------------------
@@ -411,6 +411,10 @@ decCycles ctx = return $ ctx { ctxCycles = (ctxCycles ctx - 1) }
 processPeripherals :: Ctx -> PrismCtx IO Ctx
 processPeripherals ctx = liftIO $ do
     (ctx_, ctxIO_) <- runPeripherals ctx (ctxIO ctx)
-    return $ ctx_ { ctxIO = ctxIO_, ctxCycles = peripheralCycles ctxIO_ }
+    newCycles <- peripheralCycles ctxIO_
+    return $ ctx_ { ctxIO = ctxIO_, ctxCycles = newCycles }
+
+updatePeripherals :: Ctx -> PrismCtx IO Ctx
+updatePeripherals = processPeripherals
 
 -------------------------------------------------------------------------------

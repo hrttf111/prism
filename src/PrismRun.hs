@@ -18,76 +18,75 @@ import PrismDecoder
 
 -------------------------------------------------------------------------------
 
-decodeList :: PrismDecoder -> Ctx -> [InstrBytes] -> PrismCtx IO Ctx
-decodeList _ ctx [] = return ctx
-decodeList dec ctx (x:xs) = do
-    ctx1 <- instr x ctx
-    decodeList dec ctx1 xs
+decodeOffset :: Ctx -> PrismCtx IO MemOffset
+decodeOffset ctx = 
+    readRegIP memReg >>= getInstrAddress memReg cs
     where
-        (b1, _, _, _, _, _) = x
-        instr = instrFunc $ (decInstr dec) ! b1
+        memReg = ctxReg ctx
 
-decodeExecOne :: PrismDecoder -> Ctx -> PrismCtx IO Ctx 
-decodeExecOne dec ctx = do
-    offset <- getInstrAddress memReg cs =<< readRegIP memReg
+runPeripheralsM :: Ctx -> PrismCtx IO Ctx
+runPeripheralsM ctx =
+    if (ctxCycles ctx) == 0 then
+        processPeripherals ctx
+    else do
+        doUpdate <- liftIO $ needUpdate (ctxIO ctx)
+        if doUpdate then
+            updatePeripherals ctx
+        else
+            decCycles ctx
+
+runInstructionM :: PrismDecoder -> MemOffset -> Ctx -> PrismCtx IO Ctx
+runInstructionM dec offset ctx = do
     instr <- peekInstrBytes (ctxMem ctx) offset
     let (b1, _, _, _, _, _) = instr
         func = instrFunc $ (decInstr dec) ! b1
-    liftIO $ putStrLn (showHex b1 "_One")
+    liftIO $ putStrLn (showHex b1 "")
+    execTF <$> func instr ctx
+
+runInstructionM1 :: PrismDecoder -> MemOffset -> Ctx -> PrismCtx IO Ctx
+runInstructionM1 dec offset ctx = do
+    instr <- peekInstrBytes (ctxMem ctx) offset
+    let (b1, _, _, _, _, _) = instr
+        func = instrFunc $ (decInstr dec) ! b1
+    liftIO $ putStrLn (showHex b1 "")
     func instr ctx
-    where
-        memReg = ctxReg ctx
+
+runCpu :: PrismDecoder -> MemOffset -> Ctx -> (Ctx -> PrismCtx IO Ctx) -> PrismCtx IO Ctx
+runCpu _ _ ctx _ | ctxStop ctx = return ctx
+runCpu dec offset ctx cont =
+    if interruptActive ctx then
+        processInterrupts ctx
+            >>= runPeripheralsM
+            >>= cont
+    else
+        runInstructionM dec offset ctx
+            >>= runPeripheralsM
+            >>= cont
+
+-------------------------------------------------------------------------------
+
+decodeExecOne :: PrismDecoder -> Ctx -> PrismCtx IO Ctx 
+decodeExecOne dec ctx = do
+    offset <- decodeOffset ctx
+    runInstructionM1 dec offset ctx
+
 
 decodeMemIp :: PrismDecoder -> Int -> Ctx -> PrismCtx IO Ctx
 decodeMemIp dec len ctx = do
-    offset <- getInstrAddress memReg cs =<< readRegIP memReg
+    offset <- decodeOffset ctx
     if (fromIntegral offset) >= len then return ctx
-    else do
-        if interruptActive ctx then processInterrupts ctx >>= decodeMemIp dec len
-        else do
-            instr <- peekInstrBytes (ctxMem ctx) offset
-            let (b1, _, _, _, _, _) = instr
-                func = instrFunc $ (decInstr dec) ! b1
-            liftIO $ putStrLn (showHex b1 "")
-            execTF <$> func instr ctx >>= decodeMemIp dec len
-    where
-        memReg = ctxReg ctx
+    else
+        runCpu dec offset ctx (decodeMemIp dec len)
 
-decodeHalt :: PrismDecoder -> Ctx -> PrismCtx IO Ctx
-decodeHalt dec ctx = do
-    if ctxStop ctx then return ctx
-    else do
-        if interruptActive ctx then processInterrupts ctx >>= decodeHalt dec
-        else do
-            offset <- getInstrAddress memReg cs =<< readRegIP memReg
-            instr <- peekInstrBytes (ctxMem ctx) offset
-            let (b1, _, _, _, _, _) = instr
-                func = instrFunc $ (decInstr dec) ! b1
-            liftIO $ putStrLn (showHex b1 "")
-            execTF <$> func instr ctx >>= decodeHalt dec 
-    where
-        memReg = ctxReg ctx
 
 decodeHaltCpu :: PrismDecoder -> PrismComm -> Ctx -> PrismCtx IO Ctx
 decodeHaltCpu dec comm ctx = do
-    offset <- getInstrAddress memReg cs =<< readRegIP memReg
+    offset <- decodeOffset ctx
     m <- processPrismCommand comm ctx offset
     case m of
-        Just (comm_, ctx_) -> decodeHaltCpu dec comm_ ctx_
-        Nothing -> 
-            if ctxStop ctx then return ctx
-            else if (ctxCycles ctx) == 0 then
-                    processPeripherals ctx >>= decodeHaltCpu dec comm
-                else
-                    if interruptActive ctx then
-                        processInterrupts ctx >>= decodeHaltCpu dec comm
-                    else do
-                        instr <- peekInstrBytes (ctxMem ctx) offset
-                        let (b1, _, _, _, _, _) = instr
-                            func = instrFunc $ (decInstr dec) ! b1
-                        liftIO $ putStrLn (showHex b1 "")
-                        execTF <$> func instr ctx >>= decCycles >>= decodeHaltCpu dec comm
-    where
-        memReg = ctxReg ctx
+        Just (comm_, ctx_) ->
+            decodeHaltCpu dec comm_ ctx_
+        Nothing ->
+            runCpu dec offset ctx (decodeHaltCpu dec comm)
 
 -------------------------------------------------------------------------------

@@ -171,7 +171,7 @@ class InterruptDispatcher s where
 class PeripheralRunner s where
     runPeripherals :: Ctx -> s -> IO (Ctx, s)
     needUpdate :: s -> IO Bool
-    peripheralCycles :: s -> Int
+    peripheralCycles :: s -> IO Int
 
 -------------------------------------------------------------------------------
 
