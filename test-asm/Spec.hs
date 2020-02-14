@@ -13,6 +13,7 @@ import TestControl
 import TestProcessor
 import TestString
 import TestPeripherals
+import TestPC
 
 import PrismCpu
 import Instruction.Transfer
@@ -53,4 +54,5 @@ main = do
     env <- createTestEnv instrList
     runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
     runSpec (testPeripheral instrList) defaultConfig {configConcurrentJobs=(Just 1)}
+    runSpec (testPC instrList) defaultConfig {configConcurrentJobs=(Just 1)}
     return ()

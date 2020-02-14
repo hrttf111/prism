@@ -77,6 +77,7 @@ data Pic = Pic {
 
 defaultConfigPic = PicConfig False False 4 0 False False False False PicICW2
 defaultStatePic = PicState 0 0 0 False 7 False False PicICW2 PicIRR False
+defaultPIC = Pic defaultConfigPic defaultStatePic
 
 isICW1 :: Uint8 -> Bool
 isICW1 = (/= 0) . (.&. 0x10)

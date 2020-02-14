@@ -6,7 +6,8 @@ import Data.List
 import Data.Word
 import Data.Maybe (isJust)
 import Data.Bits ((.&.), (.|.), shiftR, shiftL)
-import qualified Data.Map.Strict (Map, lookup)
+import Control.Monad.Trans (MonadIO)
+import qualified Data.Map.Strict (Map, lookup, fromList)
 
 import Foreign.Ptr
 import Foreign.Storable (poke, pokeByteOff)
@@ -71,7 +72,11 @@ processInterrupts ctx = do
 -------------------------------------------------------------------------------
 
 type InterruptHandler = Ctx -> Uint8 -> PrismM
+type InterruptHandlerLocation = (PrismInt, InterruptHandler)
 type InterruptMap = Data.Map.Strict.Map Uint8 InterruptHandler
+
+intVector :: PrismInt -> Uint8
+intVector (PrismInt v) = v
 
 emptyInterruptHandler :: InterruptHandler
 emptyInterruptHandler ctx _ = return ctx
@@ -88,6 +93,8 @@ writeHandler ptr int addr = liftIO $ (
     pokeByteOff ptr (addr+2) (0xCF :: Word8) >>
     pokeByteOff ptr (addr+3) (0x00 :: Word8) )
 
+--Write interrupts handler`s custom ASM instruction to specific memory location and
+--return memory offsets for each handler
 writeInternalInterruptHandlers :: MonadIO m => MemMain -> Int -> [Uint8] -> m [(Uint8, Uint32)]
 writeInternalInterruptHandlers (MemMain ptr) address intList = do
     mapM_ (\(int, addr) -> writeHandler ptr int addr) addrList
@@ -96,6 +103,7 @@ writeInternalInterruptHandlers (MemMain ptr) address intList = do
         handlerSize = 4 -- 2 bytes 0xF1, 1 byte iret and 1 byte padding
         (addrList, _) = foldl (\(lst, n) int -> ((int, n) : lst, n + 4)) ([], address) intList
 
+--Write locations of memory handlers to specific interrupt vectors
 setInterruptsToMemory :: MonadIO m => MemMain -> [(Uint8, Uint32)] -> m ()
 setInterruptsToMemory (MemMain ptr) intList =
     liftIO $ mapM_ setHandler intList
@@ -107,6 +115,24 @@ setInterruptsToMemory (MemMain ptr) intList =
                 ptrCs = plusPtr ptrIp 2
             in
             poke ptrCs cs_ >> poke ptrIp ip_
+
+configureInterrups :: MonadIO m => MemMain 
+                                    -> Int
+                                    -> [InterruptHandlerLocation]
+                                    -> m InterruptMap
+configureInterrups mem address handlers = do
+    (mapHandlersToInts <$> writeInternalInterruptHandlers mem address intInternalList)
+        >>= setInterruptsToMemory mem
+    return . Data.Map.Strict.fromList
+        $ map (\(i, (_, handler)) -> (i, handler)) indexedHandlers
+    where
+        --indexed interrupt handlers
+        indexedHandlers = zip [1..] $ sortOn (intVector . fst) handlers
+        --generated indexes for custom interrupts
+        intInternalList = map fst indexedHandlers
+        mapHandlersToInts = foldl func []
+        func lst (internalInt, addr) =
+            lst ++ (map (\k -> (intVector . fst . snd $ k, addr)) $ filter ((==internalInt) . fst) indexedHandlers)
 
 -------------------------------------------------------------------------------
 

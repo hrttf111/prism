@@ -173,4 +173,7 @@ pcPorts = [
             (PeripheralHandlerPort pcPortWrite8PicControlSlave emptyWriteH pcPortRead8PicControlSlave emptyReadH)
     ]
 
+createPC :: PC
+createPC = PC 0 False defaultPIC defaultPIC
+
 -------------------------------------------------------------------------------

@@ -73,16 +73,6 @@ videoInterrupt ctx _ = do
     where
         memReg = ctxReg ctx
 
-interruptMap = Data.Map.Strict.fromList [(1, videoInterrupt)]
-configureInterrups mem addr intList = 
-    (mapHandlersToInts <$> writeInternalInterruptHandlers mem addr intInternalList)
-        >>= setInterruptsToMemory mem
-    where
-        intInternalList = map fst intList
-        mapHandlersToInts = foldl func []
-        func lst (internalInt, addr) = 
-            lst ++ (map (\(_, PrismInt i) -> (i, addr)) $ filter ((==internalInt) . fst) intList)
-
 runBinary :: [PrismInstruction] -> FilePath -> Bool -> IO ()
 runBinary instrList binPath_  enableGDB_ = do
     comm <- newPrismComm enableGDB_
@@ -95,16 +85,16 @@ runBinary instrList binPath_  enableGDB_ = do
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     (ioCtx, peripheral) <- makeEmptyIO maxMemorySize PeripheralDevices
     let ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
-    configureInterrups (ctxMem ctx) 0xFF000 [(1, PrismInt 0x10)]
+    intM <- configureInterrups (ctxMem ctx) 0xFF000 [(PrismInt 0x10, videoInterrupt)]
     writeRegIP (ctxReg ctx) bootloaderStart
-    ctxNew <- runPrism $ decodeHaltCpu decoder comm ctx
+    ctxNew <- runPrism $ decodeHaltCpu (decoder intM) comm ctx
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
-        decoder = makeDecoderList combinedList
-        combinedList = instrList 
+        decoder intM = makeDecoderList (combinedList intM)
+        combinedList intM = instrList 
             ++ (segmentInstrList instrList) 
-            ++ (internalInstrList interruptMap)
+            ++ (internalInstrList intM)
 
 instrList = transferInstrList 
     ++ arithmeticInstrList
