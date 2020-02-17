@@ -26,6 +26,8 @@ import Prism
 import PrismCpu
 import PrismDecoder
 import PrismPeripheral
+import PrismInterrupt
+import PrismCommand
 import PrismRun
 
 import Peripherals.Remote
@@ -62,27 +64,41 @@ instance PeripheralsTestCreator TestDev where
 -------------------------------------------------------------------------------
 
 type CodeExecutor = (Text -> IO MemReg)
+type PrismRunner = PrismDecoder -> Int -> Ctx -> PrismCtx IO Ctx
 
 data TestEnv = TestEnv {
         peripheralThreadId :: Maybe ThreadId,
         assembleNative :: (Text -> IO B.ByteString),
         assembleNative16 :: (Text -> IO B.ByteString),
         executeNative :: (B.ByteString -> IO MemReg),
-        executePrism :: (B.ByteString -> IO Ctx)
+        executePrism :: (B.ByteString -> PrismRunner -> IO Ctx)
     }
 
-createTestEnv1 :: MonadIO m => IOCtx -> Maybe ThreadId -> PrismDecoder -> m TestEnv
-createTestEnv1 ioCtx threadId decoder = liftIO $ do
+createTestEnv1 :: MonadIO m =>
+                  IOCtx ->
+                  Maybe ThreadId ->
+                  [PrismInstruction] ->
+                  [InterruptHandlerLocation] ->
+                  m TestEnv
+createTestEnv1 ioCtx threadId instrList intList = liftIO $ do
     ptrReg <- callocBytes 64
     ptrMem <- callocBytes memSize
+    intM <- configureInterrups (MemMain ptrMem) intHandlersOffset intList
+    let decoder = makeDecoderList (instrList ++ (internalInstrList intM))
     asmTest <- makeAsmTest
     ptrA <- callocArray 64
-    return $ TestEnv threadId makeAsmStr makeAsmStr16 (execNative asmTest ptrA) (execP ptrReg ptrMem decoder)
+    return $ TestEnv 
+                threadId
+                makeAsmStr
+                makeAsmStr16
+                (execNative asmTest ptrA)
+                (execP ptrReg ptrMem decoder)
     where
         memSize = 65000
         codeStart = 12000
+        intHandlersOffset = 60000
         execNative asmTest ptrA mainCode = MemReg <$> execCode asmTest mainCode ptrA
-        execP ptrReg ptrMem decoder mainCode = do
+        execP ptrReg ptrMem decoder mainCode runner = do
             let codeLen = B.length mainCode
                 ctx = makePrismCtx (MemReg ptrReg) (MemMain ptrMem) ioCtx
                 array = B.unpack mainCode
@@ -90,18 +106,18 @@ createTestEnv1 ioCtx threadId decoder = liftIO $ do
                 f1 (MemReg p) = p
             fillBytes (f1 $ ctxReg ctx) 0 64
             pokeArray (flip plusPtr (fromIntegral codeStart) $ f $ ctxMem ctx) array
-            runPrism $ execPrism decoder codeLen ctx
-        execPrism decoder codeLen ctx = do
+            runPrism $ execPrism decoder codeLen ctx runner
+        execPrism decoder codeLen ctx runner = do
             writeSeg (ctxReg ctx) ss 1000
             writeReg16 (ctxReg ctx) sp 640
             writeSeg (ctxReg ctx) ds 8000
             writeSeg (ctxReg ctx) cs (div codeStart 16)
-            decodeMemIp decoder (fromIntegral codeStart + codeLen) ctx
+            runner decoder (fromIntegral codeStart + codeLen) ctx
 
 createTestEnv :: MonadIO m => [PrismInstruction] -> m TestEnv
 createTestEnv instrList = do
     (ioCtx, _) <- liftIO $ makeEmptyIO (1024*1024) devicesStub
-    createTestEnv1 ioCtx Nothing $ makeDecoderList combinedList
+    createTestEnv1 ioCtx Nothing combinedList []
     where
         combinedList = instrList ++ (segmentInstrList instrList)
         devicesStub = 0 :: Int
@@ -115,12 +131,13 @@ createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator p) =>
                             p ->
                             [PeripheralPort p] ->
                             [PeripheralMem p] ->
+                            [InterruptHandlerLocation] ->
                             m TestEnv
-createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL = do
+createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList = do
     queue <- liftIO $ createIOQueue
     ioCtx <- liftIO $ createTestPeripherals peripheralL queue
     threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
-    createTestEnv1 ioCtx (Just threadId) $ makeDecoderList combinedList
+    createTestEnv1 ioCtx (Just threadId) combinedList intList
     where
         memSize = 1024 * 1024
         pageSize = 1024
@@ -160,7 +177,15 @@ type RegEqFunc = MemReg -> Expectation
 execPrism :: (HasCallStack) => [RegEqFunc] -> TestEnv -> Text -> Expectation
 execPrism regs env cd = do
     code16 <- (assembleNative16 env) cd
+    ctx <- (executePrism env) code16 decodeMemIp
+    let memRegP = ctxReg ctx
+    mapM_ (\f -> f memRegP) regs
+
+execPrismHalt :: (HasCallStack) => [RegEqFunc] -> TestEnv -> PrismComm -> Text -> Expectation
+execPrismHalt regs env comm cd = do
+    code16 <- (assembleNative16 env) cd
     ctx <- (executePrism env) code16
+        (\decoder _ ctx -> decodeHaltCpu decoder comm ctx)
     let memRegP = ctxReg ctx
     mapM_ (\f -> f memRegP) regs
 
@@ -169,7 +194,7 @@ execAndCmp regs env cd = do
     code <- (assembleNative env) cd
     code16 <- (assembleNative16 env) cd
     memRegN <- (executeNative env) code
-    ctx <- (executePrism env) code16
+    ctx <- (executePrism env) code16 decodeMemIp
     let memRegP = ctxReg ctx
     mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
     (ctxFlags ctx) `flagsShouldEq` memRegN
@@ -179,7 +204,7 @@ execAndCmpNF regs env cd = do
     code <- (assembleNative env) cd
     code16 <- (assembleNative16 env) cd
     memRegN <- (executeNative env) code
-    ctx <- (executePrism env) code16
+    ctx <- (executePrism env) code16 decodeMemIp
     let memRegP = ctxReg ctx
     mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
 

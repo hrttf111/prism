@@ -36,7 +36,7 @@ testPeripheral instrList = do
                 val = 134
                 handler = PeripheralHandlerMem emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
                 mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
-            env <- createPeripheralsTestEnv instrList devices [] mem devL [] []
+            env <- createPeripheralsTestEnv instrList devices [] mem devL [] [] []
             execPrism [(al `shouldEq` 134), (bl `shouldEq` 189)] env $ [text|
                 xor bx, bx
                 mov ds, bx
@@ -49,7 +49,7 @@ testPeripheral instrList = do
                 val = 0xFE19
                 handler = PeripheralHandlerMem emptyWriteH emptyWriteH emptyReadH (testPeriphRead val)
                 mem = [(PeripheralMem (MemLocation 8000 9200) handler)]
-            env <- createPeripheralsTestEnv instrList devices [] mem devL [] []
+            env <- createPeripheralsTestEnv instrList devices [] mem devL [] [] []
             execPrism [(ax `shouldEq` 0xFE19), (bx `shouldEq` 1089)] env $ [text|
                 xor bx, bx
                 mov ds, bx
@@ -62,7 +62,7 @@ testPeripheral instrList = do
             let devices = TestDev
                 handler = PeripheralHandlerMem (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
                 mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
-            env <- createPeripheralsTestEnv instrList devices [] mem devL [] []
+            env <- createPeripheralsTestEnv instrList devices [] mem devL [] [] []
             execPrism [] env $ [text|
                 xor bx, bx
                 mov ds, bx
@@ -75,7 +75,7 @@ testPeripheral instrList = do
             let devices = TestDev
                 handler = PeripheralHandlerMem emptyWriteH (testPeriphWrite ref) emptyReadH emptyReadH
                 mem = [(PeripheralMem (MemLocation 9000 9200) handler)]
-            env <- createPeripheralsTestEnv instrList devices [] mem devL [] []
+            env <- createPeripheralsTestEnv instrList devices [] mem devL [] [] []
             execPrism [] env $ [text|
                 xor bx, bx
                 mov ds, bx
@@ -90,7 +90,7 @@ testPeripheral instrList = do
                 val = 134
                 handler = PeripheralHandlerPort emptyWriteH emptyWriteH (testPeriphRead val) emptyReadH
                 port = [(PeripheralPort 120 handler)]
-            env <- createPeripheralsTestEnv instrList devices port [] devL [] []
+            env <- createPeripheralsTestEnv instrList devices port [] devL [] [] []
             execPrism [(al `shouldEq` 134)] env $ [text|
                 in al, 120
             |]
@@ -99,7 +99,7 @@ testPeripheral instrList = do
                 val = 1349
                 handler = PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH (testPeriphRead val)
                 port = [(PeripheralPort 80 handler)]
-            env <- createPeripheralsTestEnv instrList devices port [] devL [] []
+            env <- createPeripheralsTestEnv instrList devices port [] devL [] [] []
             execPrism [(ax `shouldEq` 1349)] env $ [text|
                 in ax, 80
             |]
@@ -108,7 +108,7 @@ testPeripheral instrList = do
             let devices = TestDev
                 handler = PeripheralHandlerPort (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
                 port = [(PeripheralPort 80 handler)]
-            env <- createPeripheralsTestEnv instrList devices port [] devL [] []
+            env <- createPeripheralsTestEnv instrList devices port [] devL [] [] []
             execPrism [] env $ [text|
                 mov al, 189
                 out 80, al
@@ -120,7 +120,7 @@ testPeripheral instrList = do
             let devices = TestDev
                 handler = PeripheralHandlerPort emptyWriteH (testPeriphWrite ref) emptyReadH emptyReadH
                 port = [(PeripheralPort 80 handler)]
-            env <- createPeripheralsTestEnv instrList devices port [] devL [] []
+            env <- createPeripheralsTestEnv instrList devices port [] devL [] [] []
             execPrism [] env $ [text|
                 mov ax, 1890
                 out 80, ax
@@ -136,7 +136,7 @@ testPeripheral instrList = do
                 memL = [(PeripheralMem (MemLocation 9000 9200) handlerL)]
                 handlerR = PeripheralHandlerMem emptyWriteH emptyWriteH (testPeriphRead 127) emptyReadH
                 memR = [(PeripheralMem (MemLocation 10300 10400) handlerR)]
-            env <- createPeripheralsTestEnv instrList devR [] memR devices [] memL
+            env <- createPeripheralsTestEnv instrList devR [] memR devices [] memL []
             execPrism [(al `shouldEq` 134), (bl `shouldEq` 189), (cl `shouldEq` 127)] env $ [text|
                 xor bx, bx
                 mov ds, bx
@@ -151,7 +151,7 @@ testPeripheral instrList = do
                 handler = PeripheralHandlerMem (testPeriphWrite ref) emptyWriteH emptyReadH emptyReadH
                 memL = [(PeripheralMem (MemLocation 9000 9200) handler)]
                 memR = []
-            env <- createPeripheralsTestEnv instrList devR [] memR devices [] memL
+            env <- createPeripheralsTestEnv instrList devR [] memR devices [] memL []
             execPrism [] env $ [text|
                 xor bx, bx
                 mov ds, bx
@@ -168,7 +168,7 @@ testPeripheral instrList = do
                 portL = [(PeripheralPort 120 handlerL)]
                 handlerR = PeripheralHandlerPort emptyWriteH emptyWriteH (testPeriphRead 150) emptyReadH
                 portR = [(PeripheralPort 121 handlerR)]
-            env <- createPeripheralsTestEnv instrList devR portR [] devices portL []
+            env <- createPeripheralsTestEnv instrList devR portR [] devices portL [] []
             execPrism [(al `shouldEq` 134), (bl `shouldEq` 150)] env $ [text|
                 in al, 121
                 mov bl, al
