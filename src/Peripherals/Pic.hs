@@ -21,8 +21,6 @@ data PicICW = PicICW1
               deriving (Show, Eq)
 
 data PicAction = PicNoAction
-                 | PicClearInt
-                 | PicRaiseInt
                  | PicIntrActive Bool
                  deriving (Show)
 
@@ -92,6 +90,13 @@ isREIO = (== 0xE0) . (.&. 0xF0)
 checkICWDone :: Pic -> Pic
 checkICWDone (Pic config state) | (picInitStage state) == (picLastICW config) =
     (Pic config (state { picInitStage = PicICWDone } ))
+checkICWDone (Pic config state) | (picInitStage state) == PicICW2 =
+    (Pic config (state { picInitStage = PicICW3 } ))
+checkICWDone (Pic config state) | (picInitStage state) == PicICW3 =
+    (Pic config (state { picInitStage = PicICW4 } ))
+checkICWDone (Pic config state) | (picInitStage state) == PicICW4 =
+    (Pic config (state { picInitStage = PicICWDone } ))
+checkICWDone pic = pic
 
 picDecodeCommand :: Uint8 -> Pic -> [PicCommand]
 picDecodeCommand val _ | isICW1(val) =
@@ -251,9 +256,9 @@ picUpdate :: Pic -> (Pic, PicAction)
 picUpdate pic@(Pic config state) =
     case (picStateIntr state, intrActive) of
         (True, False) ->
-            (Pic config state { picStateIntr = False }, PicClearInt)
+            (Pic config state { picStateIntr = False }, PicIntrActive False)
         (False, True) ->
-            (Pic config state { picStateIntr = True }, PicRaiseInt)
+            (Pic config state { picStateIntr = True }, PicIntrActive True)
         _ -> (pic, PicNoAction)
     where
         intrActive = (maskedIRR .&. maskedISR) /= 0
