@@ -27,7 +27,7 @@ data PC = PC {
 type PeripheralsPC = PeripheralsLocal PC
 
 instance InterruptDispatcher PeripheralsPC where
-    dispatchInterruptUp peripherals (PrismInt irq) = do
+    dispatchInterruptUp peripherals (PrismIRQ irq) = do
         pc <- readIORef (localPeripherals peripherals)
         if irq < 8 then do
             let pic = picRaiseIrq (pcPicMaster pc) irq
@@ -39,7 +39,7 @@ instance InterruptDispatcher PeripheralsPC where
                 pc_ <- pcPicUpdateSlave pc pic True
                 writeIORef (localPeripherals peripherals) pc_
                 return (peripherals, pcIntrUp pc_)
-    dispatchInterruptDown peripherals (PrismInt irq) = do
+    dispatchInterruptDown peripherals (PrismIRQ irq) = do
         pc <- readIORef (localPeripherals peripherals)
         if irq < 8 then do
             let pic = picLowerIrq (pcPicMaster pc) irq

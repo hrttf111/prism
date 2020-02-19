@@ -164,8 +164,8 @@ class IOPort a where
 -------------------------------------------------------------------------------
 
 class InterruptDispatcher s where
-    dispatchInterruptUp :: s -> PrismInt -> IO (s, Bool)
-    dispatchInterruptDown :: s -> PrismInt -> IO (s, Bool)
+    dispatchInterruptUp :: s -> PrismIRQ -> IO (s, Bool)
+    dispatchInterruptDown :: s -> PrismIRQ -> IO (s, Bool)
     ackInterrupt :: s -> IO (s, PrismInt)
 
 class PeripheralRunner s where
@@ -232,9 +232,13 @@ clearEFlags :: EFlags
 clearEFlags = EFlags False False False
 
 newtype PrismInt = PrismInt Uint8 deriving (Eq)
+newtype PrismIRQ = PrismIRQ Uint8 deriving (Eq)
 
 instance Show PrismInt where
-    show (PrismInt val) = "Int " ++ (show val)
+    show (PrismInt val) = "INT " ++ (show val)
+
+instance Show PrismIRQ where
+    show (PrismIRQ val) = "IRQ " ++ (show val)
 
 data PrismInterrupts = PrismInterrupts {
         intListHigh :: [PrismInt],
