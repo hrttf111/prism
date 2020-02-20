@@ -49,7 +49,7 @@ testSendIRQDown queue irq ctx _ =
 testPC instrList = do
     describe "Test PC PIC" $ do
         let devR = 0
-        it "Init PIC" $ do
+        it "Interrupt test infra" $ do
             comm <- newPrismComm False
             let devices = createPC
                 testHandler int val = 89
@@ -62,7 +62,7 @@ testPC instrList = do
                 int 0x10
                 hlt
             |]
-        it "Init PIC2" $ do
+        it "Basic test Master PIC IRQ0" $ do
             comm <- newPrismComm False
             let devices = createPC
                 testHandler int val = 89
@@ -75,10 +75,11 @@ testPC instrList = do
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 ICW1  equ  0x17
-                ICW2  equ  0x20
+                ICW2  equ  0x20 ; Master interrupts 0x20-0x27
                 ICW3  equ  0x00
                 ICW4  equ  0x03
                 OCW1  equ  0x00
+                ;Init Master
                 mov al, ICW1
                 out PIC1, al
                 mov al, ICW2
@@ -89,6 +90,7 @@ testPC instrList = do
                 out PIC1D, al
                 mov al, OCW1
                 out PIC1D, al
+                ;Send IRQ0
                 mov bl, 0
                 sti
                 int 0x11
@@ -98,5 +100,56 @@ testPC instrList = do
                 loop LOOP1
                 hlt
             |]
-
+        it "Basic test Slave PIC IRQ8" $ do
+            comm <- newPrismComm False
+            let devices = createPC
+                testHandler int val = 89
+                intList = [
+                    (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 8)),
+                    (PrismInt 0x28, testInterruptHandler testHandler)
+                    ]
+            env <- createPeripheralsTestEnv instrList devR [] [] devices pcPorts [] intList
+            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+                PIC1  equ  0x20
+                PIC1D equ  0x21
+                PIC2  equ  0xA0
+                PIC2D equ  0xA1
+                ICW1  equ  0x17
+                ICW2  equ  0x20 ; Master interrupts 0x20-0x27
+                ICW2S equ  0x28 ; Slave interrupts 0x28-0x2F
+                ICW3  equ  0x00
+                ICW4  equ  0x03
+                OCW1  equ  0x00
+                ;Init Master
+                mov al, ICW1
+                out PIC1, al
+                mov al, ICW2
+                out PIC1D, al
+                mov al, ICW3
+                out PIC1D, al
+                mov al, ICW4
+                out PIC1D, al
+                mov al, OCW1
+                out PIC1D, al
+                ;Init Slave
+                mov al, ICW1
+                out PIC2, al
+                mov al, ICW2S
+                out PIC2D, al
+                mov al, ICW3
+                out PIC2D, al
+                mov al, ICW4
+                out PIC2D, al
+                mov al, OCW1
+                out PIC2D, al
+                ;Send IRQ8
+                mov bl, 0
+                sti
+                int 0x11
+                mov cx, 10
+                LOOP1:
+                inc bl
+                loop LOOP1
+                hlt
+            |]
 -------------------------------------------------------------------------------

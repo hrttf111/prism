@@ -28,11 +28,9 @@ type PeripheralsPC = PeripheralsLocal PC
 
 instance InterruptDispatcher PeripheralsPC where
     dispatchInterruptUp peripherals (PrismIRQ irq) = do
-        putStrLn $ "UP " ++ (show irq)
         pc <- readIORef (localPeripherals peripherals)
         if irq < 8 then do
             let pic = picRaiseIrq (pcPicMaster pc) irq
-            putStrLn $ show pic
             pc_ <- pcPicUpdateMaster pc pic True
             writeIORef (localPeripherals peripherals) pc_
             return (peripherals, pcIntrUp pc_)
@@ -54,7 +52,6 @@ instance InterruptDispatcher PeripheralsPC where
                 writeIORef (localPeripherals peripherals) pc_
                 return (peripherals, pcIntrUp pc_)
     ackInterrupt peripherals = do
-        putStrLn "ACK"
         pc <- readIORef (localPeripherals peripherals)
         let (picMaster, int) = picAck $ pcPicMaster pc
         if int == 2 then do
@@ -66,12 +63,10 @@ instance InterruptDispatcher PeripheralsPC where
         else do
             pc_ <- pcPicUpdateMaster pc picMaster True
             writeIORef (localPeripherals peripherals) pc_
-            putStrLn . show $ picGetPrismInt picMaster int
             return (peripherals, picGetPrismInt picMaster int)
 
 instance PeripheralRunner PeripheralsPC where
     runPeripherals ctx peripherals = do
-        putStrLn "Run"
         pc <- readIORef (localPeripherals peripherals)
         let interrupts = ctxInterrupts ctx
             intOn = pcIntrUp pc
@@ -122,11 +117,10 @@ pcPortRead8PicDataMaster pc port =
     pcPicUpdateMaster pc pic update >>= \pc_ -> return (pc_, val)
 
 pcPortWrite8PicDataMaster :: PC -> Uint16 -> Uint8 -> IO PC
-pcPortWrite8PicDataMaster pc port val = do
+pcPortWrite8PicDataMaster pc port val =
     let commands = picDecodeData val $ picInitStage . picState $ pcPicMaster pc
         (pic, update) = picWriteCommands (pcPicMaster pc) commands
-    --    in
-    putStrLn $ show commands
+        in
     pcPicUpdateMaster pc pic update
 
 pcPortRead8PicControlMaster :: PC -> Uint16 -> IO (PC, Uint8)
@@ -136,11 +130,10 @@ pcPortRead8PicControlMaster pc port =
     pcPicUpdateMaster pc pic update >>= \pc_ -> return (pc_, val)
 
 pcPortWrite8PicControlMaster :: PC -> Uint16 -> Uint8 -> IO PC
-pcPortWrite8PicControlMaster pc port val = do
+pcPortWrite8PicControlMaster pc port val =
     let commands = picDecodeCommand val $ pcPicMaster pc
         (pic, update) = picWriteCommands (pcPicMaster pc) commands
-    --    in
-    putStrLn $ show commands
+        in
     pcPicUpdateMaster pc pic update
 
 pcPortRead8PicDataSlave :: PC -> Uint16 -> IO (PC, Uint8)
@@ -171,14 +164,14 @@ pcPortWrite8PicControlSlave pc port val =
 
 
 pcPorts = [
-        PeripheralPort 0x21
-            (PeripheralHandlerPort pcPortWrite8PicDataMaster emptyWriteH pcPortRead8PicDataMaster emptyReadH),
         PeripheralPort 0x20
             (PeripheralHandlerPort pcPortWrite8PicControlMaster emptyWriteH pcPortRead8PicControlMaster emptyReadH),
-        PeripheralPort 0xA1
-            (PeripheralHandlerPort pcPortWrite8PicDataSlave emptyWriteH pcPortRead8PicDataSlave emptyReadH),
+        PeripheralPort 0x21
+            (PeripheralHandlerPort pcPortWrite8PicDataMaster emptyWriteH pcPortRead8PicDataMaster emptyReadH),
         PeripheralPort 0xA0
-            (PeripheralHandlerPort pcPortWrite8PicControlSlave emptyWriteH pcPortRead8PicControlSlave emptyReadH)
+            (PeripheralHandlerPort pcPortWrite8PicControlSlave emptyWriteH pcPortRead8PicControlSlave emptyReadH),
+        PeripheralPort 0xA1
+            (PeripheralHandlerPort pcPortWrite8PicDataSlave emptyWriteH pcPortRead8PicDataSlave emptyReadH)
     ]
 
 createPC :: PC
