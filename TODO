@@ -241,6 +241,10 @@ data PeripheralLocal = PeripheralLocal {
  - interrupt input (+)
    - interrupts will be sent to CPU via command queue
    - they will be handled by dispatch function of IOCtxLocals interface
+ - local timers(based on cycle counter)
+   - timers which call handler when cycles counter expires
+   - multiple independent cycles counters should be supported
+   - each handler should have an ability to be canceled
 
 data PCPlatformLocal = PCPlatformLocal {
         pcPic :: Pic,
@@ -261,6 +265,23 @@ ackInterrupt pc = do
 runPeripherals :: Ctx -> PCPlatformLocal -> IO (Ctx, PCPlatformLocal)
 runPeripherals ctx pc = do
     picRun (pcPic pc)
+    ...
+
+type TimerHandler = Int -> ... -> IO ...
+
+data CycleTimer = CycleTimer {
+        ctCycles :: Int, -- timeout in cycles
+        ctStart :: Int, -- when timer was started
+        ctExpires :: Int, -- ctStart + ctCycles
+        ctHandler :: TimerHandler
+    }
+
+data PCTimer = PCTimer {
+        pcTimerList :: [CycleTimer]
+    }
+
+addTimer :: CycleTimer -> PCTimer -> PCTimer
+addTimer timer pcTimer =
     ...
 
 -------------------------------------------------------
