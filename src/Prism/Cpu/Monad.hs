@@ -5,7 +5,7 @@
 module Prism.Cpu.Monad where
 
 import Control.Monad.Trans
-import Control.Monad.State.Strict
+import Control.Monad.State.Strict --(modify, MonadState, StateT)
 
 import Data.Word (Word8)
 

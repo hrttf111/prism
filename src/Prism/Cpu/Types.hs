@@ -130,7 +130,7 @@ class (Monad m
       , CpuFlag Flag m
       , CpuFlags Flags m
       , CpuFlag EFlag m
-      , CpuFlags EFlag m
+      , CpuFlags EFlags m
       ) => CpuMonad m where
     halt :: m ()
 
