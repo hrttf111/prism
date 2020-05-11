@@ -133,5 +133,6 @@ class (Monad m
       , CpuFlags EFlags m
       ) => CpuMonad m where
     halt :: m ()
+    incCycles :: m ()
 
 -------------------------------------------------------------------------------

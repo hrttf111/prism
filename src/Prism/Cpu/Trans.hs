@@ -16,5 +16,6 @@ import Prism.Cpu.Registers
 
 instance CpuMonad CpuTrans where
     halt = modify (\s -> s { ctxStop = True } )
+    incCycles = modify (\s -> s { ctxCycles = ((ctxCycles s) + 1) } )
 
 -------------------------------------------------------------------------------
