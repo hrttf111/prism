@@ -44,6 +44,7 @@ type Uint32 = Word32
 newtype Reg8 = Reg8 Word8 deriving (Eq)
 newtype Reg16 = Reg16 Word8 deriving (Eq)
 newtype RegSeg = RegSeg Word8 deriving (Eq)
+newtype RegSpec = RegSpec Word8 deriving (Eq)
 
 class RegDecoder a where
     decodeReg :: Word8 -> a
@@ -119,10 +120,11 @@ newtype PrismIRQ = PrismIRQ Uint8 deriving (Eq)
 class Monad m => RunCpu c s m where
     runCpu :: s -> c -> m s
 
-class (Monad m
+class ( Monad m
       , Operand Reg8 m Uint8
       , Operand Reg16 m Uint16
       , Operand RegSeg m Uint16
+      , Operand RegSpec m Uint16
       , Operand MemSeg8 m Uint8
       , Operand MemSeg16 m Uint16
       , Operand MemPhy8 m Uint8
@@ -134,5 +136,7 @@ class (Monad m
       ) => CpuMonad m where
     halt :: m ()
     incCycles :: m ()
+    updateIP :: Uint16 -> m ()
+    instrAddress :: m MemOffset
 
 -------------------------------------------------------------------------------

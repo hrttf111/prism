@@ -12,6 +12,8 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.Maybe (fromMaybe)
 import Data.Bits (shiftL)
 
+import Numeric (showHex)
+
 import Foreign.Storable (peekByteOff, pokeByteOff)
 
 import Prism.Cpu.Types
@@ -118,5 +120,44 @@ getMemReg1 memReg regSeg disp = do
     return $ (shiftL valSeg 4) + disp32
 
 {-# SPECIALISE INLINE getMemReg1 :: MemReg -> RegSeg -> Disp -> CpuTrans MemOffset #-}
+
+-------------------------------------------------------------------------------
+
+showMem3 :: Reg16 -> Reg16 -> RegSeg -> Disp -> String
+showMem3 reg1 reg2 regSeg@(RegSeg 3) 0 =
+    "[" ++ (show reg1) ++ " + " ++ (show reg2) ++ "]"
+showMem3 reg1 reg2 regSeg@(RegSeg 3) disp =
+    "[" ++ (show reg1) ++ " + " ++ (show reg2) ++ " + 0x" ++ (showHex disp "]")
+showMem3 reg1 reg2 regSeg 0 =
+    "[" ++ (show regSeg) ++ ":" ++ (show reg1) ++ " + " ++ (show reg2) ++ "]"
+showMem3 reg1 reg2 regSeg disp =
+    "[" ++ (show regSeg) ++ ":" ++ (show reg1) ++ " + " ++ (show reg2) ++ " + 0x" ++ (showHex disp "]")
+
+showMem2 :: Reg16 -> RegSeg -> Disp -> String
+showMem2 reg1 regSeg@(RegSeg 3) 0 =
+    "[" ++ (show reg1) ++  "]"
+showMem2 reg1 regSeg@(RegSeg 3) disp =
+    "[" ++ (show reg1) ++ " + 0x" ++ (showHex disp "]")
+showMem2 reg1 regSeg 0 =
+    "[" ++ (show regSeg) ++ ":" ++ (show reg1) ++ "]"
+showMem2 reg1 regSeg disp =
+    "[" ++ (show regSeg) ++ ":" ++ (show reg1) ++ " + 0x" ++ (showHex disp "]")
+
+showMem1 :: RegSeg -> Disp -> String
+showMem1 regSeg@(RegSeg 3) disp =
+    "[0x" ++ (showHex disp "]")
+showMem1 regSeg disp =
+    "[" ++ (show regSeg) ++ ":0x" ++ (showHex disp "]")
+
+instance Show MemSeg where
+    show (MemBxSi disp) = showMem3 bx si ds disp
+    show (MemBxDi disp) = showMem3 bx di ds disp
+    show (MemBpSi disp) = showMem3 bp si ss disp
+    show (MemBpDi disp) = showMem3 bp di ss disp
+    show (MemSi disp) = showMem2 si ds disp
+    show (MemDi disp) = showMem2 di ds disp
+    show (MemBp disp) = showMem2 bp ss disp
+    show (MemBx disp) = showMem2 bx ds disp
+    show (MemDirect disp) = showMem1 ds disp
 
 -------------------------------------------------------------------------------

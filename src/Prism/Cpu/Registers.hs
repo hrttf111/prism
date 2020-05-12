@@ -10,10 +10,14 @@ module Prism.Cpu.Registers (
         , al, cl, dl, bl, ah, ch, dh, bh
         , ax, cx, dx, bx, sp, bp, si, di
         , cs, ds, es, ss
+        , ip, flagsInternal
+        , printRegs, readRegFlags 
     ) where
 
 import Control.Monad.State.Strict (get)
 import Control.Monad.Trans (MonadIO, liftIO)
+
+import Numeric (showHex)
 
 import Foreign.Storable (peekByteOff, pokeByteOff)
 
@@ -65,6 +69,13 @@ cs = RegSeg 1
 ss = RegSeg 2
 ds = RegSeg 3
 
+instance Show RegSpec where
+    show (RegSpec 0) = "IP"
+    show (RegSpec 1) = "Flags[Internal]"
+
+ip = RegSpec 0
+flagsInternal = RegSpec 1
+
 -------------------------------------------------------------------------------
 
 instance Operand Reg8 CpuTrans Uint8 where
@@ -90,6 +101,20 @@ instance Operand RegSeg CpuTrans Uint16 where
     writeOp reg val = do
         memReg <- ctxReg <$> get
         writeSeg memReg reg val
+
+instance Operand RegSpec CpuTrans Uint16 where
+    readOp (RegSpec 0) = do
+        memReg <- ctxReg <$> get
+        readRegIP memReg
+    readOp (RegSpec 1) = do
+        memReg <- ctxReg <$> get
+        readRegFlags memReg
+    writeOp (RegSpec 0) val = do
+        memReg <- ctxReg <$> get
+        writeRegIP memReg val
+    writeOp (RegSpec 1) val = do
+        memReg <- ctxReg <$> get
+        writeRegFlags memReg val
 
 -------------------------------------------------------------------------------
 
@@ -144,5 +169,76 @@ writeSeg (MemReg mr) (RegSeg ii) val =
     liftIO $ pokeByteOff mr (32 + i * 2) val
 
 {-# SPECIALISE INLINE writeSeg :: MemReg -> RegSeg -> Uint16 -> CpuTrans () #-}
+
+-------------------------------------------------------------------------------
+
+readRegIP :: MonadIO m => MemReg -> m Uint16
+readRegIP (MemReg mr) =
+    liftIO $ peekByteOff mr 40
+
+{-# SPECIALISE INLINE readRegIP :: MemReg -> CpuTrans Uint16 #-}
+
+writeRegIP :: MonadIO m => MemReg -> Uint16 -> m ()
+writeRegIP (MemReg mr) val =
+    liftIO $ pokeByteOff mr 40 val
+
+{-# SPECIALISE INLINE writeRegIP :: MemReg -> Uint16 -> CpuTrans () #-}
+
+readRegFlags :: MonadIO m => MemReg -> m Uint16
+readRegFlags (MemReg mr) = do
+    liftIO $ peekByteOff mr 42
+
+{-# SPECIALISE INLINE readRegFlags :: MemReg -> CpuTrans Uint16 #-}
+
+writeRegFlags :: MonadIO m => MemReg -> Uint16 -> m ()
+writeRegFlags (MemReg mr) val =
+    liftIO $ pokeByteOff mr 42 val
+
+{-# SPECIALISE INLINE writeRegFlags :: MemReg -> Uint16 -> CpuTrans () #-}
+
+-------------------------------------------------------------------------------
+
+showReg8 :: MonadIO m => MemReg -> Reg8 -> m String
+showReg8 memReg reg = do
+    val <- readReg8 memReg reg
+    return $ show reg ++ " = 0x" ++ showHex val ""
+
+showReg16 :: MonadIO m => MemReg -> Reg16 -> m String
+showReg16 memReg reg = do
+    val <- readReg16 memReg reg
+    return $ show reg ++ " = 0x" ++ showHex val ""
+
+showRegSeg :: MonadIO m => MemReg -> RegSeg -> m String
+showRegSeg memReg reg = do
+    val <- readSeg memReg reg
+    return $ show reg ++ " = 0x" ++ showHex val ""
+
+showRegs3 :: MonadIO m => MemReg -> Reg8 -> Reg8 -> Reg16 -> m String
+showRegs3 memReg reg1 reg2 reg3 = do
+    s1 <- showReg8 memReg reg1
+    s2 <- showReg8 memReg reg2
+    s3 <- showReg16 memReg reg3
+    return $ s1 ++ " " ++ s2 ++ " " ++ s3
+
+showRegIP :: MonadIO m => MemReg -> m String
+showRegIP memReg = do
+    val <- readRegIP memReg
+    return $ "IP = 0x" ++ showHex val ""
+
+printRegs :: MonadIO m => MemReg -> m ()
+printRegs memReg = do
+    (liftIO . putStrLn) =<< showRegs3 memReg al ah ax
+    (liftIO . putStrLn) =<< showRegs3 memReg bl bh bx
+    (liftIO . putStrLn) =<< showRegs3 memReg cl ch cx
+    (liftIO . putStrLn) =<< showRegs3 memReg dl dh dx
+    (liftIO . putStrLn) =<< showReg16 memReg sp
+    (liftIO . putStrLn) =<< showReg16 memReg bp
+    (liftIO . putStrLn) =<< showReg16 memReg si
+    (liftIO . putStrLn) =<< showReg16 memReg di
+    (liftIO . putStrLn) =<< showRegSeg memReg es
+    (liftIO . putStrLn) =<< showRegSeg memReg cs
+    (liftIO . putStrLn) =<< showRegSeg memReg ss
+    (liftIO . putStrLn) =<< showRegSeg memReg ds
+    (liftIO . putStrLn) =<< showRegIP memReg
 
 -------------------------------------------------------------------------------
