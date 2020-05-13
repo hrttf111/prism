@@ -6,10 +6,10 @@ module Prism.Cpu (
         ------------------------------------------------------
         , OperandVal, Operand (..)
         , OperandReg, OperandMem
-        , MemDecoder, RegDecoder
+        , MemDecoder (..), RegDecoder (..)
         ------------------------------------------------------
-        , CpuFlag, CpuFlags
-        , Reg8, Reg16, RegSeg
+        , CpuFlag (..), CpuFlags (..)
+        , Reg8 (..), Reg16 (..), RegSeg (..)
         , Flag (..), Flags
         , EFlag (..), EFlags
         , PrismInt (..), PrismIRQ (..)
@@ -22,7 +22,8 @@ module Prism.Cpu (
         , printRegs
         ------------------------------------------------------
         , MemReg (..), MemMain (..), Ctx (..)
-        , MemSeg8, MemSeg16, MemPhy8, MemPhy16
+        , MemSeg8 (..), MemSeg16 (..), MemPhy8 (..), MemPhy16 (..)
+        , MemSeg (..)
         , PrismM
         ------------------------------------------------------
         , calcCFCarry, calcCFBorrow
