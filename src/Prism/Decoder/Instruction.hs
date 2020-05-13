@@ -138,7 +138,7 @@ decodeNI16 :: FuncOI1M Reg16 Uint16 -> FuncOI1M MemSeg16 Uint16 -> PrismInstrFun
 decodeNI16 = decodeNI
 
 -------------------------------------------------------------------------------
-{-
+
 decodeNC :: (ImmDecoder v, OperandVal v, OperandReg a1 PrismM v, OperandMem a2 PrismM v) => 
     FuncOI1M a1 v -> FuncOI1M a2 v -> PrismInstrFunc
 decodeNC freg fmem bytes = 
@@ -151,7 +151,7 @@ decodeNC freg fmem bytes =
 
 decodeNC16 :: FuncOI1M Reg16 Uint16 -> FuncOI1M MemSeg16 Uint16 -> PrismInstrFunc
 decodeNC16 = decodeNC
--}
+
 -------------------------------------------------------------------------------
 
 decodeRM :: (OperandVal v, OperandReg a1 PrismM v, OperandReg a2 PrismM v, OperandMem a3 PrismM v) => 

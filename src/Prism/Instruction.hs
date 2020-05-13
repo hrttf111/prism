@@ -40,6 +40,11 @@ type FuncNV1M v = v -> PrismM ()
 type FuncV1 v = v -> v
 type FuncV2 v = v -> v -> v
 
+--Takes and modifies value from operand
+--executor is main user
+type FuncVF1 v = Flags -> v -> (Flags, v)
+type FuncVF2 v = Flags -> v -> v -> (Flags, v)
+
 instrON1 :: (OperandFunc1 a v) => FuncNV1M v -> FuncO1M a
 instrON1 func op =
     readOp op >>= func

@@ -57,7 +57,7 @@ instance RegDecoder RegSeg where
     decodeReg = RegSeg
     decodeRegVal (RegSeg v) = v
 
-convertReg :: (Monad m, OperandVal v1, OperandVal v2, OperandReg a1 m v1, OperandReg a2 m v2) =>
+convertReg :: (RegDecoder a1, RegDecoder a2) =>
     a1 -> a2
 convertReg = decodeReg . decodeRegVal
 
@@ -87,7 +87,7 @@ decodeMem 6 = MemBp
 decodeMem 7 = MemBx
 decodeMem _ = MemDirect
 
-convertMem :: (Monad m, OperandVal v1, OperandVal v2, OperandMem a1 m v1, OperandMem a2 m v2) =>
+convertMem :: (MemDecoder a1, MemDecoder a2) =>
     a1 -> a2
 convertMem = wrapMemSeg . unwrapMemSeg
 
