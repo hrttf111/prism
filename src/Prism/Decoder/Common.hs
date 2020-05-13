@@ -58,19 +58,19 @@ instance RegDecoder RegSeg where
     decodeRegVal (RegSeg v) = v
 
 -------------------------------------------------------------------------------
-{-
+
 instance MemDecoder MemSeg8 where
-    decodeMem1 v off = MemSeg8 $ decodeMem v off
+    decodeMemSeg v off = MemSeg8 $ decodeMem v off
     decodeMemDirect = MemSeg8 . MemDirect
-    unwrapMem (MemSeg8 m) = m
-    wrapMem m = MemSeg8 m
+    unwrapMemSeg (MemSeg8 m) = m
+    wrapMemSeg m = MemSeg8 m
 
 instance MemDecoder MemSeg16 where
-    decodeMem1 v off = MemSeg16 $ decodeMem v off
+    decodeMemSeg v off = MemSeg16 $ decodeMem v off
     decodeMemDirect = MemSeg16 . MemDirect
-    unwrapMem (MemSeg16 m) = m
-    wrapMem m = MemSeg16 m
--}
+    unwrapMemSeg (MemSeg16 m) = m
+    wrapMemSeg m = MemSeg16 m
+
 -- R/M -> Disp -> Mem
 decodeMem :: Uint8 -> Disp -> MemSeg
 decodeMem 0 = MemBxSi 
@@ -83,8 +83,8 @@ decodeMem 6 = MemBp
 decodeMem 7 = MemBx
 decodeMem _ = MemDirect
 
---convertMem :: (Monad m, OperandVal v1, OperandVal v2, OperandMem a1 m v1, OperandMem a2 m v2) =>
- --   a1 -> a2
---convertMem = wrapMem . unwrapMem
+convertMem :: (Monad m, OperandVal v1, OperandVal v2, OperandMem a1 m v1, OperandMem a2 m v2) =>
+    a1 -> a2
+convertMem = wrapMemSeg . unwrapMemSeg
 
 -------------------------------------------------------------------------------
