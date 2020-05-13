@@ -35,6 +35,8 @@ module Prism.Cpu (
         , regToFlags
         , readFlags
         ------------------------------------------------------
+        , signExterndWordN
+        ------------------------------------------------------
     ) where
 
 import Prism.Cpu.Val

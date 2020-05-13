@@ -57,6 +57,10 @@ instance RegDecoder RegSeg where
     decodeReg = RegSeg
     decodeRegVal (RegSeg v) = v
 
+convertReg :: (Monad m, OperandVal v1, OperandVal v2, OperandReg a1 m v1, OperandReg a2 m v2) =>
+    a1 -> a2
+convertReg = decodeReg . decodeRegVal
+
 -------------------------------------------------------------------------------
 
 instance MemDecoder MemSeg8 where
