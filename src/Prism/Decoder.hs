@@ -1,6 +1,8 @@
 module Prism.Decoder (
         ------------------------------------------------------
-          decodeImm8, decodeImm16, decodeImm32
+          decodeImplicit 
+        , decodeImm8, decodeImm16, decodeImm32
+        , decodeStR, decodeStRI
         , decodeStRM8, decodeStRM16
         , decodeNI8, decodeNI16
         , decodeRM8, decodeRM16, decodeRMS16
