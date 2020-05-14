@@ -138,5 +138,6 @@ class ( Monad m
     incCycles :: m ()
     updateIP :: Uint16 -> m ()
     instrAddress :: m MemOffset
+    needStop :: m Bool
 
 -------------------------------------------------------------------------------

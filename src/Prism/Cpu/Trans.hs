@@ -24,5 +24,6 @@ instance CpuMonad CpuTrans where
         valCs <- fromIntegral <$> readOp cs
         valIp <- fromIntegral <$> readOp ip
         return $ (shiftL valCs 4) + valIp
+    needStop = ctxStop <$> get
 
 -------------------------------------------------------------------------------

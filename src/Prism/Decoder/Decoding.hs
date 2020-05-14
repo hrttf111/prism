@@ -7,6 +7,7 @@ import Data.Bits ((.&.), (.|.), shiftR)
 
 import Control.Monad (foldM, liftM)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
+import Control.Monad.State.Strict
 
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
@@ -128,5 +129,12 @@ makeDecoderList instrList = fromRight emptyDecoder $ makeDecoder <$> mergedInstr
         mergedInstr :: Either String [PrismInstruction]
         mergedInstr = map (uncurry mergeInstruction) <$> listResult
         emptyDecoder = makeDecoder []
+
+-------------------------------------------------------------------------------
+
+peekInstrBytesM :: Int -> PrismM InstrBytes
+peekInstrBytesM offset = do
+    mem <- ctxMem <$> get
+    peekInstrBytes mem offset
 
 -------------------------------------------------------------------------------

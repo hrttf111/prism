@@ -8,10 +8,13 @@ module Prism.Decoder (
         , decodeRM8, decodeRM16, decodeRMS16
         , decodeN8, decodeN16
         ------------------------------------------------------
-        , PrismDecoder
+        , PrismDecoder (..)
+        , PrismInstruction (..)
         , makeDecoder
         , makeInstructionS
         , makeDecoderList 
+        ------------------------------------------------------
+        , peekInstrBytesM
         ------------------------------------------------------
     ) where
 
