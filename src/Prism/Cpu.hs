@@ -6,6 +6,7 @@ module Prism.Cpu (
         ------------------------------------------------------
         , OperandVal, Operand (..)
         , OperandReg, OperandMem
+        , MemAddress (..)
         , MemDecoder (..), RegDecoder (..)
         ------------------------------------------------------
         , CpuFlag (..), CpuFlags (..)
@@ -37,6 +38,8 @@ module Prism.Cpu (
         ------------------------------------------------------
         , signExterndWordN
         ------------------------------------------------------
+        , pushP, popP
+        ------------------------------------------------------
     ) where
 
 import Prism.Cpu.Val
@@ -46,6 +49,7 @@ import Prism.Cpu.Flags
 import Prism.Cpu.Trans
 import Prism.Cpu.Memory
 import Prism.Cpu.Registers
+import Prism.Cpu.Primitives
 
 type PrismM = CpuTrans
 

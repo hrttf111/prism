@@ -62,6 +62,34 @@ instance Operand MemPhy16 CpuTrans Uint16 where
 
 -------------------------------------------------------------------------------
 
+instance MemAddress MemSeg8 CpuTrans Uint8 where
+    getEA (MemSeg8 memSeg) = do
+        s <- get
+        getMemEA s memSeg
+    getPA (MemSeg8 memSeg) = do
+        s <- get
+        getMemOffset s memSeg
+
+instance MemAddress MemSeg16 CpuTrans Uint16 where
+    getEA (MemSeg16 memSeg) = do
+        s <- get
+        getMemEA s memSeg
+    getPA (MemSeg16 memSeg) = do
+        s <- get
+        getMemOffset s memSeg
+
+-------------------------------------------------------------------------------
+
+instance MemAddress MemPhy8 CpuTrans Uint8 where
+    getEA (MemPhy8 offset) = return 0
+    getPA (MemPhy8 offset) = return offset
+
+instance MemAddress MemPhy16 CpuTrans Uint16 where
+    getEA (MemPhy16 offset) = return 0
+    getPA (MemPhy16 offset) = return offset
+
+-------------------------------------------------------------------------------
+
 getMemOffset :: (MonadIO m) => Ctx -> MemSeg -> m MemOffset
 getMemOffset ctx mem = getMemOffsetI (ctxReg ctx) (ctxReplaceSeg ctx) mem
 
@@ -86,6 +114,8 @@ getMemOffsetI memReg regSeg (MemBx disp) =
     getMemReg2 memReg bx (findRegSeg1 ds regSeg) disp
 getMemOffsetI memReg regSeg (MemDirect disp) =
     getMemReg1 memReg (findRegSeg1 ds regSeg) disp
+getMemOffsetI memReg regSeg MemSp =
+    getMemReg2 memReg sp ss 0
 
 {-# SPECIALISE INLINE getMemOffsetI :: MemReg -> Maybe RegSeg -> MemSeg -> CpuTrans MemOffset #-}
 
@@ -120,6 +150,34 @@ getMemReg1 memReg regSeg disp = do
     return $ (shiftL valSeg 4) + disp32
 
 {-# SPECIALISE INLINE getMemReg1 :: MemReg -> RegSeg -> Disp -> CpuTrans MemOffset #-}
+
+-------------------------------------------------------------------------------
+
+getMemEA :: (MonadIO m) => Ctx -> MemSeg -> m EA
+getMemEA ctx mem = getEAI (ctxReg ctx) mem
+
+getEA3 :: MonadIO m => MemReg -> Reg16 -> Reg16 -> Disp -> m EA
+getEA3 memReg reg1 reg2 disp = do
+    valR1 <- fromIntegral <$> readReg16 memReg reg1
+    valR2 <- fromIntegral <$> readReg16 memReg reg2
+    return $ valR1 + valR2 + disp
+
+getEA2 :: MonadIO m => MemReg -> Reg16 -> Disp -> m EA
+getEA2 memReg reg1 disp = do
+    valR1 <- readReg16 memReg reg1
+    return $ valR1 + disp
+
+getEAI :: MonadIO m => MemReg -> MemSeg -> m EA
+getEAI memReg (MemBxSi disp) = getEA3 memReg bx si disp
+getEAI memReg (MemBxDi disp) = getEA3 memReg bx di disp
+getEAI memReg (MemBpSi disp) = getEA3 memReg bp si disp
+getEAI memReg (MemBpDi disp) = getEA3 memReg bp di disp
+getEAI memReg (MemSi disp) = getEA2 memReg si disp
+getEAI memReg (MemDi disp) = getEA2 memReg di disp
+getEAI memReg (MemBp disp) = getEA2 memReg bp disp
+getEAI memReg (MemBx disp) = getEA2 memReg bx disp
+getEAI memReg (MemDirect disp) = return disp
+getEAI memReg MemSp = return 0
 
 -------------------------------------------------------------------------------
 
@@ -159,5 +217,6 @@ instance Show MemSeg where
     show (MemBp disp) = showMem2 bp ss disp
     show (MemBx disp) = showMem2 bx ds disp
     show (MemDirect disp) = showMem1 ds disp
+    show MemSp = showMem2 sp ss 0
 
 -------------------------------------------------------------------------------

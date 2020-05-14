@@ -60,7 +60,7 @@ instance Show RegSeg where
 
 -------------------------------------------------------------------------------
 
-type EA = Uint16
+type EA = Uint16 -- effective address
 type Disp = Uint16
 type MemOffset = Int
 type MemSegType = Word8
@@ -73,7 +73,8 @@ data MemSeg = MemBxSi Disp |
               MemDi Disp |
               MemBp Disp |
               MemBx Disp |
-              MemDirect Disp deriving (Eq)
+              MemDirect Disp |
+              MemSp deriving (Eq)
 
 newtype MemSeg8 = MemSeg8 MemSeg deriving (Eq)
 newtype MemSeg16 = MemSeg16 MemSeg deriving (Eq)
@@ -87,7 +88,11 @@ class MemDecoder a where
     unwrapMemSeg :: a -> MemSeg
     wrapMemSeg :: MemSeg -> a
 
-type OperandMem a m v = (MemDecoder a, Operand a m v)
+class (Operand a m v) => MemAddress a m v where
+    getEA :: a -> m EA
+    getPA :: a -> m MemOffset
+
+type OperandMem a m v = (MemDecoder a, Operand a m v, MemAddress a m v)
 
 -------------------------------------------------------------------------------
 
