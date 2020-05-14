@@ -22,26 +22,34 @@ xchg op1 op2 = do
     writeOp op1 val2
     writeOp op2 val1
 
-{-# SPECIALISE xchg :: FuncO2M Reg8 Reg8 #-}
-{-# SPECIALISE xchg :: FuncO2M Reg16 Reg16 #-}
-{-# SPECIALISE xchg :: FuncO2M Reg8 MemSeg8 #-}
-{-# SPECIALISE xchg :: FuncO2M MemSeg8 Reg8 #-}
-{-# SPECIALISE xchg :: FuncO2M Reg16 MemSeg16 #-}
-{-# SPECIALISE xchg :: FuncO2M MemSeg16 Reg16 #-}
+{-# SPECIALISE INLINE xchg :: FuncO2M Reg8 Reg8 #-}
+{-# SPECIALISE INLINE xchg :: FuncO2M Reg16 Reg16 #-}
+{-# SPECIALISE INLINE xchg :: FuncO2M Reg8 MemSeg8 #-}
+{-# SPECIALISE INLINE xchg :: FuncO2M MemSeg8 Reg8 #-}
+{-# SPECIALISE INLINE xchg :: FuncO2M Reg16 MemSeg16 #-}
+{-# SPECIALISE INLINE xchg :: FuncO2M MemSeg16 Reg16 #-}
 
 -------------------------------------------------------------------------------
 
 pushOp :: (Operand a PrismM Uint16) => FuncO1M a
 pushOp = pushP
 
+{-# SPECIALISE INLINE pushOp :: FuncO1M Reg16 #-}
+{-# SPECIALISE INLINE pushOp :: FuncO1M MemSeg16 #-}
+
 popOp :: (Operand a PrismM Uint16) => FuncO1M a
 popOp = popP
+
+{-# SPECIALISE INLINE popOp :: FuncO1M Reg16 #-}
+{-# SPECIALISE INLINE popOp :: FuncO1M MemSeg16 #-}
 
 -------------------------------------------------------------------------------
 
 lea16 :: FuncO2M MemSeg16 Reg16
 lea16 mem reg =
     getEA mem >>= writeOp reg
+
+{-# INLINE lea16 #-}
 
 -------------------------------------------------------------------------------
 
@@ -60,48 +68,60 @@ lxs16 regSeg1 ctx mem reg = do
 
 lds16 = lxs16 ds
 les16 = lxs16 es
+-}
 
 -------------------------------------------------------------------------------
 
 pushf :: FuncImplicit
-pushf ctx = push16 ctx val
-    where
-        val = flagsToVal (ctxFlags ctx) $ eflagsToVal (ctxEFlags ctx) 0
+pushf = do
+    flags <- getFlags :: PrismM Flags
+    eflags <- getFlags :: PrismM EFlags
+    pushV $ flagsToVal flags $ eflagsToVal eflags 0
+
+{-# INLINE pushf #-}
 
 popf :: FuncImplicit
-popf ctx = do
-    val <- pop16 ctx
+popf = do
+    val <- popV
     let flags = valToFlags val
         eflags = valToEFlags val
-    return $ ctx { ctxFlags = flags, ctxEFlags = eflags } 
+    setFlags flags
+    setFlags eflags
+
+{-# INLINE popf #-}
 
 lahf :: FuncImplicit
-lahf ctx = do
-    writeOp ctx ah val
-    return ctx
-    where
-        val = (fromIntegral $ flagsToVal (ctxFlags ctx) 0) :: Uint8
+lahf = do
+    flags <- getFlags :: PrismM Flags
+    let val = (fromIntegral $ flagsToVal flags 0) :: Uint8
+    writeOp ah val
+
+{-# INLINE lahf #-}
 
 sahf :: FuncImplicit
-sahf ctx = do
-    val <- readOp ctx ah
+sahf = do
+    of_ <- getFlag OF
+    val <- readOp ah
     let flags_ = valToFlags $ (fromIntegral val :: Uint16)
-        of_ = flagOF $ ctxFlags ctx
         flags = flags_ { flagOF = of_ }
-    return $ ctx { ctxFlags = flags }
+    setFlags flags
+
+{-# INLINE sahf #-}
 
 -------------------------------------------------------------------------------
 
 xlat :: FuncImplicit
-xlat ctx = do
-    val <- readOp ctx al
+xlat = do
+    val <- readOp al
     let disp = fromIntegral val :: Disp
-    val1 <- readOp ctx $ Mem8 (MemBx disp)
-    writeOp ctx al val1
-    return ctx
+    val1 <- readOp $ MemSeg8 (MemBx disp)
+    writeOp al val1
+
+{-# INLINE xlat #-}
 
 -------------------------------------------------------------------------------
 
+{-
 portIn8 :: MonadIO m => Ctx -> Uint16 -> m Uint8
 portIn8 ctx portNum = do
     let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum

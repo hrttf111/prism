@@ -21,6 +21,8 @@ pop16 = do
     writeOp sp (valSp + 2)
     return val 
 
+-------------------------------------------------------------------------------
+
 pushP :: (CpuMonad m, Operand a m Uint16) => a -> m ()
 pushP op =
     readOp op >>= push16
@@ -28,5 +30,13 @@ pushP op =
 popP :: (CpuMonad m, Operand a m Uint16) => a -> m ()
 popP op =
     pop16 >>= writeOp op
+
+-------------------------------------------------------------------------------
+
+pushV :: (CpuMonad m) => Uint16 -> m ()
+pushV = push16
+
+popV :: (CpuMonad m) => m Uint16
+popV = pop16
 
 -------------------------------------------------------------------------------
