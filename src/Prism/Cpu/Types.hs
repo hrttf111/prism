@@ -6,6 +6,8 @@
 
 module Prism.Cpu.Types where
 
+import Control.Monad.Trans (MonadIO)
+
 import Data.Word (Word8, Word16, Word32)
 import Data.Bits (FiniteBits, Bits)
 
@@ -49,6 +51,10 @@ newtype RegSpec = RegSpec Word8 deriving (Eq)
 class RegDecoder a where
     decodeReg :: Word8 -> a
     decodeRegVal :: a -> Word8
+
+--class (OperandVal v) => MemRegManipulator a p v | a p -> v where
+class MemRegManipulator a p v | a p -> v where
+    readRegRaw :: (MonadIO m) => p -> a -> m v
 
 type OperandReg a m v = (RegDecoder a, Operand a m v)
 

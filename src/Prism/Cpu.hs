@@ -6,6 +6,7 @@ module Prism.Cpu (
         ------------------------------------------------------
         , OperandVal, Operand (..)
         , OperandReg, OperandMem
+        , MemRegManipulator (..)
         , MemAddress (..)
         , MemDecoder (..), RegDecoder (..)
         ------------------------------------------------------
@@ -28,8 +29,10 @@ module Prism.Cpu (
         , PrismM
         ------------------------------------------------------
         , allocMemRegRaw, allocMemReg, allocMemMain
+        , clearRegs, copyMainMem 
         ------------------------------------------------------
         , makeCtx, makePrismM
+        , runPrismM
         ------------------------------------------------------
         , calcCFCarry, calcCFBorrow
         , calcAFCarry, calcAFBorrow
@@ -56,6 +59,9 @@ import Prism.Cpu.Registers
 import Prism.Cpu.Primitives
 
 type PrismM = CpuTrans
+
+runPrismM :: Ctx -> PrismM () -> IO Ctx
+runPrismM ctx c = runCpu ctx c
 
 makePrismM :: Ctx -> PrismM ()
 makePrismM = makeTransM

@@ -13,6 +13,7 @@ import Data.Bits (popCount, testBit, finiteBitSize, (.&.), (.|.))
 import Prism.Cpu.Types
 import Prism.Cpu.Monad
 import Prism.Cpu.Registers
+import Prism.Cpu.Val
 
 -------------------------------------------------------------------------------
 
@@ -124,12 +125,12 @@ valToEFlags val =
     where
         gtf bit val = (val .&. bit) == bit
 
-regToFlags :: MonadIO m => MemReg -> Reg16 -> m (Flags, EFlags)
+regToFlags :: (MonadIO m) => MemReg -> Reg16 -> m (Flags, EFlags)
 regToFlags memReg reg = do
     valReg <- readReg16 memReg reg
     return $ (valToFlags valReg, valToEFlags valReg)
 
-readFlags :: MonadIO m => MemReg -> m (Flags, EFlags)
+readFlags :: (MonadIO m) => MemReg -> m (Flags, EFlags)
 readFlags memReg = do
     val <- readRegFlags memReg
     return $ (valToFlags val, valToEFlags val)
@@ -156,9 +157,6 @@ calcZF = (==0)
 
 calcSF :: (OperandVal b) => b -> Bool
 calcSF val = testBit val ((finiteBitSize val) - 1)
-
-negV :: (OperandVal b) => b
-negV = (div maxBound 2) + 1
 
 calcOFAdd :: (OperandVal b) => b -> b -> b -> Bool
 calcOFAdd before val after | before < negV = 
@@ -223,5 +221,12 @@ instance CpuFlags Flags CpuTrans where
 instance CpuFlags EFlags CpuTrans where
     getFlags = ctxEFlags <$> get
     setFlags f = modify (\s -> s { ctxEFlags = f } )
+
+-------------------------------------------------------------------------------
+
+type AllFlags = (Flags, EFlags)
+
+instance MemRegManipulator RegSpec MemReg AllFlags where
+    readRegRaw memReg _ = readFlags memReg
 
 -------------------------------------------------------------------------------

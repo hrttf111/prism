@@ -8,6 +8,7 @@ module Prism.Cpu.Monad (
         , RunCpu (..)
         , CpuTransM (..), CpuTrans (..)
         , allocMemRegRaw, allocMemReg, allocMemMain
+        , clearRegs, copyMainMem 
         , makeCtx, makeTransM
     ) where
 
@@ -15,9 +16,12 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict --(modify, MonadState, StateT)
 
 import Data.Word (Word8)
+import qualified Data.ByteString as B
 
 import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
+import Foreign.Marshal.Utils (fillBytes)
+import Foreign.Marshal.Array (pokeArray)
 
 import Prism.Cpu.Types
 
@@ -67,6 +71,18 @@ allocMemReg = MemReg <$> allocMemRegRaw
 
 allocMemMain :: MonadIO m => Int -> m MemMain
 allocMemMain size = liftIO $ MemMain <$> callocBytes size
+
+-------------------------------------------------------------------------------
+
+clearRegs :: CpuTrans ()
+clearRegs = do
+    (MemReg ptr) <- ctxReg <$> get
+    liftIO $ fillBytes ptr 0 memRegSize
+
+copyMainMem :: Int -> B.ByteString -> CpuTrans ()
+copyMainMem start memArray = do
+    (MemMain ptr) <- ctxMem <$> get
+    liftIO $ pokeArray (flip plusPtr (fromIntegral start) $ ptr) $ B.unpack memArray
 
 -------------------------------------------------------------------------------
 
