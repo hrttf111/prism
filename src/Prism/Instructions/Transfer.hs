@@ -2,6 +2,8 @@
 
 module Prism.Instructions.Transfer where
 
+import Data.Bits (shiftR)
+
 import Prism.Cpu
 import Prism.Instruction
 
@@ -53,22 +55,21 @@ lea16 mem reg =
 
 -------------------------------------------------------------------------------
 
-{-
-lxs16 :: RegSeg -> FuncO2M Mem16 Reg16
-lxs16 regSeg1 ctx mem reg = do
-    ptr <- getMemOffset memReg regSeg (unwrapMem mem)
-    let segVal = fromIntegral $ shiftR ptr 16
-        regVal = fromIntegral ptr
-    writeOp ctx reg regVal
-    writeOp ctx regSeg1 segVal
-    return ctx
-    where
-        memReg = ctxReg ctx
-        regSeg = findRegSegData ctx
+lxs16 :: RegSeg -> FuncO2M MemSeg16 Reg16
+lxs16 regSeg mem reg = do
+    offset <- getPA mem
+    let segVal = fromIntegral $ shiftR offset 16
+        regVal = fromIntegral offset
+    writeOp reg regVal
+    writeOp regSeg segVal
+
+{-# INLINE lxs16 #-}
 
 lds16 = lxs16 ds
 les16 = lxs16 es
--}
+
+{-# INLINE lds16 #-}
+{-# INLINE les16 #-}
 
 -------------------------------------------------------------------------------
 
