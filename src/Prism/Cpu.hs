@@ -27,6 +27,10 @@ module Prism.Cpu (
         , MemSeg (..)
         , PrismM
         ------------------------------------------------------
+        , allocMemRegRaw, allocMemReg, allocMemMain
+        ------------------------------------------------------
+        , makeCtx, makePrismM
+        ------------------------------------------------------
         , calcCFCarry, calcCFBorrow
         , calcAFCarry, calcAFBorrow
         , calcPF, calcZF, calcSF
@@ -52,5 +56,8 @@ import Prism.Cpu.Registers
 import Prism.Cpu.Primitives
 
 type PrismM = CpuTrans
+
+makePrismM :: Ctx -> PrismM ()
+makePrismM = makeTransM
 
 -------------------------------------------------------------------------------

@@ -9,7 +9,7 @@ import Prism.Instruction
 
 -------------------------------------------------------------------------------
 
-mov :: OperandVal v => FuncV2 v
+mov :: (OperandVal v) => FuncV2 v
 mov source _ = source
 
 {-# SPECIALISE mov :: FuncV2 Uint8 #-}
