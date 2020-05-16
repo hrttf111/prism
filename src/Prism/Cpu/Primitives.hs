@@ -40,3 +40,9 @@ popV :: (CpuMonad m) => m Uint16
 popV = pop16
 
 -------------------------------------------------------------------------------
+
+modifyFlag :: (CpuFlag a m) => (Bool -> Bool) -> a -> m ()
+modifyFlag func flag =
+    (func <$> getFlag flag) >>= setFlag flag
+
+-------------------------------------------------------------------------------

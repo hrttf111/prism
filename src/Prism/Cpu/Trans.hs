@@ -25,5 +25,6 @@ instance CpuMonad CpuTrans where
         valIp <- fromIntegral <$> readOp ip
         return $ (shiftL valCs 4) + valIp
     needStop = ctxStop <$> get
+    overrideSegment regSeg = modify (\s -> s { ctxReplaceSeg = regSeg } )
 
 -------------------------------------------------------------------------------

@@ -150,5 +150,6 @@ class ( Monad m
     updateIP :: Uint16 -> m ()
     instrAddress :: m MemOffset
     needStop :: m Bool
+    overrideSegment :: Maybe RegSeg -> m ()
 
 -------------------------------------------------------------------------------

@@ -1,12 +1,14 @@
 module Prism.Instructions (
-        transferInstrList
+        x86InstrList
     ) where
 
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Instruction
+import Prism.Run
 
 import Prism.Instructions.Transfer
+import Prism.Instructions.Processor
 
 -------------------------------------------------------------------------------
 
@@ -101,5 +103,46 @@ transferInstrList = [
         makeInstructionS 0xEE Nothing (decodeImplicit portOutAlDx),
         makeInstructionS 0xEF Nothing (decodeImplicit portOutAxDx)-}
     ]
+
+-------------------------------------------------------------------------------
+
+processorInstrList = [
+        makeInstructionS 0x90 Nothing (decodeImplicit $ nop),
+        makeInstructionS 0x9B Nothing (decodeImplicit $ wait),
+        makeInstructionS 0xF0 Nothing (decodeImplicit $ lock),
+        makeInstructionS 0xF4 Nothing (decodeImplicit $ hlt),
+        makeInstructionS 0xF5 Nothing (decodeImplicit $ cmc),
+        makeInstructionS 0xF8 Nothing (decodeImplicit $ clc),
+        makeInstructionS 0xF9 Nothing (decodeImplicit $ stc),
+        makeInstructionS 0xFA Nothing (decodeImplicit $ cli),
+        makeInstructionS 0xFB Nothing (decodeImplicit $ sti),
+        makeInstructionS 0xFC Nothing (decodeImplicit $ cld),
+        makeInstructionS 0xFD Nothing (decodeImplicit $ std)
+        --makeInstructionS 0xCC Nothing (decodeImplicit $ flip int 3),
+        --makeInstructionS 0xCD Nothing (decodeImm8 int),
+        --makeInstructionS 0xCE Nothing (decodeImplicit into),
+        --makeInstructionS 0xCF Nothing (decodeImplicit iret)
+    ]
+
+-------------------------------------------------------------------------------
+
+getSegmentInstrList :: (PrismM ()) -> [PrismInstruction]
+getSegmentInstrList execInstr = [
+        makeInstructionS 0x26 Nothing (decodeImplicit $ segmentOverride execInstr es),
+        makeInstructionS 0x2E Nothing (decodeImplicit $ segmentOverride execInstr cs),
+        makeInstructionS 0x36 Nothing (decodeImplicit $ segmentOverride execInstr ss),
+        makeInstructionS 0x3E Nothing (decodeImplicit $ segmentOverride execInstr ds)
+    ]
+
+segmentInstrList :: [PrismInstruction] -> [PrismInstruction]
+segmentInstrList = getSegmentInstrList . decodeExecOne . makeDecoderList
+
+-------------------------------------------------------------------------------
+
+x86InstrList :: [PrismInstruction]
+x86InstrList = instrList ++ (segmentInstrList instrList)
+    where
+        instrList = transferInstrList
+                    ++ processorInstrList
 
 -------------------------------------------------------------------------------

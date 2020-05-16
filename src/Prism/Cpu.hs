@@ -46,6 +46,7 @@ module Prism.Cpu (
         , signExterndWordN
         ------------------------------------------------------
         , pushP, popP, pushV, popV
+        , modifyFlag
         ------------------------------------------------------
     ) where
 

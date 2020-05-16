@@ -15,7 +15,7 @@ import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
-instrList = transferInstrList
+instrList = x86InstrList
 
 doTests env = do
         testMov env
@@ -180,4 +180,4 @@ testMovMem env = do
                 mov [es:0], WORD 0xFFAA
                 mov ax, [16]
                 mov bx, [ds:16]
-            |] -}
+            |]-}
