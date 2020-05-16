@@ -28,6 +28,8 @@ import Data.Text (Text)
 
 import Control.Monad.Trans (MonadIO, liftIO)
 
+import qualified TestTransferNew as TN
+
 instrList = transferInstrList 
     ++ arithmeticInstrList
     ++ processorInstrList
@@ -55,4 +57,5 @@ main = do
     runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
     runSpec (testPeripheral instrList) defaultConfig {configConcurrentJobs=(Just 1)}
     runSpec (testPC instrList) defaultConfig {configConcurrentJobs=(Just 1)}
+    TN.testAll
     return ()

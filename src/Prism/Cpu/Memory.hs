@@ -40,6 +40,8 @@ instance Operand MemSeg16 CpuTrans Uint16 where
     writeOp (MemSeg16 memSeg) val = do
         s <- get
         offset <- getMemOffset s memSeg
+        --printRegs $ ctxReg s
+        --liftIO $ putStrLn $ show offset
         writeOp (MemPhy16 offset) val
 
 -------------------------------------------------------------------------------
