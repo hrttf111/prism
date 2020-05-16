@@ -153,6 +153,20 @@ instrRegToRm :: (OperandFunc2 a1 a2 v) => FuncV2 v -> FuncO2M a1 a2
 instrRegToRm = instrOp2ToOp1
 
 -------------------------------------------------------------------------------
+{-
+instrOp1ToOp2F :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrOp1ToOp2F = instrO2
+
+instrOp2ToOp1F :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrOp2ToOp1F func op1 op2 = instrO2 func op2 op1
+
+instrRmToRegF :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrRmToRegF = instrOp1ToOp2F
+
+instrRegToRmF :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrRegToRmF = instrOp2ToOp1F
+-}
+-------------------------------------------------------------------------------
 
 instrOp1ToOp2w :: (OperandFunc2 a1 a2 v) => FuncV2 v -> FuncO2M a1 a2
 instrOp1ToOp2w = instrO2w
@@ -165,6 +179,21 @@ instrRmToRegw = instrOp1ToOp2w
 
 instrRegToRmw :: (OperandFunc2 a1 a2 v) => FuncV2 v -> FuncO2M a1 a2
 instrRegToRmw = instrOp2ToOp1w
+
+-------------------------------------------------------------------------------
+
+{-instrOp1ToOp2w :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrOp1ToOp2w = instrO2w
+
+instrOp2ToOp1w :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrOp2ToOp1w func op1 op2 = instrO2w func op2 op1
+
+instrRmToRegw :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrRmToRegw = instrOp1ToOp2w
+
+instrRegToRmw :: (OperandFunc2 a1 a2 v) => FuncVF2 v -> FuncO2M a1 a2
+instrRegToRmw = instrOp2ToOp1w
+-}
 
 -------------------------------------------------------------------------------
 

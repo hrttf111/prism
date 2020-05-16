@@ -6,7 +6,7 @@ module Prism.Decoder (
         , decodeStRM8, decodeStRM16
         , decodeNI8, decodeNI16
         , decodeRM8, decodeRM16, decodeRMS16
-        , decodeN8, decodeN16
+        , decodeN8, decodeN16, decodeNC16
         ------------------------------------------------------
         , PrismDecoder (..)
         , PrismInstruction (..)

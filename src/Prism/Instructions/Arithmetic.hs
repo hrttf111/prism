@@ -189,7 +189,7 @@ das flags val = (flags_, result)
         flags_ = Flags cf_ False af_ False False False
 
 -------------------------------------------------------------------------------
-{-
+
 type MuldivFunc8 = Flags -> Uint8 -> Uint8 -> (Flags, Uint16)
 type MuldivFunc16 = Flags -> Uint16 -> Uint16 -> (Flags, Uint16, Uint16)
 
@@ -236,7 +236,7 @@ imul16 flags val1 val2 = (flags_, resultH, resultL)
         of_ = cf_
         flags_ = Flags cf_ False False False False of_
 
-div8 :: MuldivFunc8
+div8 :: Flags -> Uint16 -> Uint8 -> (Flags, Uint16)
 div8 flags val1 val2 = (flags, result)
     where
         --todo: if val2 == 0 then DE
@@ -245,7 +245,7 @@ div8 flags val1 val2 = (flags, result)
         resultH = mod val1 val216
         result = (resultL .&. 0x00FF) .|. (shiftL resultH 8)
 
-div16 :: MuldivFunc16
+div16 :: Flags -> Uint16 -> Uint16 -> Uint16 -> (Flags, Uint16, Uint16)
 div16 flags val1H val1L val2 = (flags, resultH, resultL)
     where
         --todo: if val2 == 0 then DE
@@ -254,7 +254,7 @@ div16 flags val1H val1L val2 = (flags, resultH, resultL)
         resultL = fromIntegral $ div val132 val232
         resultH = fromIntegral $ mod val132 $ fromIntegral val232
 
-idiv8 :: DivFunc8
+idiv8 :: Flags -> Uint16 -> Uint8 -> (Flags, Uint16)
 idiv8 flags val1 val2 = (flags, result)
     where
         --todo: if val2 == 0 then DE
@@ -265,7 +265,7 @@ idiv8 flags val1 val2 = (flags, result)
         resultH = signedOp opMod val1 val216
         result = (resultL .&. 0x00FF) .|. (shiftL resultH 8)
 
-idiv16 :: DivFunc16
+idiv16 :: Flags -> Uint16 -> Uint16 -> Uint16 -> (Flags, Uint16, Uint16)
 idiv16 flags val1H val1L val2 = (flags, resultH, resultL)
     where
         --todo: if val2 == 0 then DE
@@ -312,5 +312,5 @@ divInstr16 func val = do
     writeOp ax axValNew
     writeOp dx dxValNew
     setFlags newFlags
--}
+
 -------------------------------------------------------------------------------
