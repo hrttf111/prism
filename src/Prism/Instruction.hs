@@ -7,47 +7,48 @@ import Data.Word (Word8, Word16)
 
 import Prism.Cpu
 
+import qualified Prism.InstructionM as M
+
 -------------------------------------------------------------------------------
 
-type OperandFunc1 a v = (Operand a PrismM v)
-type OperandFunc2 a1 a2 v = (Operand a1 PrismM v, Operand a2 PrismM v)
+type OperandFunc1 a v = M.OperandFunc1 a PrismM v
+type OperandFunc2 a1 a2 v = M.OperandFunc2 a1 a2 PrismM v
 
 --Plain function
 --decoder is main user
-type FuncImplicit = PrismM ()
+type FuncImplicit = M.FuncImplicit PrismM
 
 --Takes immediate values
 --decoder is main user
-type FuncImm1 i = i -> PrismM ()
-type FuncImm2 i = i -> i -> PrismM ()
+type FuncImm1 i = M.FuncImm1 i PrismM
+type FuncImm2 i = M.FuncImm2 i PrismM
 
 --Takes and modifies operand
 --executor is main user
-type FuncO1M a = a -> PrismM ()
-type FuncO2M a1 a2 = a1 -> a2 -> PrismM ()
+type FuncO1M a = M.FuncO1M a PrismM
+type FuncO2M a1 a2 = M.FuncO2M a1 a2 PrismM
 
 --Takes immediate value + operand
 --decoder is main user
-type FuncOI1M a v = a -> v -> PrismM ()
+type FuncOI1M a v = M.FuncOI1M a PrismM v
 
 --Takes and modifies value+monad from operand
 --executor is main user
-type FuncV1M v = v -> PrismM v
-type FuncNV1M v = v -> PrismM ()
+type FuncV1M v = M.FuncV1M v PrismM
+type FuncNV1M v = M.FuncNV1M v PrismM
 
 --Takes and modifies value from operand
 --executor is main user
-type FuncV1 v = v -> v
-type FuncV2 v = v -> v -> v
+type FuncV1 v = M.FuncV1 v
+type FuncV2 v = M.FuncV2 v
 
 --Takes and modifies value from operand
 --executor is main user
-type FuncVF1 v = Flags -> v -> (Flags, v)
-type FuncVF2 v = Flags -> v -> v -> (Flags, v)
+type FuncVF1 v = M.FuncVF1 v
+type FuncVF2 v = M.FuncVF2 v
 
 instrON1 :: (OperandFunc1 a v) => FuncNV1M v -> FuncO1M a
-instrON1 func op =
-    readOp op >>= func
+instrON1 = M.instrON1
 
 {-# SPECIALISE instrON1 :: FuncNV1M Word8 -> FuncO1M Reg8 #-}
 {-# SPECIALISE instrON1 :: FuncNV1M Word16 -> FuncO1M Reg16 #-}
@@ -56,8 +57,7 @@ instrON1 func op =
 {-# SPECIALISE instrON1 :: FuncNV1M Word16 -> FuncO1M MemSeg16 #-}
 
 instrOM1 :: (OperandFunc1 a v) => FuncV1M v -> FuncO1M a
-instrOM1 func op =
-    readOp op >>= func >>= writeOp op
+instrOM1 = M.instrOM1
 
 {-# SPECIALISE instrOM1 :: FuncV1M Word8 -> FuncO1M Reg8 #-}
 {-# SPECIALISE instrOM1 :: FuncV1M Word16 -> FuncO1M Reg16 #-}
@@ -66,8 +66,7 @@ instrOM1 func op =
 {-# SPECIALISE instrOM1 :: FuncV1M Word16 -> FuncO1M MemSeg16 #-}
 
 instrO1 :: (OperandFunc1 a v) => FuncV1 v -> FuncO1M a
-instrO1 func op = do
-    (func <$> readOp op) >>= writeOp op
+instrO1 = M.instrO1
 
 {-# SPECIALISE instrO1 :: FuncV1 Word8 -> FuncO1M Reg8 #-}
 {-# SPECIALISE instrO1 :: FuncV1 Word16 -> FuncO1M Reg16 #-}
@@ -76,8 +75,7 @@ instrO1 func op = do
 {-# SPECIALISE instrO1 :: FuncV1 Word16 -> FuncO1M MemSeg16 #-}
 
 instrOI1 :: (OperandFunc1 a v) => FuncV2 v -> FuncOI1M a v
-instrOI1 func op imm =
-    (func imm <$> readOp op) >>= writeOp op
+instrOI1 = M.instrOI1
 
 {-# SPECIALISE instrOI1 :: FuncV2 Word8 -> FuncOI1M Reg8 Word8 #-}
 {-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M Reg16 Word16 #-}
@@ -86,12 +84,7 @@ instrOI1 func op imm =
 {-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M MemSeg16 Word16 #-}
 
 instrOF1 :: (OperandFunc1 a v) => FuncVF1 v -> FuncO1M a
-instrOF1 func op = do
-    val <- readOp op
-    flags <- getFlags
-    let (newFlags, newVal) = func flags val
-    setFlags newFlags
-    writeOp op newVal
+instrOF1 = M.instrOF1
 
 {-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M Reg8 #-}
 {-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M Reg16 #-}
@@ -100,12 +93,7 @@ instrOF1 func op = do
 {-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M MemSeg16 #-}
 
 instrOFI1 :: (OperandFunc1 a v) => FuncVF2 v -> FuncOI1M a v
-instrOFI1 func op imm = do
-    val <- readOp op
-    flags <- getFlags
-    let (newFlags, newVal) = func flags imm val
-    setFlags newFlags
-    writeOp op newVal
+instrOFI1 = M.instrOFI1
 
 {-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M Reg8 Word8 #-}
 {-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M Reg16 Word16 #-}
@@ -114,8 +102,7 @@ instrOFI1 func op imm = do
 {-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M MemSeg16 Word16 #-}
 
 instrOI1w :: (OperandFunc1 a v) => FuncV2 v -> FuncOI1M a v
-instrOI1w func op imm =
-    (return $ func imm 0) >>= writeOp op
+instrOI1w = M.instrOI1w
 
 {-# SPECIALISE instrOI1w :: FuncV2 Word8 -> FuncOI1M Reg8 Word8 #-}
 {-# SPECIALISE instrOI1w :: FuncV2 Word16 -> FuncOI1M Reg16 Word16 #-}
@@ -124,8 +111,7 @@ instrOI1w func op imm =
 {-# SPECIALISE instrOI1w :: FuncV2 Word16 -> FuncOI1M MemSeg16 Word16 #-}
 
 instrO2 :: (OperandFunc2 a1 a2 v) => FuncV2 v -> FuncO2M a1 a2
-instrO2 func op1 op2 =
-    (func <$> (readOp op1) <*> (readOp op2)) >>= writeOp op2
+instrO2 = M.instrO2
 
 {-# SPECIALISE instrO2 :: FuncV2 Word8 -> FuncO2M Reg8 Reg8 #-}
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M Reg16 Reg16 #-}
@@ -139,8 +125,7 @@ instrO2 func op1 op2 =
 {-# SPECIALISE instrO2 :: FuncV2 Word16 -> FuncO2M MemSeg16 RegSeg #-}
 
 instrO2w :: (OperandFunc2 a1 a2 v) => FuncV2 v -> FuncO2M a1 a2
-instrO2w func op1 op2 =
-    (func <$> (readOp op1) <*> (return 0)) >>= writeOp op2
+instrO2w = M.instrO2w
 
 {-# SPECIALISE instrO2w :: FuncV2 Word8 -> FuncO2M Reg8 Reg8 #-}
 {-# SPECIALISE instrO2w :: FuncV2 Word16 -> FuncO2M Reg16 Reg16 #-}
@@ -184,9 +169,9 @@ instrRegToRmw = instrOp2ToOp1w
 -------------------------------------------------------------------------------
 
 emptyRegReg :: a -> a -> PrismM ()
-emptyRegReg _ _ = return ()
+emptyRegReg = M.emptyRegReg
 
 emptySingle :: a -> PrismM ()
-emptySingle _ = return ()
+emptySingle = M.emptySingle
 
 -------------------------------------------------------------------------------
