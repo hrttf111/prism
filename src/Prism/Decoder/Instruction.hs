@@ -144,8 +144,8 @@ decodeNC :: (ImmDecoder v, OperandVal v, OperandReg a1 PrismM v, OperandMem a2 P
 decodeNC freg fmem bytes = 
     decodeNI8 freg8 fmem8 bytes
     where
-        freg8 reg imm8 = freg (convertReg reg) $ signExterndWordN imm8
-        fmem8 mem imm8 = fmem (convertMem mem) $ signExterndWordN imm8
+        freg8 reg imm8 = freg (convertReg reg) $ signExtendWordN imm8
+        fmem8 mem imm8 = fmem (convertMem mem) $ signExtendWordN imm8
 
 {-# SPECIALISE decodeNC :: FuncOI1M Reg16 Uint16 -> FuncOI1M MemSeg16 Uint16 -> PrismInstrFunc #-}
 

@@ -9,21 +9,21 @@ import Prism.Cpu.Types
 negV :: (OperandVal b) => b
 negV = (div maxBound 2) + 1
 
-signExterndWordN :: (OperandVal b1, OperandVal b2) => b1 -> b2
-signExterndWordN val | val > 0x80 = (+0xFF00) $ fromIntegral val
-signExterndWordN val = fromIntegral val
+signExtendWordN :: (OperandVal b1, OperandVal b2) => b1 -> b2
+signExtendWordN val | val > 0x80 = (+0xFF00) $ fromIntegral val
+signExtendWordN val = fromIntegral val
 
-signExterndWord :: Uint8 -> Uint16
-signExterndWord val | val > 0x80 = (+0xFF00) $ fromIntegral val
-signExterndWord val = fromIntegral val
+signExtendWord :: Uint8 -> Uint16
+signExtendWord val | val > 0x80 = (+0xFF00) $ fromIntegral val
+signExtendWord val = fromIntegral val
 
-signExterndDoubleword :: Uint16 -> (Uint16, Uint16)
-signExterndDoubleword val | val > 0x8000 = (0xFFFF, val)
-signExterndDoubleword val = (0x0000, val)
+signExtendDoubleword :: Uint16 -> (Uint16, Uint16)
+signExtendDoubleword val | val > 0x8000 = (0xFFFF, val)
+signExtendDoubleword val = (0x0000, val)
 
-signExterndDoubleword32 :: Uint16 -> Uint32
-signExterndDoubleword32 val | val > 0x8000 = (+0xFFFF0000) $ fromIntegral val
-signExterndDoubleword32 val = fromIntegral val
+signExtendDoubleword32 :: Uint16 -> Uint32
+signExtendDoubleword32 val | val > 0x8000 = (+0xFFFF0000) $ fromIntegral val
+signExtendDoubleword32 val = fromIntegral val
 
 toSignedCompl2 :: (OperandVal a, OperandVal b) => a -> b
 toSignedCompl2 val = valUnsigned - valSigned

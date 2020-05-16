@@ -43,7 +43,12 @@ module Prism.Cpu (
         , regToFlags
         , readFlags
         ------------------------------------------------------
-        , signExterndWordN
+        , negV
+        , signExtendWordN
+        , signExtendWord
+        , signExtendDoubleword, signExtendDoubleword32
+        , toSignedCompl2, toUnsignedComp2
+        , signedOp, signedOp1, signedOpS
         ------------------------------------------------------
         , pushP, popP, pushV, popV
         , modifyFlag

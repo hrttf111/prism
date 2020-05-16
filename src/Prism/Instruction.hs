@@ -85,6 +85,33 @@ instrOI1 func op imm =
 {-# SPECIALISE instrOI1 :: FuncV2 Word8 -> FuncOI1M MemSeg8 Word8 #-}
 {-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M MemSeg16 Word16 #-}
 
+instrOF1 :: (OperandFunc1 a v) => FuncVF1 v -> FuncO1M a
+instrOF1 func op = do
+    val <- readOp op
+    flags <- getFlags
+    let (newFlags, newVal) = func flags val
+    setFlags newFlags
+    writeOp op newVal
+
+{-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M Reg8 #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M Reg16 #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M RegSeg #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M MemSeg8 #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M MemSeg16 #-}
+
+instrOFI1 :: (OperandFunc1 a v) => FuncVF2 v -> FuncOI1M a v
+instrOFI1 func op imm = do
+    val <- readOp op
+    flags <- getFlags
+    let (newFlags, newVal) = func flags imm val
+    setFlags newFlags
+    writeOp op newVal
+
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M Reg8 Word8 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M Reg16 Word16 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M RegSeg Word16 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M MemSeg8 Word8 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M MemSeg16 Word16 #-}
 
 instrOI1w :: (OperandFunc1 a v) => FuncV2 v -> FuncOI1M a v
 instrOI1w func op imm =
