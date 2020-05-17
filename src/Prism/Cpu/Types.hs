@@ -52,17 +52,10 @@ class RegDecoder a where
     decodeReg :: Word8 -> a
     decodeRegVal :: a -> Word8
 
---class (OperandVal v) => MemRegManipulator a p v | a p -> v where
 class MemRegManipulator a p v | a p -> v where
     readRegRaw :: (MonadIO m) => p -> a -> m v
 
 type OperandReg a m v = (RegDecoder a, Operand a m v)
-
-instance Show RegSeg where
-    show (RegSeg 0) = "ES"
-    show (RegSeg 1) = "CS"
-    show (RegSeg 2) = "SS"
-    show (RegSeg 3) = "DS"
 
 -------------------------------------------------------------------------------
 
@@ -88,14 +81,19 @@ data MemSeg = MemBxSi Disp |
 newtype MemSeg8 = MemSeg8 MemSeg deriving (Eq)
 newtype MemSeg16 = MemSeg16 MemSeg deriving (Eq)
 
+newtype MemSegExp8 = MemSegExp8 (RegSeg, MemSeg) deriving (Eq)
+newtype MemSegExp16 = MemSegExp16 (RegSeg, MemSeg) deriving (Eq)
+
 newtype MemPhy8 = MemPhy8 MemOffset deriving (Eq)
 newtype MemPhy16 = MemPhy16 MemOffset deriving (Eq)
 
-class MemDecoder a where
-    decodeMemSeg :: MemSegType -> Disp -> a
-    decodeMemDirect :: Disp -> a
+class MemSegWrapper a where
     unwrapMemSeg :: a -> MemSeg
     wrapMemSeg :: MemSeg -> a
+
+class (MemSegWrapper a) => MemDecoder a where
+    decodeMemSeg :: MemSegType -> Disp -> a
+    decodeMemDirect :: Disp -> a
 
 class (Operand a m v) => MemAddress a m v where
     getEA :: a -> m EA
@@ -149,6 +147,8 @@ class ( Monad m
       , Operand RegSpec m Uint16
       , Operand MemSeg8 m Uint8
       , Operand MemSeg16 m Uint16
+      , Operand MemSegExp8 m Uint8
+      , Operand MemSegExp16 m Uint16
       , Operand MemPhy8 m Uint8
       , Operand MemPhy16 m Uint16
       , CpuFlag Flag m

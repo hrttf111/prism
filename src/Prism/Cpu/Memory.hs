@@ -44,6 +44,28 @@ instance Operand MemSeg16 CpuTrans Uint16 where
 
 -------------------------------------------------------------------------------
 
+instance Operand MemSegExp8 CpuTrans Uint8 where
+    readOp (MemSegExp8 (regSeg, memSeg)) = do
+        s <- get
+        offset <- getMemOffsetExp s memSeg regSeg
+        readOp $ MemPhy8 offset
+    writeOp (MemSegExp8 (regSeg, memSeg)) val = do
+        s <- get
+        offset <- getMemOffsetExp s memSeg regSeg
+        writeOp (MemPhy8 offset) val
+
+instance Operand MemSegExp16 CpuTrans Uint16 where
+    readOp (MemSegExp16 (regSeg, memSeg)) = do
+        s <- get
+        offset <- getMemOffsetExp s memSeg regSeg
+        readOp $ MemPhy16 offset
+    writeOp (MemSegExp16 (regSeg, memSeg)) val = do
+        s <- get
+        offset <- getMemOffsetExp s memSeg regSeg
+        writeOp (MemPhy16 offset) val
+
+-------------------------------------------------------------------------------
+
 instance Operand MemPhy8 CpuTrans Uint8 where
     readOp (MemPhy8 offset) = do
         (MemMain mm) <- ctxMem <$> get
@@ -116,10 +138,25 @@ instance MemArithmetics MemPhy16 where
 
 -------------------------------------------------------------------------------
 
+instance MemSegWrapper MemSeg8 where
+    unwrapMemSeg (MemSeg8 m) = m
+    wrapMemSeg m = MemSeg8 m
+
+instance MemSegWrapper MemSeg16 where
+    unwrapMemSeg (MemSeg16 m) = m
+    wrapMemSeg m = MemSeg16 m
+
+-------------------------------------------------------------------------------
+
 getMemOffset :: (MonadIO m) => Ctx -> MemSeg -> m MemOffset
 getMemOffset ctx mem = getMemOffsetI (ctxReg ctx) (ctxReplaceSeg ctx) mem
 
 {-# SPECIALISE INLINE getMemOffset :: Ctx -> MemSeg -> CpuTrans MemOffset #-}
+
+getMemOffsetExp :: (MonadIO m) => Ctx -> MemSeg -> RegSeg -> m MemOffset
+getMemOffsetExp ctx mem regSeg = getMemOffsetI (ctxReg ctx) (Just regSeg) mem
+
+{-# SPECIALISE INLINE getMemOffsetExp :: Ctx -> MemSeg -> RegSeg -> CpuTrans MemOffset #-}
 
 getMemOffsetI :: (MonadIO m) => MemReg -> Maybe RegSeg -> MemSeg -> m MemOffset
 getMemOffsetI memReg regSeg (MemBxSi disp) =
@@ -176,21 +213,6 @@ getMemReg1 memReg regSeg disp = do
     return $ (shiftL valSeg 4) + disp32
 
 {-# SPECIALISE INLINE getMemReg1 :: MemReg -> RegSeg -> Disp -> CpuTrans MemOffset #-}
-
--------------------------------------------------------------------------------
-
-{-addMemSeg :: MemSeg -> Disp -> MemSeg
-addMemSeg (MemBxSi disp) disp1 = MemBxSi 
-addMemSeg (MemBxDi disp) = getEA3 memReg bx di disp
-addMemSeg (MemBpSi disp) = getEA3 memReg bp si disp
-addMemSeg (MemBpDi disp) = getEA3 memReg bp di disp
-addMemSeg (MemSi disp) = getEA2 memReg si disp
-addMemSeg (MemDi disp) = getEA2 memReg di disp
-addMemSeg (MemBp disp) = getEA2 memReg bp disp
-addMemSeg (MemBx disp) = getEA2 memReg bx disp
-addMemSeg (MemDirect disp) = return disp
-addMemSeg MemSp _ = MemSp
--}
 
 -------------------------------------------------------------------------------
 
@@ -265,6 +287,12 @@ instance Show MemSeg8 where
 
 instance Show MemSeg16 where
     show (MemSeg16 mem) = show mem
+
+instance Show MemSegExp8 where
+    show (MemSegExp8 (regSeg, memSeg)) = show regSeg ++ " " ++ show memSeg
+
+instance Show MemSegExp16 where
+    show (MemSegExp16 (regSeg, memSeg)) = show regSeg ++ " " ++ show memSeg
 
 instance Show MemPhy8 where
     show (MemPhy8 mem) = show mem

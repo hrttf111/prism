@@ -40,6 +40,12 @@ data Ctx = Ctx {
         ctxCycles :: Int
     } deriving (Show)
 
+instance Show RegSeg where
+    show (RegSeg 0) = "ES"
+    show (RegSeg 1) = "CS"
+    show (RegSeg 2) = "SS"
+    show (RegSeg 3) = "DS"
+
 -------------------------------------------------------------------------------
 
 newtype CpuTransM s m a = CpuTransM {

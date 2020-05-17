@@ -66,14 +66,10 @@ convertReg = decodeReg . decodeRegVal
 instance MemDecoder MemSeg8 where
     decodeMemSeg v off = MemSeg8 $ decodeMem v off
     decodeMemDirect = MemSeg8 . MemDirect
-    unwrapMemSeg (MemSeg8 m) = m
-    wrapMemSeg m = MemSeg8 m
 
 instance MemDecoder MemSeg16 where
     decodeMemSeg v off = MemSeg16 $ decodeMem v off
     decodeMemDirect = MemSeg16 . MemDirect
-    unwrapMemSeg (MemSeg16 m) = m
-    wrapMemSeg m = MemSeg16 m
 
 -- R/M -> Disp -> Mem
 decodeMem :: Uint8 -> Disp -> MemSeg

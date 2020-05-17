@@ -7,6 +7,7 @@ module Prism.Cpu (
         , OperandVal, Operand (..)
         , OperandReg, OperandMem
         , MemArithmetics (..)
+        , MemSegWrapper (..)
         , MemRegManipulator (..)
         , MemAddress (..)
         , MemDecoder (..), RegDecoder (..)
@@ -26,7 +27,9 @@ module Prism.Cpu (
         , printRegs
         ------------------------------------------------------
         , MemReg (..), MemMain (..), Ctx (..)
-        , MemSeg8 (..), MemSeg16 (..), MemPhy8 (..), MemPhy16 (..)
+        , MemSeg8 (..), MemSeg16 (..)
+        , MemSegExp8 (..), MemSegExp16 (..)
+        , MemPhy8 (..), MemPhy16 (..)
         , MemSeg (..)
         , PrismM
         ------------------------------------------------------
