@@ -11,6 +11,7 @@ import Prism.Instructions.Transfer
 import Prism.Instructions.Arithmetic
 import Prism.Instructions.Processor
 import Prism.Instructions.Logical
+import Prism.Instructions.Control
 
 -------------------------------------------------------------------------------
 
@@ -300,6 +301,48 @@ logicalInstrList = [
 
 -------------------------------------------------------------------------------
 
+controlInstrList = [
+        --JXY
+        makeInstructionS 0x70 Nothing (decodeImm8 jo),
+        makeInstructionS 0x71 Nothing (decodeImm8 jno),
+        makeInstructionS 0x72 Nothing (decodeImm8 jc),
+        makeInstructionS 0x73 Nothing (decodeImm8 jnc),
+        makeInstructionS 0x74 Nothing (decodeImm8 jz),
+        makeInstructionS 0x75 Nothing (decodeImm8 jnz),
+        makeInstructionS 0x76 Nothing (decodeImm8 jna),
+        makeInstructionS 0x77 Nothing (decodeImm8 ja),
+        makeInstructionS 0x78 Nothing (decodeImm8 js),
+        makeInstructionS 0x79 Nothing (decodeImm8 jns),
+        makeInstructionS 0x7A Nothing (decodeImm8 jp),
+        makeInstructionS 0x7B Nothing (decodeImm8 jnp),
+        makeInstructionS 0x7C Nothing (decodeImm8 jl),
+        makeInstructionS 0x7D Nothing (decodeImm8 jnl),
+        makeInstructionS 0x7E Nothing (decodeImm8 jle),
+        makeInstructionS 0x7F Nothing (decodeImm8 jnle),
+        --LOOP
+        makeInstructionS 0xE0 Nothing (decodeImm8 loopNZ),
+        makeInstructionS 0xE1 Nothing (decodeImm8 loopZ),
+        makeInstructionS 0xE2 Nothing (decodeImm8 loop),
+        --JMP
+        makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
+        --makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
+        makeInstructionS 0xEB Nothing (decodeImm8 jmpShort),
+        makeInstructionS 0xFF (Just 4) (decodeN16 (instrON1 jmpIntra) (instrON1 jmpIntra)),
+        --makeInstructionS 0xFF (Just 5) (decodeN16 emptySingle (instrJMem32 jmpInter)),
+        --CALL
+        makeInstructionS 0xE8 Nothing (decodeImm16 callNear),
+        --makeInstructionS 0x9A Nothing (decodeImm32 callInter),
+        makeInstructionS 0xFF (Just 2) (decodeN16 (instrON1 callIntra) (instrON1 callIntra)),
+        --makeInstructionS 0xFF (Just 3) (decodeN16 emptySingle (instrJMem32 callInter)),
+        --RET
+        makeInstructionS 0xC2 Nothing (decodeImm16 retIntra),
+        makeInstructionS 0xC3 Nothing (decodeImplicit $ retIntra 0),
+        makeInstructionS 0xCA Nothing (decodeImm16 retInter),
+        makeInstructionS 0xCB Nothing (decodeImplicit $ retInter 0)
+    ]
+
+-------------------------------------------------------------------------------
+
 processorInstrList = [
         makeInstructionS 0x90 Nothing (decodeImplicit $ nop),
         makeInstructionS 0x9B Nothing (decodeImplicit $ wait),
@@ -339,6 +382,7 @@ x86InstrList = instrList ++ (segmentInstrList instrList)
         instrList = transferInstrList
                     ++ arithmeticInstrList
                     ++ logicalInstrList
+                    ++ controlInstrList
                     ++ processorInstrList
 
 -------------------------------------------------------------------------------
