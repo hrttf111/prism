@@ -106,13 +106,13 @@ transferInstrList = [
     ]
 
 -------------------------------------------------------------------------------
-{-
+
 arithmeticInstrList = [
         --ADD
-        makeInstructionS 0x00 Nothing (decodeRM8 (instrRegToRm add) (instrRegToRm add)),
-        makeInstructionS 0x01 Nothing (decodeRM16 (instrRegToRm add) (instrRegToRm add)),
-        makeInstructionS 0x02 Nothing (decodeRM8 (instrRmToReg add) (instrRmToReg add)),
-        makeInstructionS 0x03 Nothing (decodeRM16 (instrRmToReg add) (instrRmToReg add)),
+        makeInstructionS 0x00 Nothing (decodeRM8 (instrRegToRmF add) (instrRegToRmF add)),
+        makeInstructionS 0x01 Nothing (decodeRM16 (instrRegToRmF add) (instrRegToRmF add)),
+        makeInstructionS 0x02 Nothing (decodeRM8 (instrRmToRegF add) (instrRmToRegF add)),
+        makeInstructionS 0x03 Nothing (decodeRM16 (instrRmToRegF add) (instrRmToRegF add)),
         makeInstructionS 0x04 Nothing (decodeStRI al $ instrOFI1 add),
         makeInstructionS 0x05 Nothing (decodeStRI ax $ instrOFI1 add),
         makeInstructionS 0x80 (Just 0) (decodeNI8 (instrOFI1 add) (instrOFI1 add)),
@@ -120,10 +120,10 @@ arithmeticInstrList = [
         makeInstructionS 0x82 (Just 0) (decodeNI8 (instrOFI1 add) (instrOFI1 add)),
         makeInstructionS 0x83 (Just 0) (decodeNC16 (instrOFI1 add) (instrOFI1 add)),
         --ADC
-        makeInstructionS 0x10 Nothing (decodeRM8 (instrRegToRm adc) (instrRegToRm adc)),
-        makeInstructionS 0x11 Nothing (decodeRM16 (instrRegToRm adc) (instrRegToRm adc)),
-        makeInstructionS 0x12 Nothing (decodeRM8 (instrRmToReg adc) (instrRmToReg adc)),
-        makeInstructionS 0x13 Nothing (decodeRM16 (instrRmToReg adc) (instrRmToReg adc)),
+        makeInstructionS 0x10 Nothing (decodeRM8 (instrRegToRmF adc) (instrRegToRmF adc)),
+        makeInstructionS 0x11 Nothing (decodeRM16 (instrRegToRmF adc) (instrRegToRmF adc)),
+        makeInstructionS 0x12 Nothing (decodeRM8 (instrRmToRegF adc) (instrRmToRegF adc)),
+        makeInstructionS 0x13 Nothing (decodeRM16 (instrRmToRegF adc) (instrRmToRegF adc)),
         makeInstructionS 0x14 Nothing (decodeStRI al $ instrOFI1 adc),
         makeInstructionS 0x15 Nothing (decodeStRI ax $ instrOFI1 adc),
         makeInstructionS 0x80 (Just 0x2) (decodeNI8 (instrOFI1 adc) (instrOFI1 adc)),
@@ -131,21 +131,21 @@ arithmeticInstrList = [
         makeInstructionS 0x82 (Just 0x2) (decodeNI8 (instrOFI1 adc) (instrOFI1 adc)),
         makeInstructionS 0x83 (Just 0x2) (decodeNC16 (instrOFI1 adc) (instrOFI1 adc)),
         --INC
-        makeInstructionS 0x40 Nothing (decodeStR ax (instrO1 inc)),
-        makeInstructionS 0x41 Nothing (decodeStR cx (instrO1 inc)),
-        makeInstructionS 0x42 Nothing (decodeStR dx (instrO1 inc)),
-        makeInstructionS 0x43 Nothing (decodeStR bx (instrO1 inc)),
-        makeInstructionS 0x44 Nothing (decodeStR sp (instrO1 inc)),
-        makeInstructionS 0x45 Nothing (decodeStR bp (instrO1 inc)),
-        makeInstructionS 0x46 Nothing (decodeStR si (instrO1 inc)),
-        makeInstructionS 0x47 Nothing (decodeStR di (instrO1 inc)),
-        makeInstructionS 0xFE (Just 0) (decodeN8 (instrO1 inc) (instrO1 inc)),
-        makeInstructionS 0xFF (Just 0) (decodeN16 (instrO1 inc) (instrO1 inc)),
+        makeInstructionS 0x40 Nothing (decodeStR ax (instrOF1 inc)),
+        makeInstructionS 0x41 Nothing (decodeStR cx (instrOF1 inc)),
+        makeInstructionS 0x42 Nothing (decodeStR dx (instrOF1 inc)),
+        makeInstructionS 0x43 Nothing (decodeStR bx (instrOF1 inc)),
+        makeInstructionS 0x44 Nothing (decodeStR sp (instrOF1 inc)),
+        makeInstructionS 0x45 Nothing (decodeStR bp (instrOF1 inc)),
+        makeInstructionS 0x46 Nothing (decodeStR si (instrOF1 inc)),
+        makeInstructionS 0x47 Nothing (decodeStR di (instrOF1 inc)),
+        makeInstructionS 0xFE (Just 0) (decodeN8 (instrOF1 inc) (instrOF1 inc)),
+        makeInstructionS 0xFF (Just 0) (decodeN16 (instrOF1 inc) (instrOF1 inc)),
         --SUB
-        makeInstructionS 0x28 Nothing (decodeRM8 (instrRegToRm sub) (instrRegToRm sub)),
-        makeInstructionS 0x29 Nothing (decodeRM16 (instrRegToRm sub) (instrRegToRm sub)),
-        makeInstructionS 0x2A Nothing (decodeRM8 (instrRmToReg sub) (instrRmToReg sub)),
-        makeInstructionS 0x2B Nothing (decodeRM16 (instrRmToReg sub) (instrRmToReg sub)),
+        makeInstructionS 0x28 Nothing (decodeRM8 (instrRegToRmF sub) (instrRegToRmF sub)),
+        makeInstructionS 0x29 Nothing (decodeRM16 (instrRegToRmF sub) (instrRegToRmF sub)),
+        makeInstructionS 0x2A Nothing (decodeRM8 (instrRmToRegF sub) (instrRmToRegF sub)),
+        makeInstructionS 0x2B Nothing (decodeRM16 (instrRmToRegF sub) (instrRmToRegF sub)),
         makeInstructionS 0x2C Nothing (decodeStRI al $ instrOFI1 sub),
         makeInstructionS 0x2D Nothing (decodeStRI ax $ instrOFI1 sub),
         makeInstructionS 0x80 (Just 0x5) (decodeNI8 (instrOFI1 sub) (instrOFI1 sub)),
@@ -153,10 +153,10 @@ arithmeticInstrList = [
         makeInstructionS 0x82 (Just 0x5) (decodeNI8 (instrOFI1 sub) (instrOFI1 sub)),
         makeInstructionS 0x83 (Just 0x5) (decodeNC16 (instrOFI1 sub) (instrOFI1 sub)),
         --SBB
-        makeInstructionS 0x18 Nothing (decodeRM8 (instrRegToRm sbb) (instrRegToRm sbb)),
-        makeInstructionS 0x19 Nothing (decodeRM16 (instrRegToRm sbb) (instrRegToRm sbb)),
-        makeInstructionS 0x1A Nothing (decodeRM8 (instrRmToReg sbb) (instrRmToReg sbb)),
-        makeInstructionS 0x1B Nothing (decodeRM16 (instrRmToReg sbb) (instrRmToReg sbb)),
+        makeInstructionS 0x18 Nothing (decodeRM8 (instrRegToRmF sbb) (instrRegToRmF sbb)),
+        makeInstructionS 0x19 Nothing (decodeRM16 (instrRegToRmF sbb) (instrRegToRmF sbb)),
+        makeInstructionS 0x1A Nothing (decodeRM8 (instrRmToRegF sbb) (instrRmToRegF sbb)),
+        makeInstructionS 0x1B Nothing (decodeRM16 (instrRmToRegF sbb) (instrRmToRegF sbb)),
         makeInstructionS 0x1C Nothing (decodeStRI al $ instrOFI1 sbb),
         makeInstructionS 0x1D Nothing (decodeStRI ax $ instrOFI1 sbb),
         makeInstructionS 0x80 (Just 0x3) (decodeNI8 (instrOFI1 sbb) (instrOFI1 sbb)),
@@ -164,21 +164,21 @@ arithmeticInstrList = [
         makeInstructionS 0x82 (Just 0x3) (decodeNI8 (instrOFI1 sbb) (instrOFI1 sbb)),
         makeInstructionS 0x83 (Just 0x3) (decodeNC16 (instrOFI1 sbb) (instrOFI1 sbb)),
         --DEC
-        makeInstructionS 0x48 Nothing (decodeStR ax (instrO1 dec)),
-        makeInstructionS 0x49 Nothing (decodeStR cx (instrO1 dec)),
-        makeInstructionS 0x4A Nothing (decodeStR dx (instrO1 dec)),
-        makeInstructionS 0x4B Nothing (decodeStR bx (instrO1 dec)),
-        makeInstructionS 0x4C Nothing (decodeStR sp (instrO1 dec)),
-        makeInstructionS 0x4D Nothing (decodeStR bp (instrO1 dec)),
-        makeInstructionS 0x4E Nothing (decodeStR si (instrO1 dec)),
-        makeInstructionS 0x4F Nothing (decodeStR di (instrO1 dec)),
-        makeInstructionS 0xFE (Just 1) (decodeN8 (instrO1 dec) (instrO1 dec)),
-        makeInstructionS 0xFF (Just 1) (decodeN16 (instrO1 dec) (instrO1 dec)),
+        makeInstructionS 0x48 Nothing (decodeStR ax (instrOF1 dec)),
+        makeInstructionS 0x49 Nothing (decodeStR cx (instrOF1 dec)),
+        makeInstructionS 0x4A Nothing (decodeStR dx (instrOF1 dec)),
+        makeInstructionS 0x4B Nothing (decodeStR bx (instrOF1 dec)),
+        makeInstructionS 0x4C Nothing (decodeStR sp (instrOF1 dec)),
+        makeInstructionS 0x4D Nothing (decodeStR bp (instrOF1 dec)),
+        makeInstructionS 0x4E Nothing (decodeStR si (instrOF1 dec)),
+        makeInstructionS 0x4F Nothing (decodeStR di (instrOF1 dec)),
+        makeInstructionS 0xFE (Just 1) (decodeN8 (instrOF1 dec) (instrOF1 dec)),
+        makeInstructionS 0xFF (Just 1) (decodeN16 (instrOF1 dec) (instrOF1 dec)),
         --CMP
-        makeInstructionS 0x38 Nothing (decodeRM8 (instrRegToRm cmp) (instrRegToRm cmp)),
-        makeInstructionS 0x39 Nothing (decodeRM16 (instrRegToRm cmp) (instrRegToRm cmp)),
-        makeInstructionS 0x3A Nothing (decodeRM8 (instrRmToReg cmp) (instrRmToReg cmp)),
-        makeInstructionS 0x3B Nothing (decodeRM16 (instrRmToReg cmp) (instrRmToReg cmp)),
+        makeInstructionS 0x38 Nothing (decodeRM8 (instrRegToRmF cmp) (instrRegToRmF cmp)),
+        makeInstructionS 0x39 Nothing (decodeRM16 (instrRegToRmF cmp) (instrRegToRmF cmp)),
+        makeInstructionS 0x3A Nothing (decodeRM8 (instrRmToRegF cmp) (instrRmToRegF cmp)),
+        makeInstructionS 0x3B Nothing (decodeRM16 (instrRmToRegF cmp) (instrRmToRegF cmp)),
         makeInstructionS 0x3C Nothing (decodeStRI al $ instrOFI1 cmp),
         makeInstructionS 0x3D Nothing (decodeStRI ax $ instrOFI1 cmp),
         makeInstructionS 0x80 (Just 0x7) (decodeNI8 (instrOFI1 cmp) (instrOFI1 cmp)),
@@ -186,16 +186,16 @@ arithmeticInstrList = [
         makeInstructionS 0x82 (Just 0x7) (decodeNI8 (instrOFI1 cmp) (instrOFI1 cmp)),
         makeInstructionS 0x83 (Just 0x7) (decodeNC16 (instrOFI1 cmp) (instrOFI1 cmp)),
         --NEG
-        makeInstructionS 0xF6 (Just 3) (decodeN8 (instrO1 neg) (instrO1 neg)),
-        makeInstructionS 0xF7 (Just 3) (decodeN16 (instrO1 neg) (instrO1 neg)),
+        makeInstructionS 0xF6 (Just 3) (decodeN8 (instrOF1 neg) (instrOF1 neg)),
+        makeInstructionS 0xF7 (Just 3) (decodeN16 (instrOF1 neg) (instrOF1 neg)),
         --AAA/AAD/AAM/AAS
-        makeInstructionS 0x37 Nothing (decodeStR ax $ instrO1 aaa),
-        makeInstructionS 0xD5 (Just 1) (decodeStR ax $ instrO1 aad),
-        makeInstructionS 0xD4 (Just 1) (decodeStR ax $ instrO1 aam),
-        makeInstructionS 0x3F Nothing (decodeStR ax $ instrO1 aas),
+        makeInstructionS 0x37 Nothing (decodeStR ax $ instrOF1 aaa),
+        makeInstructionS 0xD5 (Just 1) (decodeStR ax $ instrOF1 aad),
+        makeInstructionS 0xD4 (Just 1) (decodeStR ax $ instrOF1 aam),
+        makeInstructionS 0x3F Nothing (decodeStR ax $ instrOF1 aas),
         --DAA/DAS
-        makeInstructionS 0x27 Nothing (decodeStR al $ instrO1 daa),
-        makeInstructionS 0x2F Nothing (decodeStR al $ instrO1 das),
+        makeInstructionS 0x27 Nothing (decodeStR al $ instrOF1 daa),
+        makeInstructionS 0x2F Nothing (decodeStR al $ instrOF1 das),
         --MUL
         makeInstructionS 0xF6 (Just 4) (decodeN8 (instrON1 $ muldivInstr8 mul8) (instrON1 $ muldivInstr8 mul8)),
         makeInstructionS 0xF7 (Just 4) (decodeN16 (instrON1 $ muldivInstr16 mul16) (instrON1 $ muldivInstr16 mul16)),
@@ -210,7 +210,7 @@ arithmeticInstrList = [
         makeInstructionS 0x98 Nothing (decodeImplicit cbw),
         makeInstructionS 0x99 Nothing (decodeImplicit cwd)
     ]
--}
+
 -------------------------------------------------------------------------------
 
 processorInstrList = [
@@ -250,6 +250,7 @@ x86InstrList :: [PrismInstruction]
 x86InstrList = instrList ++ (segmentInstrList instrList)
     where
         instrList = transferInstrList
+                    ++ arithmeticInstrList
                     ++ processorInstrList
 
 -------------------------------------------------------------------------------

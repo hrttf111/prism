@@ -11,6 +11,8 @@ import Prism.Instructions
 import TestAsm.Run
 import TestAsm.Common
 
+import TestArithmeticNew
+
 import NeatInterpolation
 
 -------------------------------------------------------------------------------
@@ -20,6 +22,11 @@ instrList = x86InstrList
 doTests env = do
         testMov env
         testMovMem env
+        testAdd env
+        testInc env
+        testSub env
+        testArithOther env
+        testArithMuldiv env
 
 testAll = do
     env <- createTestEnv instrList
@@ -171,7 +178,7 @@ testMovMem env = do
                 mov [bp + di + 0x1000], WORD 0x8877
                 mov dx, [bp + di + 0x1000]
             |]
-    {-describe "MOV segment replacement" $ do
+    describe "MOV segment replacement" $ do
         it "Replace es" $ do
             execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xFFAA)] env [text|
                 mov ax, ds
@@ -180,4 +187,4 @@ testMovMem env = do
                 mov [es:0], WORD 0xFFAA
                 mov ax, [16]
                 mov bx, [ds:16]
-            |]-}
+            |]

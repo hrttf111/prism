@@ -44,6 +44,8 @@ type FuncV2 v = v -> v -> v
 type FuncVF1 v = Flags -> v -> (Flags, v)
 type FuncVF2 v = Flags -> v -> v -> (Flags, v)
 
+-------------------------------------------------------------------------------
+
 instrON1 :: (CpuMonad m, OperandFunc1 a m v) => FuncNV1M v m -> FuncO1M a m
 instrON1 func op =
     readOp op >>= func
@@ -64,6 +66,8 @@ instrOM1 func op =
 {-# SPECIALISE instrOM1 :: FuncV1M Word8 PrismM -> FuncO1M MemSeg8 PrismM #-}
 {-# SPECIALISE instrOM1 :: FuncV1M Word16 PrismM -> FuncO1M MemSeg16 PrismM #-}
 
+-------------------------------------------------------------------------------
+
 instrO1 :: (CpuMonad m, OperandFunc1 a m v) => FuncV1 v -> FuncO1M a m
 instrO1 func op = do
     (func <$> readOp op) >>= writeOp op
@@ -83,34 +87,6 @@ instrOI1 func op imm =
 {-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M RegSeg PrismM Word16 #-}
 {-# SPECIALISE instrOI1 :: FuncV2 Word8 -> FuncOI1M MemSeg8 PrismM Word8 #-}
 {-# SPECIALISE instrOI1 :: FuncV2 Word16 -> FuncOI1M MemSeg16 PrismM Word16 #-}
-
-instrOF1 :: (CpuMonad m, OperandFunc1 a m v) => FuncVF1 v -> FuncO1M a m
-instrOF1 func op = do
-    val <- readOp op
-    flags <- getFlags
-    let (newFlags, newVal) = func flags val
-    setFlags newFlags
-    writeOp op newVal
-
-{-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M Reg8 PrismM #-}
-{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M Reg16 PrismM #-}
-{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M RegSeg PrismM #-}
-{-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M MemSeg8 PrismM #-}
-{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M MemSeg16 PrismM #-}
-
-instrOFI1 :: (CpuMonad m, OperandFunc1 a m v) => FuncVF2 v -> FuncOI1M a m v
-instrOFI1 func op imm = do
-    val <- readOp op
-    flags <- getFlags
-    let (newFlags, newVal) = func flags imm val
-    setFlags newFlags
-    writeOp op newVal
-
-{-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M Reg8 PrismM Word8 #-}
-{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M Reg16 PrismM Word16 #-}
-{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M RegSeg PrismM Word16 #-}
-{-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M MemSeg8 PrismM Word8 #-}
-{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M MemSeg16 PrismM Word16 #-}
 
 instrOI1w :: (CpuMonad m, OperandFunc1 a m v) => FuncV2 v -> FuncOI1M a m v
 instrOI1w func op imm =
@@ -154,6 +130,56 @@ instrO2w func op1 op2 =
 
 -------------------------------------------------------------------------------
 
+instrOF1 :: (CpuMonad m, OperandFunc1 a m v) => FuncVF1 v -> FuncO1M a m
+instrOF1 func op = do
+    val <- readOp op
+    flags <- getFlags
+    let (newFlags, newVal) = func flags val
+    setFlags newFlags
+    writeOp op newVal
+
+{-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M Reg8 PrismM #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M Reg16 PrismM #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M RegSeg PrismM #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word8 -> FuncO1M MemSeg8 PrismM #-}
+{-# SPECIALISE instrOF1 :: FuncVF1 Word16 -> FuncO1M MemSeg16 PrismM #-}
+
+instrOFI1 :: (CpuMonad m, OperandFunc1 a m v) => FuncVF2 v -> FuncOI1M a m v
+instrOFI1 func op imm = do
+    val <- readOp op
+    flags <- getFlags
+    let (newFlags, newVal) = func flags imm val
+    setFlags newFlags
+    writeOp op newVal
+
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M Reg8 PrismM Word8 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M Reg16 PrismM Word16 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M RegSeg PrismM Word16 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word8 -> FuncOI1M MemSeg8 PrismM Word8 #-}
+{-# SPECIALISE instrOFI1 :: FuncVF2 Word16 -> FuncOI1M MemSeg16 PrismM Word16 #-}
+
+instrOF2 :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncVF2 v -> FuncO2M a1 a2 m
+instrOF2 func op1 op2 = do
+    val1 <- readOp op1
+    val2 <- readOp op2
+    flags <- getFlags
+    let (newFlags, newVal) = func flags val1 val2
+    setFlags newFlags
+    writeOp op2 newVal
+
+{-# SPECIALISE instrOF2 :: FuncVF2 Word8 -> FuncO2M Reg8 Reg8 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M Reg16 Reg16 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word8 -> FuncO2M MemSeg8 Reg8 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word8 -> FuncO2M Reg8 MemSeg8 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M Reg16 MemSeg16 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M MemSeg16 Reg16 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M RegSeg Reg16 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M Reg16 RegSeg PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M RegSeg MemSeg16 PrismM #-}
+{-# SPECIALISE instrOF2 :: FuncVF2 Word16 -> FuncO2M MemSeg16 RegSeg PrismM #-}
+
+-------------------------------------------------------------------------------
+
 instrOp1ToOp2 :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncV2 v -> FuncO2M a1 a2 m
 instrOp1ToOp2 = instrO2
 
@@ -165,6 +191,20 @@ instrRmToReg = instrOp1ToOp2
 
 instrRegToRm :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncV2 v -> FuncO2M a1 a2 m
 instrRegToRm = instrOp2ToOp1
+
+-------------------------------------------------------------------------------
+
+instrOp1ToOp2F :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncVF2 v -> FuncO2M a1 a2 m
+instrOp1ToOp2F = instrOF2
+
+instrOp2ToOp1F :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncVF2 v -> FuncO2M a1 a2 m
+instrOp2ToOp1F func op1 op2 = instrOF2 func op2 op1
+
+instrRmToRegF :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncVF2 v -> FuncO2M a1 a2 m
+instrRmToRegF = instrOp1ToOp2F
+
+instrRegToRmF :: (CpuMonad m, OperandFunc2 a1 a2 m v) => FuncVF2 v -> FuncO2M a1 a2 m
+instrRegToRmF = instrOp2ToOp1F
 
 -------------------------------------------------------------------------------
 

@@ -1,15 +1,18 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module TestArithmeticNew where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
-import Instruction.Transfer
+import Prism.Cpu
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
-{-G
+
+-------------------------------------------------------------------------------
+
 testAdd env = do
     describe "ADD [8] ACC REG <- IMM" $ do
         it "Simple add" $ do
@@ -332,4 +335,3 @@ testArithMuldiv env = do
                 mov bl, -50
                 idiv bl
             |]
-            -}
