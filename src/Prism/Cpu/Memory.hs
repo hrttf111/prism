@@ -90,6 +90,32 @@ instance MemAddress MemPhy16 CpuTrans Uint16 where
 
 -------------------------------------------------------------------------------
 
+instance MemArithmetics MemSeg where
+    mapMem f (MemBxSi disp) = MemBxSi $ f disp
+    mapMem f (MemBxDi disp) = MemBxDi $ f disp
+    mapMem f (MemBpSi disp) = MemBpSi $ f disp
+    mapMem f (MemBpDi disp) = MemBpDi $ f disp
+    mapMem f (MemSi disp) = MemSi $ f disp
+    mapMem f (MemDi disp) = MemDi $ f disp
+    mapMem f (MemBp disp) = MemBp $ f disp
+    mapMem f (MemBx disp) = MemBx $ f disp
+    mapMem f (MemDirect disp) = MemDirect $ f disp
+    mapMem _ MemSp = MemSp
+
+instance MemArithmetics MemSeg8 where
+    mapMem f (MemSeg8 m) = MemSeg8 $ mapMem f m
+
+instance MemArithmetics MemSeg16 where
+    mapMem f (MemSeg16 m) = MemSeg16 $ mapMem f m
+
+instance MemArithmetics MemPhy8 where
+    mapMem _ m = m
+
+instance MemArithmetics MemPhy16 where
+    mapMem _ m = m
+
+-------------------------------------------------------------------------------
+
 getMemOffset :: (MonadIO m) => Ctx -> MemSeg -> m MemOffset
 getMemOffset ctx mem = getMemOffsetI (ctxReg ctx) (ctxReplaceSeg ctx) mem
 
@@ -150,6 +176,21 @@ getMemReg1 memReg regSeg disp = do
     return $ (shiftL valSeg 4) + disp32
 
 {-# SPECIALISE INLINE getMemReg1 :: MemReg -> RegSeg -> Disp -> CpuTrans MemOffset #-}
+
+-------------------------------------------------------------------------------
+
+{-addMemSeg :: MemSeg -> Disp -> MemSeg
+addMemSeg (MemBxSi disp) disp1 = MemBxSi 
+addMemSeg (MemBxDi disp) = getEA3 memReg bx di disp
+addMemSeg (MemBpSi disp) = getEA3 memReg bp si disp
+addMemSeg (MemBpDi disp) = getEA3 memReg bp di disp
+addMemSeg (MemSi disp) = getEA2 memReg si disp
+addMemSeg (MemDi disp) = getEA2 memReg di disp
+addMemSeg (MemBp disp) = getEA2 memReg bp disp
+addMemSeg (MemBx disp) = getEA2 memReg bx disp
+addMemSeg (MemDirect disp) = return disp
+addMemSeg MemSp _ = MemSp
+-}
 
 -------------------------------------------------------------------------------
 

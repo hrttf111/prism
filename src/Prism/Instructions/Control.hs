@@ -21,14 +21,11 @@ jmpInter :: (CpuMonad m) => FuncImm2 Imm16 m
 jmpInter ipVal csVal =
     writeOp cs csVal >> writeOp ip ipVal
 
-{-
-instrJMem32 :: FuncImm2 Imm16 -> FuncO1M Mem16
+instrJMem32 :: (CpuMonad m) => FuncImm2 Imm16 m -> FuncO1M MemSeg16 m
 instrJMem32 func mem = do
-    (val1, val2) <- readMem32 (ctxReg ctx) (ctxMem ctx) seg (unwrapMem mem)
-    func ctx val1 val2
-    where
-        seg = findRegSegData ctx
-        -}
+    val1 <- readOp mem
+    val2 <- readOp $ mapMem (+2) mem
+    func val1 val2
 
 -------------------------------------------------------------------------------
 

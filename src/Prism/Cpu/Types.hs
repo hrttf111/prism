@@ -71,6 +71,9 @@ type Disp = Uint16
 type MemOffset = Int
 type MemSegType = Word8
 
+class MemArithmetics a where
+    mapMem :: (Disp -> Disp) -> a -> a
+
 data MemSeg = MemBxSi Disp |
               MemBxDi Disp |
               MemBpSi Disp |
@@ -98,7 +101,10 @@ class (Operand a m v) => MemAddress a m v where
     getEA :: a -> m EA
     getPA :: a -> m MemOffset
 
-type OperandMem a m v = (MemDecoder a, Operand a m v, MemAddress a m v)
+type OperandMem a m v = ( MemDecoder a
+                        , MemArithmetics a
+                        , Operand a m v
+                        , MemAddress a m v )
 
 -------------------------------------------------------------------------------
 

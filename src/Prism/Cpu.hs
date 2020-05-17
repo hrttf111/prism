@@ -6,6 +6,7 @@ module Prism.Cpu (
         ------------------------------------------------------
         , OperandVal, Operand (..)
         , OperandReg, OperandMem
+        , MemArithmetics (..)
         , MemRegManipulator (..)
         , MemAddress (..)
         , MemDecoder (..), RegDecoder (..)

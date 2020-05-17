@@ -325,15 +325,15 @@ controlInstrList = [
         makeInstructionS 0xE2 Nothing (decodeImm8 loop),
         --JMP
         makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
-        --makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
+        makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
         makeInstructionS 0xEB Nothing (decodeImm8 jmpShort),
         makeInstructionS 0xFF (Just 4) (decodeN16 (instrON1 jmpIntra) (instrON1 jmpIntra)),
-        --makeInstructionS 0xFF (Just 5) (decodeN16 emptySingle (instrJMem32 jmpInter)),
+        makeInstructionS 0xFF (Just 5) (decodeN16 emptySingle (instrJMem32 jmpInter)),
         --CALL
         makeInstructionS 0xE8 Nothing (decodeImm16 callNear),
-        --makeInstructionS 0x9A Nothing (decodeImm32 callInter),
+        makeInstructionS 0x9A Nothing (decodeImm32 callInter),
         makeInstructionS 0xFF (Just 2) (decodeN16 (instrON1 callIntra) (instrON1 callIntra)),
-        --makeInstructionS 0xFF (Just 3) (decodeN16 emptySingle (instrJMem32 callInter)),
+        makeInstructionS 0xFF (Just 3) (decodeN16 emptySingle (instrJMem32 callInter)),
         --RET
         makeInstructionS 0xC2 Nothing (decodeImm16 retIntra),
         makeInstructionS 0xC3 Nothing (decodeImplicit $ retIntra 0),
