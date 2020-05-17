@@ -10,6 +10,7 @@ module Prism.Cpu.Monad (
         , allocMemRegRaw, allocMemReg, allocMemMain
         , clearRegs, copyMainMem 
         , makeCtx, makeTransM
+        , peekFirstByte
     ) where
 
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -22,6 +23,7 @@ import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
 import Foreign.Marshal.Utils (fillBytes)
 import Foreign.Marshal.Array (pokeArray)
+import Foreign.Storable (peekByteOff)
 
 import Prism.Cpu.Types
 
@@ -115,5 +117,10 @@ makeCtx memReg memMain =
 
 makeTransM :: Ctx -> CpuTrans ()
 makeTransM ctx = put ctx
+
+-------------------------------------------------------------------------------
+
+peekFirstByte :: (MonadIO m) => MemMain -> Int -> m Uint8
+peekFirstByte (MemMain ptr) offset = liftIO $ peekByteOff ptr offset
 
 -------------------------------------------------------------------------------

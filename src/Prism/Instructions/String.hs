@@ -131,7 +131,7 @@ stos strOp reg = do
     writeOp di (advance1 strOp df_ valDi)
 
 -------------------------------------------------------------------------------
-{-
+
 rep :: (CpuMonad m) => m () -> Bool -> FuncImplicit m
 rep execInstr zfOne = do
     cxVal <- readOp cx
@@ -139,33 +139,25 @@ rep execInstr zfOne = do
     if cxVal == 0 then doExit
     else do
         writeOp cx (cxVal - 1)
-        newCtx <- execInstr ctx
+        newCtx <- execInstr
         writeOp ip ip_
-        instr <- peekFirstByte (ctxMem ctx) =<< getInstrAddress memReg cs ip
+        instr <- nextInstrByte
         case instr of
-            0xA6 -> processZf newCtx
-            0xA7 -> processZf newCtx
-            0xAE -> processZf newCtx
-            0xAF -> processZf newCtx
-            _ -> doNext newCtx
+            0xA6 -> processZf
+            0xA7 -> processZf
+            0xAE -> processZf
+            0xAF -> processZf
+            _ -> doNext
     where
         doExit = updateIP 1
         doNext = rep execInstr zfOne
-        processZf newCtx =
-            if (flagZF . ctxFlags $ newCtx) then
-                if zfOne then doNext newCtx
-                    else doExit newCtx
+        processZf = do
+            zf_ <- getFlag ZF
+            if zf_ then
+                if zfOne then doNext
+                    else doExit
             else
-                if zfOne then doExit newCtx
-                    else doNext newCtx
+                if zfOne then doExit
+                    else doNext
 
-getRepInstrList :: (Ctx -> PrismM) -> [PrismInstruction]
-getRepInstrList execInstr = [
-        makeInstructionS 0xF2 Nothing (decodeImplicit $ rep execInstr False),
-        makeInstructionS 0xF3 Nothing (decodeImplicit $ rep execInstr True)
-    ]
-
-repInstrList :: [PrismInstruction] -> [PrismInstruction]
-repInstrList = getRepInstrList . decodeExecOne . makeDecoderList
--}
 -------------------------------------------------------------------------------

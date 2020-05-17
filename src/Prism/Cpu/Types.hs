@@ -163,5 +163,6 @@ class ( Monad m
     instrAddress :: m MemOffset
     needStop :: m Bool
     overrideSegment :: Maybe RegSeg -> m ()
+    nextInstrByte :: m Uint8
 
 -------------------------------------------------------------------------------

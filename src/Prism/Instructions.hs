@@ -12,6 +12,7 @@ import Prism.Instructions.Arithmetic
 import Prism.Instructions.Processor
 import Prism.Instructions.Logical
 import Prism.Instructions.Control
+import Prism.Instructions.String
 
 -------------------------------------------------------------------------------
 
@@ -343,6 +344,30 @@ controlInstrList = [
 
 -------------------------------------------------------------------------------
 
+getRepInstrList :: PrismM () -> [PrismInstruction]
+getRepInstrList execInstr = [
+        makeInstructionS 0xF2 Nothing (decodeImplicit $ rep execInstr False),
+        makeInstructionS 0xF3 Nothing (decodeImplicit $ rep execInstr True)
+    ]
+
+repInstrList :: [PrismInstruction] -> [PrismInstruction]
+repInstrList = getRepInstrList . decodeExecOne . makeDecoderList
+
+stringInstrList = [
+        makeInstructionS 0xA4 Nothing (decodeImplicit $ movs StringOp8),
+        makeInstructionS 0xA5 Nothing (decodeImplicit $ movs StringOp16),
+        makeInstructionS 0xA6 Nothing (decodeImplicit $ cmps StringOp8),
+        makeInstructionS 0xA7 Nothing (decodeImplicit $ cmps StringOp16),
+        makeInstructionS 0xAA Nothing (decodeImplicit $ stos StringOp8 al),
+        makeInstructionS 0xAB Nothing (decodeImplicit $ stos StringOp16 ax),
+        makeInstructionS 0xAC Nothing (decodeImplicit $ lods StringOp8 al),
+        makeInstructionS 0xAD Nothing (decodeImplicit $ lods StringOp16 ax),
+        makeInstructionS 0xAE Nothing (decodeImplicit $ scas StringOp8 al),
+        makeInstructionS 0xAF Nothing (decodeImplicit $ scas StringOp16 ax)
+    ]
+
+-------------------------------------------------------------------------------
+
 processorInstrList = [
         makeInstructionS 0x90 Nothing (decodeImplicit $ nop),
         makeInstructionS 0x9B Nothing (decodeImplicit $ wait),
@@ -381,8 +406,10 @@ x86InstrList = instrList ++ (segmentInstrList instrList)
     where
         instrList = transferInstrList
                     ++ arithmeticInstrList
+                    ++ processorInstrList
                     ++ logicalInstrList
                     ++ controlInstrList
-                    ++ processorInstrList
+                    ++ stringInstrList
+                    ++ repInstrList stringInstrList
 
 -------------------------------------------------------------------------------

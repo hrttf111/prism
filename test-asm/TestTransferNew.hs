@@ -14,6 +14,7 @@ import TestAsm.Common
 import TestArithmeticNew
 import TestLogicalNew
 import TestControlNew
+import TestStringNew
 
 import NeatInterpolation
 
@@ -31,6 +32,7 @@ doTests env = do
         testArithMuldiv env
         testLog env
         testControl env
+        testString env
 
 testAll = do
     env <- createTestEnv instrList
