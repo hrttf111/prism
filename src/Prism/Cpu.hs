@@ -15,6 +15,7 @@ module Prism.Cpu (
         , Flag (..), Flags (..)
         , EFlag (..), EFlags (..)
         , PrismInt (..), PrismIRQ (..)
+        , CpuDebug (..)
         , CpuMonad (..)
         ------------------------------------------------------
         , al, cl, dl, bl, ah, ch, dh, bh

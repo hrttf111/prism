@@ -10,6 +10,7 @@ import Prism.Run
 import Prism.Instructions.Transfer
 import Prism.Instructions.Arithmetic
 import Prism.Instructions.Processor
+import Prism.Instructions.Logical
 
 -------------------------------------------------------------------------------
 
@@ -213,6 +214,92 @@ arithmeticInstrList = [
 
 -------------------------------------------------------------------------------
 
+logicalInstrList = [
+        --OR
+        makeInstructionS 0x08 Nothing (decodeRM8 (instrRegToRmF orI) (instrRegToRmF orI)),
+        makeInstructionS 0x09 Nothing (decodeRM16 (instrRegToRmF orI) (instrRegToRmF orI)),
+        makeInstructionS 0x0A Nothing (decodeRM8 (instrRmToRegF orI) (instrRmToRegF orI)),
+        makeInstructionS 0x0B Nothing (decodeRM16 (instrRmToRegF orI) (instrRmToRegF orI)),
+        makeInstructionS 0x0C Nothing (decodeStRI al $ instrOFI1 orI),
+        makeInstructionS 0x0D Nothing (decodeStRI ax $ instrOFI1 orI),
+        makeInstructionS 0x80 (Just 1) (decodeNI8 (instrOFI1 orI) (instrOFI1 orI)),
+        makeInstructionS 0x81 (Just 1) (decodeNI16 (instrOFI1 orI) (instrOFI1 orI)),
+        makeInstructionS 0x82 (Just 1) (decodeNI8 (instrOFI1 orI) (instrOFI1 orI)),
+        --makeInstructionS 0x83 (Just 1) (decodeN16Imm8 (instrRegImm16 orI) (instrMemImm16 orI)),
+        makeInstructionS 0x83 (Just 1) (decodeNC16 (instrOFI1 orI) (instrOFI1 orI)),
+        --AND
+        makeInstructionS 0x20 Nothing (decodeRM8 (instrRegToRmF andI) (instrRegToRmF andI)),
+        makeInstructionS 0x21 Nothing (decodeRM16 (instrRegToRmF andI) (instrRegToRmF andI)),
+        makeInstructionS 0x22 Nothing (decodeRM8 (instrRmToRegF andI) (instrRmToRegF andI)),
+        makeInstructionS 0x23 Nothing (decodeRM16 (instrRmToRegF andI) (instrRmToRegF andI)),
+        makeInstructionS 0x24 Nothing (decodeStRI al $ instrOFI1 andI),
+        makeInstructionS 0x25 Nothing (decodeStRI ax $ instrOFI1 andI),
+        makeInstructionS 0x80 (Just 4) (decodeNI8 (instrOFI1 andI) (instrOFI1 andI)),
+        makeInstructionS 0x81 (Just 4) (decodeNI16 (instrOFI1 andI) (instrOFI1 andI)),
+        makeInstructionS 0x82 (Just 4) (decodeNI8 (instrOFI1 andI) (instrOFI1 andI)),
+        --makeInstructionS 0x83 (Just 4) (decodeN16Imm8 (instrRegImm16 andI) (instrMemImm16 andI)),
+        makeInstructionS 0x83 (Just 4) (decodeNC16 (instrOFI1 andI) (instrOFI1 andI)),
+        --XOR
+        makeInstructionS 0x30 Nothing (decodeRM8 (instrRegToRmF xorI) (instrRegToRmF xorI)),
+        makeInstructionS 0x31 Nothing (decodeRM16 (instrRegToRmF xorI) (instrRegToRmF xorI)),
+        makeInstructionS 0x32 Nothing (decodeRM8 (instrRmToRegF xorI) (instrRmToRegF xorI)),
+        makeInstructionS 0x33 Nothing (decodeRM16 (instrRmToRegF xorI) (instrRmToRegF xorI)),
+        makeInstructionS 0x34 Nothing (decodeStRI al $ instrOFI1 xorI),
+        makeInstructionS 0x35 Nothing (decodeStRI ax $ instrOFI1 xorI),
+        makeInstructionS 0x80 (Just 6) (decodeNI8 (instrOFI1 xorI) (instrOFI1 xorI)),
+        makeInstructionS 0x81 (Just 6) (decodeNI16 (instrOFI1 xorI) (instrOFI1 xorI)),
+        makeInstructionS 0x82 (Just 6) (decodeNI8 (instrOFI1 xorI) (instrOFI1 xorI)),
+        --makeInstructionS 0x83 (Just 6) (decodeN16Imm8 (instrRegImm16 xorI) (instrMemImm16 xorI)),
+        makeInstructionS 0x83 (Just 6) (decodeNC16 (instrOFI1 xorI) (instrOFI1 xorI)),
+        --TEST
+        makeInstructionS 0x84 Nothing (decodeRM8 (instrRegToRmF testI) (instrRegToRmF testI)),
+        makeInstructionS 0x85 Nothing (decodeRM16 (instrRegToRmF testI) (instrRegToRmF testI)),
+        makeInstructionS 0xA8 Nothing (decodeStRI al $ instrOFI1 testI),
+        makeInstructionS 0xA9 Nothing (decodeStRI ax $ instrOFI1 testI),
+        makeInstructionS 0xF6 (Just 0) (decodeNI8 (instrOFI1 testI) (instrOFI1 testI)),
+        makeInstructionS 0xF7 (Just 0) (decodeNI16 (instrOFI1 testI) (instrOFI1 testI)),
+        --SHL/SAL
+        makeInstructionS 0xD0 (Just 4) (decodeN8 (instrOF1 $ rotateFuncOne shl) (instrOF1 $ rotateFuncOne shl)),
+        makeInstructionS 0xD1 (Just 4) (decodeN16 (instrOF1 $ rotateFuncOne shl) (instrOF1 $ rotateFuncOne shl)),
+        makeInstructionS 0xD2 (Just 4) (decodeN8 (instrOM1 $ rotateFuncCl shl) (instrOM1 $ rotateFuncCl shl)),
+        makeInstructionS 0xD3 (Just 4) (decodeN16 (instrOM1 $ rotateFuncCl shl) (instrOM1 $ rotateFuncCl shl)),
+        --SHR
+        makeInstructionS 0xD0 (Just 5) (decodeN8 (instrOF1 $ rotateFuncOne shr) (instrOF1 $ rotateFuncOne shr)),
+        makeInstructionS 0xD1 (Just 5) (decodeN16 (instrOF1 $ rotateFuncOne shr) (instrOF1 $ rotateFuncOne shr)),
+        makeInstructionS 0xD2 (Just 5) (decodeN8 (instrOM1 $ rotateFuncCl shr) (instrOM1 $ rotateFuncCl shr)),
+        makeInstructionS 0xD3 (Just 5) (decodeN16 (instrOM1 $ rotateFuncCl shr) (instrOM1 $ rotateFuncCl shr)),
+        --SAR
+        makeInstructionS 0xD0 (Just 7) (decodeN8 (instrOF1 $ rotateFuncOne sar8) (instrOF1 $ rotateFuncOne sar8)),
+        makeInstructionS 0xD1 (Just 7) (decodeN16 (instrOF1 $ rotateFuncOne sar16) (instrOF1 $ rotateFuncOne sar16)),
+        makeInstructionS 0xD2 (Just 7) (decodeN8 (instrOM1 $ rotateFuncCl sar8) (instrOM1 $ rotateFuncCl sar8)),
+        makeInstructionS 0xD3 (Just 7) (decodeN16 (instrOM1 $ rotateFuncCl sar16) (instrOM1 $ rotateFuncCl sar16)),
+        --ROL
+        makeInstructionS 0xD0 (Just 0) (decodeN8 (instrOF1 $ rotateFuncOne rol) (instrOF1 $ rotateFuncOne rol)),
+        makeInstructionS 0xD1 (Just 0) (decodeN16 (instrOF1 $ rotateFuncOne rol) (instrOF1 $ rotateFuncOne rol)),
+        makeInstructionS 0xD2 (Just 0) (decodeN8 (instrOM1 $ rotateFuncCl rol) (instrOM1 $ rotateFuncCl rol)),
+        makeInstructionS 0xD3 (Just 0) (decodeN16 (instrOM1 $ rotateFuncCl rol) (instrOM1 $ rotateFuncCl rol)),
+        --ROR
+        makeInstructionS 0xD0 (Just 1) (decodeN8 (instrOF1 $ rotateFuncOne ror) (instrOF1 $ rotateFuncOne ror)),
+        makeInstructionS 0xD1 (Just 1) (decodeN16 (instrOF1 $ rotateFuncOne ror) (instrOF1 $ rotateFuncOne ror)),
+        makeInstructionS 0xD2 (Just 1) (decodeN8 (instrOM1 $ rotateFuncCl ror) (instrOM1 $ rotateFuncCl ror)),
+        makeInstructionS 0xD3 (Just 1) (decodeN16 (instrOM1 $ rotateFuncCl ror) (instrOM1 $ rotateFuncCl ror)),
+        --RCL
+        makeInstructionS 0xD0 (Just 2) (decodeN8 (instrOF1 $ rotateFuncOne rcl) (instrOF1 $ rotateFuncOne rcl)),
+        makeInstructionS 0xD1 (Just 2) (decodeN16 (instrOF1 $ rotateFuncOne rcl) (instrOF1 $ rotateFuncOne rcl)),
+        makeInstructionS 0xD2 (Just 2) (decodeN8 (instrOM1 $ rotateFuncCl rcl) (instrOM1 $ rotateFuncCl rcl)),
+        makeInstructionS 0xD3 (Just 2) (decodeN16 (instrOM1 $ rotateFuncCl rcl) (instrOM1 $ rotateFuncCl rcl)),
+        --RCR
+        makeInstructionS 0xD0 (Just 3) (decodeN8 (instrOF1 $ rotateFuncOne rcr) (instrOF1 $ rotateFuncOne rcr)),
+        makeInstructionS 0xD1 (Just 3) (decodeN16 (instrOF1 $ rotateFuncOne rcr) (instrOF1 $ rotateFuncOne rcr)),
+        makeInstructionS 0xD2 (Just 3) (decodeN8 (instrOM1 $ rotateFuncCl rcr) (instrOM1 $ rotateFuncCl rcr)),
+        makeInstructionS 0xD3 (Just 3) (decodeN16 (instrOM1 $ rotateFuncCl rcr) (instrOM1 $ rotateFuncCl rcr)),
+        --NOT
+        makeInstructionS 0xF6 (Just 2) (decodeN8 (instrO1 notI) (instrO1 notI)),
+        makeInstructionS 0xF7 (Just 2) (decodeN16 (instrO1 notI) (instrO1 notI))
+    ]
+
+-------------------------------------------------------------------------------
+
 processorInstrList = [
         makeInstructionS 0x90 Nothing (decodeImplicit $ nop),
         makeInstructionS 0x9B Nothing (decodeImplicit $ wait),
@@ -251,6 +338,7 @@ x86InstrList = instrList ++ (segmentInstrList instrList)
     where
         instrList = transferInstrList
                     ++ arithmeticInstrList
+                    ++ logicalInstrList
                     ++ processorInstrList
 
 -------------------------------------------------------------------------------

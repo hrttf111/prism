@@ -12,6 +12,7 @@ import TestAsm.Run
 import TestAsm.Common
 
 import TestArithmeticNew
+import TestLogicalNew
 
 import NeatInterpolation
 
@@ -27,6 +28,7 @@ doTests env = do
         testSub env
         testArithOther env
         testArithMuldiv env
+        testLog env
 
 testAll = do
     env <- createTestEnv instrList
@@ -188,3 +190,5 @@ testMovMem env = do
                 mov ax, [16]
                 mov bx, [ds:16]
             |]
+
+-------------------------------------------------------------------------------

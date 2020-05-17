@@ -61,6 +61,11 @@ type CpuTrans = CpuTransM Ctx IO
 
 -------------------------------------------------------------------------------
 
+instance CpuDebug CpuTrans where
+    cpuLog = liftIO . putStrLn
+
+-------------------------------------------------------------------------------
+
 memRegSize = 64
 
 allocMemRegRaw :: MonadIO m => m (Ptr Word8)

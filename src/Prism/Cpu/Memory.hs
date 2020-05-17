@@ -219,4 +219,16 @@ instance Show MemSeg where
     show (MemDirect disp) = showMem1 ds disp
     show MemSp = showMem2 sp ss 0
 
+instance Show MemSeg8 where
+    show (MemSeg8 mem) = show mem
+
+instance Show MemSeg16 where
+    show (MemSeg16 mem) = show mem
+
+instance Show MemPhy8 where
+    show (MemPhy8 mem) = show mem
+
+instance Show MemPhy16 where
+    show (MemPhy16 mem) = show mem
+
 -------------------------------------------------------------------------------

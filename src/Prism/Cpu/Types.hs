@@ -16,19 +16,19 @@ import Foreign.Storable
 -------------------------------------------------------------------------------
 
 type OperandVal a =
-    (Storable a, Bounded a, Integral a, FiniteBits a, Num a, Bits a)
+    (Storable a, Bounded a, Integral a, FiniteBits a, Num a, Bits a, Show a)
 
-class (Monad m, OperandVal v) => Operand a m v | a m -> v where
+class (Show a, Monad m, OperandVal v) => Operand a m v | a m -> v where
     readOp :: a -> m v
     writeOp :: a -> v -> m ()
 
 -------------------------------------------------------------------------------
 
-class (Monad m) => CpuFlag a m where
+class (Show a, Monad m) => CpuFlag a m where
     getFlag :: a -> m Bool
     setFlag :: a -> Bool -> m ()
 
-class (Monad m) => CpuFlags a m where
+class (Show a, Monad m) => CpuFlags a m where
     getFlags :: m a
     setFlags :: a -> m ()
 
@@ -128,6 +128,11 @@ newtype PrismIRQ = PrismIRQ Uint8 deriving (Eq)
 
 -------------------------------------------------------------------------------
 
+class (Monad m) => CpuDebug m where
+    cpuLog :: String -> m ()
+
+-------------------------------------------------------------------------------
+
 class Monad m => RunCpu c s m where
     runCpu :: s -> c -> m s
 
@@ -144,6 +149,7 @@ class ( Monad m
       , CpuFlags Flags m
       , CpuFlag EFlag m
       , CpuFlags EFlags m
+      , CpuDebug m
       ) => CpuMonad m where
     halt :: m ()
     incCycles :: m ()
