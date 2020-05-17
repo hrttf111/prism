@@ -60,7 +60,7 @@ cmps strOp = do
     valDi <- readOp di
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
-    valMemDi <- readOp $ memType strOp valDi
+    valMemDi <- readOp $ memTypeExp strOp es valDi
     df_ <- getFlag DF
     writeOp di (advance1 strOp df_ valDi)
     writeOp si (advance1 strOp df_ valSi)
@@ -86,7 +86,7 @@ scas :: ( CpuMonad m
 scas strOp reg = do
     valRegA <- readOp reg
     valDi <- readOp di
-    valMemDi <- readOp (memTypeExp strOp es valDi)
+    valMemDi <- readOp $ memTypeExp strOp es valDi
     df_ <- getFlag DF
     writeOp di (advance1 strOp df_ valDi)
     let result = valRegA - valMemDi
@@ -135,11 +135,11 @@ stos strOp reg = do
 rep :: (CpuMonad m) => m () -> Bool -> FuncImplicit m
 rep execInstr zfOne = do
     cxVal <- readOp cx
-    ip_ <- readOp ip
     if cxVal == 0 then doExit
     else do
         writeOp cx (cxVal - 1)
-        newCtx <- execInstr
+        ip_ <- readOp ip
+        execInstr
         writeOp ip ip_
         instr <- nextInstrByte
         case instr of
