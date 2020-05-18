@@ -151,6 +151,8 @@ class ( Monad m
       , Operand MemSegExp16 m Uint16
       , Operand MemPhy8 m Uint8
       , Operand MemPhy16 m Uint16
+      , MemAddress MemSeg8 m Uint8
+      , MemAddress MemSeg16 m Uint16
       , CpuFlag Flag m
       , CpuFlags Flags m
       , CpuFlag EFlag m

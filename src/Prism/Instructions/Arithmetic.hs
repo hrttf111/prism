@@ -4,7 +4,7 @@ import Data.Bits (shiftR, shiftL, (.|.), (.&.))
 import Data.Int
 
 import Prism.Cpu
-import Prism.Instruction
+import Prism.InstructionM
 
 -------------------------------------------------------------------------------
 
@@ -81,13 +81,13 @@ cmp flags source dest = (flags_, source)
 
 -------------------------------------------------------------------------------
 
-cbw :: FuncImplicit
+cbw :: (CpuMonad m) => FuncImplicit m
 cbw = do
     val8 <- readOp al
     let val16 = signExtendWord val8
     writeOp ax val16
 
-cwd :: FuncImplicit
+cwd :: (CpuMonad m) => FuncImplicit m
 cwd = do
     val16 <- readOp ax
     let (valH, valL) = signExtendDoubleword val16
@@ -278,7 +278,7 @@ idiv16 flags val1H val1L val2 = (flags, resultH, resultL)
 
 -------------------------------------------------------------------------------
 
-muldivInstr8 :: MuldivFunc8 -> FuncNV1M Uint8
+muldivInstr8 :: (CpuMonad m) => MuldivFunc8 -> FuncNV1M Uint8 m
 muldivInstr8 func val = do
     alVal <- readOp al
     flags <- getFlags
@@ -286,7 +286,7 @@ muldivInstr8 func val = do
     writeOp ax axVal
     setFlags newFlags
 
-muldivInstr16 :: MuldivFunc16 -> FuncNV1M Uint16
+muldivInstr16 :: (CpuMonad m) => MuldivFunc16 -> FuncNV1M Uint16 m
 muldivInstr16 func val = do
     axVal <- readOp ax
     flags <- getFlags
@@ -295,7 +295,7 @@ muldivInstr16 func val = do
     writeOp dx dxValNew
     setFlags newFlags
 
-divInstr8 :: DivFunc8 -> FuncNV1M Uint8
+divInstr8 :: (CpuMonad m) => DivFunc8 -> FuncNV1M Uint8 m
 divInstr8 func val = do
     axVal <- readOp ax
     flags <- getFlags
@@ -303,7 +303,7 @@ divInstr8 func val = do
     writeOp ax axValNew
     setFlags newFlags
 
-divInstr16 :: DivFunc16 -> FuncNV1M Uint16
+divInstr16 :: (CpuMonad m) => DivFunc16 -> FuncNV1M Uint16 m
 divInstr16 func val = do
     axVal <- readOp ax
     dxVal <- readOp dx

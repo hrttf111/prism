@@ -4,7 +4,7 @@ import Data.Bits
 import Data.Int (Int8, Int16)
 
 import Prism.Cpu
-import Prism.Instruction
+import Prism.InstructionM
 
 -------------------------------------------------------------------------------
 

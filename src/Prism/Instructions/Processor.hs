@@ -1,43 +1,43 @@
 module Prism.Instructions.Processor where
 
 import Prism.Cpu
-import Prism.Instruction
+import Prism.InstructionM
 
 -------------------------------------------------------------------------------
 
-clc :: FuncImplicit
+clc :: (CpuMonad m) => FuncImplicit m
 clc = setFlag CF False
 
-stc :: FuncImplicit
+stc :: (CpuMonad m) => FuncImplicit m
 stc = setFlag CF True
 
-cmc :: FuncImplicit
+cmc :: (CpuMonad m) => FuncImplicit m
 cmc = modifyFlag not CF
 
-cld :: FuncImplicit
+cld :: (CpuMonad m) => FuncImplicit m
 cld = setFlag DF False
 
-std :: FuncImplicit
+std :: (CpuMonad m) => FuncImplicit m
 std = setFlag DF True
 
-cli :: FuncImplicit
+cli :: (CpuMonad m) => FuncImplicit m
 cli = setFlag IF False
 
-sti :: FuncImplicit
+sti :: (CpuMonad m) => FuncImplicit m
 sti = setFlag IF True
 
 -------------------------------------------------------------------------------
 
-hlt :: FuncImplicit
+hlt :: (CpuMonad m) => FuncImplicit m
 hlt = halt
 
-wait :: FuncImplicit
+wait :: (CpuMonad m) => FuncImplicit m
 wait = return ()
 
-lock :: FuncImplicit
+lock :: (CpuMonad m) => FuncImplicit m
 lock = return ()
 
-nop :: FuncImplicit
+nop :: (CpuMonad m) => FuncImplicit m
 nop = return ()
 
 -------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ nop = return ()
 
 -------------------------------------------------------------------------------
 
-segmentOverride :: FuncImplicit -> RegSeg -> FuncImplicit
+segmentOverride :: (CpuMonad m) => FuncImplicit m -> RegSeg -> FuncImplicit m
 segmentOverride execInstr regSeg = do
     overrideSegment $ Just regSeg
     execInstr
