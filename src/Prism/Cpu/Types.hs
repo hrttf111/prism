@@ -106,6 +106,11 @@ type OperandMem a m v = ( MemDecoder a
 
 -------------------------------------------------------------------------------
 
+newtype Port8 = Port8 Uint16 deriving (Eq)
+newtype Port16 = Port16 Uint16 deriving (Eq)
+
+-------------------------------------------------------------------------------
+
 data Flag = CF | PF | AF | ZF | SF | OF deriving (Eq, Show)
 
 data Flags = Flags {

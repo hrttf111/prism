@@ -26,11 +26,40 @@ import Foreign.Marshal.Array (pokeArray)
 import Foreign.Storable (peekByteOff)
 
 import Prism.Cpu.Types
+import Prism.Cpu.Peripherals
 
 -------------------------------------------------------------------------------
 
 newtype MemReg = MemReg (Ptr Word8) deriving (Show)
 newtype MemMain = MemMain (Ptr Word8) deriving (Show)
+
+-------------------------------------------------------------------------------
+
+data PrismInterrupts = PrismInterrupts {
+        intListHigh :: [PrismInt],
+        intListNmi :: [PrismInt],
+        intIntrOn :: Bool,
+        intSingleStep :: [PrismInt],
+        intInterruptUp :: Bool
+    } deriving (Show)
+
+instance Show PrismInt where
+    show (PrismInt val) = "INT " ++ (show val)
+
+instance Show PrismIRQ where
+    show (PrismIRQ val) = "IRQ " ++ (show val)
+
+--data IOCtx = forall a . (IOCtxInternal a) => IOCtx {
+data IOCtx = IOCtx {
+        --ioCtxInternal :: a,
+        ioCtxMemRegion :: MemIORegion,
+        ioCtxPortRegion :: PortIORegion
+    }
+
+instance Show IOCtx where
+    show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
+
+-------------------------------------------------------------------------------
 
 data Ctx = Ctx {
         ctxReg :: MemReg,
@@ -39,8 +68,12 @@ data Ctx = Ctx {
         ctxEFlags :: EFlags,
         ctxReplaceSeg :: Maybe RegSeg,
         ctxStop :: Bool,
-        ctxCycles :: Int
+        ctxCycles :: Int,
+        --ctxIO :: IOCtx,
+        ctxInterrupts :: PrismInterrupts
     } deriving (Show)
+
+-------------------------------------------------------------------------------
 
 instance Show RegSeg where
     show (RegSeg 0) = "ES"
@@ -66,8 +99,6 @@ instance RunCpu (CpuTransM Ctx IO a) Ctx IO where
         return $ snd s
 
 type CpuTrans = CpuTransM Ctx IO
-
--------------------------------------------------------------------------------
 
 instance CpuDebug CpuTrans where
     cpuLog = liftIO . putStrLn
@@ -99,6 +130,8 @@ copyMainMem start memArray = do
 
 -------------------------------------------------------------------------------
 
+emptyPrismInterrupts = PrismInterrupts [] [] False [] False
+
 clearFlags :: Flags
 clearFlags = Flags False False False False False False
 
@@ -113,7 +146,14 @@ maxCycles = 999999999
 
 makeCtx :: MemReg -> MemMain -> Ctx
 makeCtx memReg memMain =
-    Ctx memReg memMain clearFlags clearEFlags noReplaceSeg noStop maxCycles
+    Ctx memReg
+        memMain
+        clearFlags
+        clearEFlags
+        noReplaceSeg
+        noStop
+        maxCycles
+        emptyPrismInterrupts
 
 makeTransM :: Ctx -> CpuTrans ()
 makeTransM ctx = put ctx
