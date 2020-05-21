@@ -105,6 +105,16 @@ instance CpuDebug CpuTrans where
 
 -------------------------------------------------------------------------------
 
+instance InterruptDispatcher CpuTrans where
+    retInterrupt = return ()
+    processInterrupts = return ()
+    raiseInterrupt _ = return ()
+    dispatchIrqUp _ = return False
+    dispatchIrqDown _ = return False
+    ackIrq = return $ PrismInt 0
+
+-------------------------------------------------------------------------------
+
 memRegSize = 64
 
 allocMemRegRaw :: MonadIO m => m (Ptr Word8)

@@ -379,11 +379,11 @@ processorInstrList = [
         makeInstructionS 0xFA Nothing (decodeImplicit $ cli),
         makeInstructionS 0xFB Nothing (decodeImplicit $ sti),
         makeInstructionS 0xFC Nothing (decodeImplicit $ cld),
-        makeInstructionS 0xFD Nothing (decodeImplicit $ std)
-        --makeInstructionS 0xCC Nothing (decodeImplicit $ flip int 3),
-        --makeInstructionS 0xCD Nothing (decodeImm8 int),
-        --makeInstructionS 0xCE Nothing (decodeImplicit into),
-        --makeInstructionS 0xCF Nothing (decodeImplicit iret)
+        makeInstructionS 0xFD Nothing (decodeImplicit $ std),
+        makeInstructionS 0xCC Nothing (decodeImplicit $ int 3),
+        makeInstructionS 0xCD Nothing (decodeImm8 int),
+        makeInstructionS 0xCE Nothing (decodeImplicit into),
+        makeInstructionS 0xCF Nothing (decodeImplicit iret)
     ]
 
 -------------------------------------------------------------------------------

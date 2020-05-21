@@ -42,14 +42,14 @@ nop = return ()
 
 -------------------------------------------------------------------------------
 
---int :: FuncImm1 Imm8
---int ctx val = return $ ctx { ctxInterrupts = addInterruptInt (ctxInterrupts ctx) val }
+int :: (CpuMonad m) => FuncImm1 Imm8 m
+int = raiseInterrupt . PrismInt
 
---into :: FuncImplicit
---into ctx = int ctx 4
+into :: (CpuMonad m) => FuncImplicit m
+into = int 4
 
---iret :: FuncImplicit
---iret = loadInterruptCtx
+iret :: (CpuMonad m) => FuncImplicit m
+iret = retInterrupt
 
 -------------------------------------------------------------------------------
 

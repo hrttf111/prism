@@ -64,14 +64,12 @@ findPortIndex (PortIORegion arr) port =
 
 -------------------------------------------------------------------------------
 {-
-class InterruptDispatcher where
-    dispatchInterruptUp :: PrismIRQ -> PrismM Bool
-    dispatchInterruptDown :: PrismIRQ -> PrismM Bool
-    ackInterrupt :: PrismM PrismInt
-
 class PeripheralRunner s where
     runPeripherals :: Ctx -> s -> IO (Ctx, s)
-    needUpdate :: s -> IO Bool
     peripheralCycles :: s -> IO Int
+
+-------------------------------------------------------------------------------
+
+class IOCtxInternal m where
 -}
 -------------------------------------------------------------------------------
