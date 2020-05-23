@@ -33,9 +33,13 @@ instance MonadIO m => MonadIO (DummyTransM s m) where
 
 instance RunPeripheralsM DummyCtx (DummyTransM DummyCtx IO) PrismM where
     runPeripheralsM ctx c = do
-        --let v = (dummyVal ctx) + 1
-        (res, ioCtx) <- liftIO $ ((runStateT . runDummy $ c) ctx)
-        --modify $ (\s -> s { ctxIO = (ctxIO s) { ioCtxInternal = ioCtx } } )
+        c1 <- ctxIO <$> get
+        (res, iCtx) <- liftIO $ ((runStateT . runDummy $ c) ctx)
+        let v = (dummyVal iCtx) + 1
+        let ioCtx = IOCtx (iCtx { dummyVal = v })
+                          (ioCtxMemRegion c1)
+                          (ioCtxPortRegion c1)
+        modify $ (\s -> s { ctxIO = ioCtx } )
         return res
 
 type DummyTrans = DummyTransM DummyCtx IO

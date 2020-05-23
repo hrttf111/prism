@@ -25,8 +25,14 @@ instance Operand Port8 CpuTrans Uint8 where
         writePort8 c val $ PortInternal8 (index, port)
 
 instance Operand Port16 CpuTrans Uint16 where
-    readOp (Port16 port) = return 0
-    writeOp (Port16 port) _ = return ()
+    readOp (Port16 port) = do
+        c <- ctxIO <$> get
+        let index = findPortIndex (ioCtxPortRegion c) port
+        readPort16 c $ PortInternal16 (index, port)
+    writeOp (Port16 port) val = do
+        c <- ctxIO <$> get
+        let index = findPortIndex (ioCtxPortRegion c) port
+        writePort16 c val $ PortInternal16 (index, port)
 
 instance Show Port8 where
     show (Port8 port) = "Port8 = " ++ show port
@@ -42,6 +48,14 @@ readPort8 (IOCtx s _ _) port =
 
 writePort8 :: IOCtx -> Uint8 -> PortInternal8 -> CpuTrans ()
 writePort8 (IOCtx s _ _) val port = 
+    runPeripheralsM s $ writeOp port val
+
+readPort16 :: IOCtx -> PortInternal16 -> CpuTrans Uint16
+readPort16 (IOCtx s _ _) port = 
+    runPeripheralsM s $ readOp port
+
+writePort16 :: IOCtx -> Uint16 -> PortInternal16 -> CpuTrans ()
+writePort16 (IOCtx s _ _) val port = 
     runPeripheralsM s $ writeOp port val
 
 -------------------------------------------------------------------------------
