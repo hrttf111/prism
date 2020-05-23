@@ -115,9 +115,18 @@ instance InterruptRun CpuTrans where
     raiseInterrupt _ = return ()
 
 instance InterruptDispatcher CpuTrans where
-    dispatchIrqUp _ = return False
-    dispatchIrqDown _ = return False
-    ackIrq = return $ PrismInt 0
+    dispatchIrqUp irq =
+        ctxIO <$> get >>= f
+        where
+            f (IOCtx s _ _) = runPeripheralsM s $ dispatchIrqUp irq
+    dispatchIrqDown irq =
+        ctxIO <$> get >>= f
+        where
+            f (IOCtx s _ _) = runPeripheralsM s $ dispatchIrqDown irq
+    ackIrq =
+        ctxIO <$> get >>= f
+        where
+            f (IOCtx s _ _) = runPeripheralsM s ackIrq
 
 -------------------------------------------------------------------------------
 
