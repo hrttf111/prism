@@ -18,6 +18,7 @@ import Prism.Cpu.Ports
 -------------------------------------------------------------------------------
 
 instance InterruptRun CpuTrans where
+    interruptActive = intInterruptUp . ctxInterrupts <$> get
     retInterrupt = loadInterruptCtx
     processInterrupts = processInterrupts_
     raiseInterrupt int = do
@@ -35,13 +36,16 @@ processInterrupts_ = do
     res <- getNextInterrupt
     case res of
         Just (newInterrupts, (PrismInt val)) -> do
-            let mem = MemPhy16 (4 * (fromIntegral val))
+            let offset = 4 * (fromIntegral val)
+                mem = MemPhy16 offset
+                mem2 = MemPhy16 $ offset + 2
             ipVal <- readOp mem
-            csVal <- readOp $ mapMem (+2) mem
+            csVal <- readOp mem2
             saveInterruptCtx
             setFlag IF False
             writeOp cs csVal
             writeOp ip ipVal
+            modify (\s -> s { ctxInterrupts = newInterrupts } )
         Nothing ->
             modify (\s -> s { ctxInterrupts = (ctxInterrupts s) {intInterruptUp = False } } )
 

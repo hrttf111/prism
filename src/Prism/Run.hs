@@ -41,14 +41,15 @@ runInstructionM1 dec offset = do
     func instr
 
 runCpu :: PrismDecoder -> MemOffset -> (PrismM ()) -> PrismM ()
-runCpu dec offset cont =
-    {-if interruptActive ctx then
-        processInterrupts ctx
-            >>= runPeripheralsM
-            >>= cont
-    else-}
+runCpu dec offset cont = do
+    intActive <- interruptActive
+    if intActive then
+        processInterrupts
+            -- >> runPeripheralsM
+            >> cont
+    else
         runInstructionM dec offset
-            -- >>= runPeripheralsM
+            -- >> runPeripheralsM
             >> cont
 
 -------------------------------------------------------------------------------

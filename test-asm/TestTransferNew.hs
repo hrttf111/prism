@@ -16,6 +16,7 @@ import TestLogicalNew
 import TestControlNew
 import TestStringNew
 import TestFlagsNew
+import TestProcessorNew
 
 import NeatInterpolation
 
@@ -37,6 +38,7 @@ doTests env = do
         testFlagsZF env
         testFlagsCF env
         testFlagsOF env
+        testProcessor env
 
 testAll = do
     env <- createTestEnv instrList

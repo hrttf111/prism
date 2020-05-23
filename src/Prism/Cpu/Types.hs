@@ -136,6 +136,7 @@ newtype PrismInt = PrismInt Uint8 deriving (Eq)
 newtype PrismIRQ = PrismIRQ Uint8 deriving (Eq)
 
 class (Monad m) => InterruptRun m where
+    interruptActive :: m Bool
     retInterrupt :: m ()
     processInterrupts :: m ()
     raiseInterrupt :: PrismInt -> m ()
