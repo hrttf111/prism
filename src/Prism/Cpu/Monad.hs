@@ -9,6 +9,7 @@ module Prism.Cpu.Monad (
           Ctx (..), IOCtx (..)
         , MemReg (..), MemMain (..)
         , RunCpu (..)
+        , PrismInterrupts (..)
         , CpuTransM (..), CpuTrans (..)
         , allocMemRegRaw, allocMemReg, allocMemMain
         , clearRegs, copyMainMem 
@@ -108,11 +109,6 @@ instance CpuDebug CpuTrans where
     cpuLog = liftIO . putStrLn
 
 -------------------------------------------------------------------------------
-
-instance InterruptRun CpuTrans where
-    retInterrupt = return ()
-    processInterrupts = return ()
-    raiseInterrupt _ = return ()
 
 instance InterruptDispatcher CpuTrans where
     dispatchIrqUp irq =

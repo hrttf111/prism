@@ -14,6 +14,7 @@ import Prism.Cpu.Flags
 import Prism.Cpu.Memory
 import Prism.Cpu.Registers
 import Prism.Cpu.Ports
+import Prism.Cpu.Interrupt
 
 -------------------------------------------------------------------------------
 

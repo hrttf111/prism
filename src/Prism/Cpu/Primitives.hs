@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 module Prism.Cpu.Primitives where
 
@@ -8,13 +9,32 @@ import Prism.Cpu.Memory
 
 -------------------------------------------------------------------------------
 
-push16 :: (CpuMonad m) => Uint16 -> m ()
+type MemRegM m = ( Monad m
+                 , Operand Reg8 m Uint8
+                 , Operand Reg16 m Uint16
+                 , Operand RegSeg m Uint16
+                 , Operand RegSpec m Uint16
+                 , Operand MemSeg8 m Uint8
+                 , Operand MemSeg16 m Uint16
+                 , Operand MemSegExp8 m Uint8
+                 , Operand MemSegExp16 m Uint16
+                 , Operand MemPhy8 m Uint8
+                 , Operand MemPhy16 m Uint16
+                 , MemAddress MemSeg8 m Uint8
+                 , MemAddress MemSeg16 m Uint16
+                 , Operand Port8 m Uint8
+                 , Operand Port16 m Uint16
+                 )
+
+-------------------------------------------------------------------------------
+
+push16 :: (MemRegM m) => Uint16 -> m ()
 push16 val = do
     valSp <- readOp sp
     writeOp sp (valSp - 2)
     writeOp (MemSeg16 MemSp) val
 
-pop16 :: (CpuMonad m) => m Uint16
+pop16 :: (MemRegM m) => m Uint16
 pop16 = do
     val <- readOp (MemSeg16 MemSp)
     valSp <- readOp sp
@@ -23,20 +43,20 @@ pop16 = do
 
 -------------------------------------------------------------------------------
 
-pushP :: (CpuMonad m, Operand a m Uint16) => a -> m ()
+pushP :: (MemRegM m, Operand a m Uint16) => a -> m ()
 pushP op =
     readOp op >>= push16
 
-popP :: (CpuMonad m, Operand a m Uint16) => a -> m ()
+popP :: (MemRegM m, Operand a m Uint16) => a -> m ()
 popP op =
     pop16 >>= writeOp op
 
 -------------------------------------------------------------------------------
 
-pushV :: (CpuMonad m) => Uint16 -> m ()
+pushV :: (MemRegM m) => Uint16 -> m ()
 pushV = push16
 
-popV :: (CpuMonad m) => m Uint16
+popV :: (MemRegM m) => m Uint16
 popV = pop16
 
 -------------------------------------------------------------------------------
