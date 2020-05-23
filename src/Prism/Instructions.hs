@@ -1,11 +1,13 @@
 module Prism.Instructions (
         x86InstrList
+        , internalInstrList 
     ) where
 
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Instruction
 import Prism.Run
+import Prism.Peripherals (intInternal)
 
 import Prism.Instructions.Transfer
 import Prism.Instructions.Arithmetic
@@ -398,6 +400,12 @@ getSegmentInstrList execInstr = [
 
 segmentInstrList :: [PrismInstruction] -> [PrismInstruction]
 segmentInstrList = getSegmentInstrList . decodeExecOne . makeDecoderList
+
+-------------------------------------------------------------------------------
+
+internalInstrList mp = [
+        makeInstructionS 0xF1 Nothing (decodeImm8 $ intInternal mp)
+    ]
 
 -------------------------------------------------------------------------------
 

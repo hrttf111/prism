@@ -75,6 +75,7 @@ instance InterruptDispatcher DummyTrans where
 
 instance PeripheralsMonad DummyTrans where
     nextInstrTime = return 0
+    runPeripherals = return ()
 
 -------------------------------------------------------------------------------
 

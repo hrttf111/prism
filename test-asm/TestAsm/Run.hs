@@ -19,25 +19,50 @@ import Prism.Cpu
 import Prism.Decoder
 import Prism.Run
 import Prism.Peripherals
+import Prism.Instructions (internalInstrList)
 
 import TestAsm.Common
 import Assembler
 
+-------------------------------------------------------------------------------
+{-
+data TestDev = TestDev deriving (Show)
+
+type PeripheralsTest = PeripheralsLocal TestDev
+
+instance InterruptDispatcher PeripheralsTest where
+    dispatchInterruptUp peripherals int = return (peripherals, False)
+    dispatchInterruptDown peripherals int = return (peripherals, False)
+    ackInterrupt peripherals = return (peripherals, PrismInt 7)
+
+instance PeripheralRunner PeripheralsTest where
+    runPeripherals ctx peripherals = return (ctx, peripherals)
+    peripheralCycles peripherals = return 99999999
+    needUpdate peripherals = return False
+
+
+class PeripheralsTestCreator p where
+    createTestPeripherals :: PeripheralLocal p -> IOQueue -> IO IOCtx
+
+instance PeripheralsTestCreator TestDev where
+    createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue = do
+        ref <- newIORef devices
+        return $ IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue ref) memRegion portRegion
+-}
 -------------------------------------------------------------------------------
 
 createTestEnv1 :: MonadIO m =>
                   IOCtx ->
                   Maybe ThreadId ->
                   [PrismInstruction] ->
-                  --[InterruptHandlerLocation] ->
+                  [InterruptHandlerLocation] ->
                   m TestEnv
-createTestEnv1 ioCtx threadId instrList = liftIO $ do
+createTestEnv1 ioCtx threadId instrList intList = liftIO $ do
     ptrA <- allocMemRegRaw
     memReg <- allocMemReg
     memMain <- allocMemMain memSize
-    --intM <- configureInterrups (MemMain ptrMem) intHandlersOffset intList
-    --let decoder = makeDecoderList (instrList ++ (internalInstrList intM))
-    let decoder = makeDecoderList instrList
+    intM <- configureInterrups memMain intHandlersOffset intList
+    let decoder = makeDecoderList (instrList ++ (internalInstrList intM))
     asmTest <- makeAsmTest
     return $ TestEnv 
                 threadId
@@ -67,10 +92,30 @@ createTestEnv1 ioCtx threadId instrList = liftIO $ do
 createTestEnv :: MonadIO m => [PrismInstruction] -> m TestEnv
 createTestEnv instrList = do
     (ioCtx, _) <- liftIO $ makeDummyIO (1024*1024) devicesStub
-    createTestEnv1 ioCtx Nothing instrList
+    createTestEnv1 ioCtx Nothing instrList []
     where
         devicesStub = 0 :: Int
-
+{-
+createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator p) => 
+                            [PrismInstruction] -> 
+                            pR ->
+                            [PeripheralPort pR] ->
+                            [PeripheralMem pR] ->
+                            p ->
+                            [PeripheralPort p] ->
+                            [PeripheralMem p] ->
+                            [InterruptHandlerLocation] ->
+                            m TestEnv
+createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList = do
+    queue <- liftIO $ createIOQueue
+    ioCtx <- liftIO $ createTestPeripherals peripheralL queue
+    threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
+    createTestEnv1 ioCtx (Just threadId) instrList intList
+    where
+        memSize = 1024 * 1024
+        pageSize = 1024
+        (peripheralR, peripheralL) = createPeripheralsLR devR devL memSize pageSize portsR memsR portsL memsL
+-}
 -------------------------------------------------------------------------------
 
 type RegEqFunc = MemReg -> Expectation

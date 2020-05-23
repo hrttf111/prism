@@ -83,11 +83,11 @@ class ( Monad m
       , InterruptDispatcher m
       ) => PeripheralsMonad m where
       nextInstrTime :: m Int
+      runPeripherals :: m ()
 
 class ( Monad mc
       , PeripheralsMonad mp
       ) => RunPeripheralsM a mp mc | a -> mp mc where
-      --) => RunPeripheralsM a mp mc | mc -> a mp where
     runPeripheralsM :: a -> mp b -> mc b
 
 -------------------------------------------------------------------------------
