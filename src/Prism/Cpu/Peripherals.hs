@@ -1,4 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Prism.Cpu.Peripherals where
 
@@ -63,13 +66,28 @@ findPortIndex (PortIORegion arr) port =
     arr UArray.! port
 
 -------------------------------------------------------------------------------
-{-
-class PeripheralRunner s where
-    runPeripherals :: Ctx -> s -> IO (Ctx, s)
-    peripheralCycles :: s -> IO Int
+
+newtype PortInternal8 = PortInternal8 (IOHandlerIndex, Uint16) deriving (Eq, Show)
+newtype PortInternal16 = PortInternal16 (IOHandlerIndex, Uint16) deriving (Eq, Show)
+
+newtype MMIOInternal8 = MMIOInternal8 (IOHandlerIndex, MemOffset) deriving (Eq, Show)
+newtype MMIOInternal16 = MMIOInternal16 (IOHandlerIndex, MemOffset) deriving (Eq, Show)
 
 -------------------------------------------------------------------------------
 
-class IOCtxInternal m where
--}
+class ( Monad m
+      , Operand PortInternal8 m Uint8
+      , Operand PortInternal16 m Uint16
+      , Operand MMIOInternal8 m Uint8
+      , Operand MMIOInternal16 m Uint16
+      , InterruptDispatcher m
+      ) => PeripheralsMonad m where
+      nextInstrTime :: m Int
+
+class ( Monad mc
+      , PeripheralsMonad mp
+      ) => RunPeripheralsM a mp mc | a -> mp mc where
+      --) => RunPeripheralsM a mp mc | mc -> a mp where
+    runPeripheralsM :: a -> mp b -> mc b
+
 -------------------------------------------------------------------------------

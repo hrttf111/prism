@@ -20,7 +20,19 @@ module Prism.Cpu (
         , PrismInt (..), PrismIRQ (..)
         , CpuDebug (..)
         , InterruptDispatcher (..)
+        , InterruptRun (..)
         , CpuMonad (..)
+        ------------------------------------------------------
+        , IOHandlerIndex, IOPageIndex, IOPageOffset
+        , MemLocation (..), IOPage (..)
+        , PortIORegion (..), MemIORegion (..)
+        , PortInternal8 (..), PortInternal16 (..)
+        , MMIOInternal8 (..), MMIOInternal16 (..)
+        , PeripheralsMonad (..)
+        , RunPeripheralsM (..)
+        , emptyPage, emptyHandler
+        , findMemIndex, findPortIndex
+        , IOCtx (..)
         ------------------------------------------------------
         , al, cl, dl, bl, ah, ch, dh, bh
         , ax, cx, dx, bx, sp, bp, si, di
@@ -70,6 +82,7 @@ import Prism.Cpu.Trans
 import Prism.Cpu.Memory
 import Prism.Cpu.Registers
 import Prism.Cpu.Primitives
+import Prism.Cpu.Peripherals
 
 type PrismM = CpuTrans
 

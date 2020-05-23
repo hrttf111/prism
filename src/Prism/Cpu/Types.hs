@@ -135,10 +135,12 @@ data EFlags = EFlags {
 newtype PrismInt = PrismInt Uint8 deriving (Eq)
 newtype PrismIRQ = PrismIRQ Uint8 deriving (Eq)
 
-class (Monad m) => InterruptDispatcher m where
+class (Monad m) => InterruptRun m where
     retInterrupt :: m ()
     processInterrupts :: m ()
     raiseInterrupt :: PrismInt -> m ()
+
+class (Monad m) => InterruptDispatcher m where
     dispatchIrqUp :: PrismIRQ -> m Bool
     dispatchIrqDown :: PrismIRQ -> m Bool
     ackIrq :: m PrismInt
@@ -173,6 +175,7 @@ class ( Monad m
       , CpuFlag EFlag m
       , CpuFlags EFlags m
       , InterruptDispatcher m
+      , InterruptRun m
       , CpuDebug m
       ) => CpuMonad m where
     halt :: m ()

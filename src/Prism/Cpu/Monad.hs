@@ -1,9 +1,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Prism.Cpu.Monad (
-          Ctx (..)
+          Ctx (..), IOCtx (..)
         , MemReg (..), MemMain (..)
         , RunCpu (..)
         , CpuTransM (..), CpuTrans (..)
@@ -14,7 +17,7 @@ module Prism.Cpu.Monad (
     ) where
 
 import Control.Monad.Trans (MonadIO, liftIO)
-import Control.Monad.State.Strict --(modify, MonadState, StateT)
+import Control.Monad.State.Strict
 
 import Data.Word (Word8)
 import qualified Data.ByteString as B
@@ -49,9 +52,10 @@ instance Show PrismInt where
 instance Show PrismIRQ where
     show (PrismIRQ val) = "IRQ " ++ (show val)
 
---data IOCtx = forall a . (IOCtxInternal a) => IOCtx {
-data IOCtx = IOCtx {
-        --ioCtxInternal :: a,
+data IOCtx = forall a m . ( PeripheralsMonad m
+                          , RunPeripheralsM a m CpuTrans
+                          ) => IOCtx {
+        ioCtxInternal :: a,
         ioCtxMemRegion :: MemIORegion,
         ioCtxPortRegion :: PortIORegion
     }
@@ -69,8 +73,8 @@ data Ctx = Ctx {
         ctxReplaceSeg :: Maybe RegSeg,
         ctxStop :: Bool,
         ctxCycles :: Int,
-        --ctxIO :: IOCtx,
-        ctxInterrupts :: PrismInterrupts
+        ctxInterrupts :: PrismInterrupts,
+        ctxIO :: IOCtx
     } deriving (Show)
 
 -------------------------------------------------------------------------------
@@ -105,10 +109,12 @@ instance CpuDebug CpuTrans where
 
 -------------------------------------------------------------------------------
 
-instance InterruptDispatcher CpuTrans where
+instance InterruptRun CpuTrans where
     retInterrupt = return ()
     processInterrupts = return ()
     raiseInterrupt _ = return ()
+
+instance InterruptDispatcher CpuTrans where
     dispatchIrqUp _ = return False
     dispatchIrqDown _ = return False
     ackIrq = return $ PrismInt 0
@@ -154,8 +160,8 @@ noReplaceSeg = Nothing
 noStop = False
 maxCycles = 999999999
 
-makeCtx :: MemReg -> MemMain -> Ctx
-makeCtx memReg memMain =
+makeCtx :: MemReg -> MemMain -> IOCtx -> Ctx
+makeCtx memReg memMain ioCtx =
     Ctx memReg
         memMain
         clearFlags
@@ -164,6 +170,7 @@ makeCtx memReg memMain =
         noStop
         maxCycles
         emptyPrismInterrupts
+        ioCtx
 
 makeTransM :: Ctx -> CpuTrans ()
 makeTransM ctx = put ctx

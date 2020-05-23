@@ -18,6 +18,7 @@ import Test.Hspec
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Run
+import Prism.Peripherals
 
 import TestAsm.Common
 import Assembler
@@ -25,12 +26,12 @@ import Assembler
 -------------------------------------------------------------------------------
 
 createTestEnv1 :: MonadIO m =>
-                  --IOCtx ->
+                  IOCtx ->
                   Maybe ThreadId ->
                   [PrismInstruction] ->
                   --[InterruptHandlerLocation] ->
                   m TestEnv
-createTestEnv1 threadId instrList = liftIO $ do
+createTestEnv1 ioCtx threadId instrList = liftIO $ do
     ptrA <- allocMemRegRaw
     memReg <- allocMemReg
     memMain <- allocMemMain memSize
@@ -51,7 +52,7 @@ createTestEnv1 threadId instrList = liftIO $ do
         execNative asmTest ptrA mainCode =
             MemReg <$> execCode asmTest mainCode ptrA
         execP memReg memMain decoder mainCode runner = do
-            let ctx = makeCtx memReg memMain --ioCtx
+            let ctx = makeCtx memReg memMain ioCtx
                 instrEnd = fromIntegral codeStart + B.length mainCode
             runPrismM ctx $ func1 decoder mainCode instrEnd runner
         func1 decoder mainCode instrEnd runner = do
@@ -65,11 +66,10 @@ createTestEnv1 threadId instrList = liftIO $ do
 
 createTestEnv :: MonadIO m => [PrismInstruction] -> m TestEnv
 createTestEnv instrList = do
-    --(ioCtx, _) <- liftIO $ makeEmptyIO (1024*1024) devicesStub
-    createTestEnv1 Nothing combinedList
+    (ioCtx, _) <- liftIO $ makeDummyIO (1024*1024) devicesStub
+    createTestEnv1 ioCtx Nothing instrList
     where
-        combinedList = instrList -- ++ (segmentInstrList instrList)
-        --devicesStub = 0 :: Int
+        devicesStub = 0 :: Int
 
 -------------------------------------------------------------------------------
 
