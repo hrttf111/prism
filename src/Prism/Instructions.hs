@@ -96,16 +96,16 @@ transferInstrList = [
         makeInstructionS 0x9E Nothing (decodeImplicit sahf),
         makeInstructionS 0x9F Nothing (decodeImplicit lahf),
         --XLAT
-        makeInstructionS 0xD7 Nothing (decodeImplicit xlat)
+        makeInstructionS 0xD7 Nothing (decodeImplicit xlat),
         --IN/OUT
-        {-makeInstructionS 0xE4 Nothing (decodeImm8 portInAlImm),
+        makeInstructionS 0xE4 Nothing (decodeImm8 portInAlImm),
         makeInstructionS 0xE5 Nothing (decodeImm8 portInAxImm),
         makeInstructionS 0xE6 Nothing (decodeImm8 portOutAlImm),
         makeInstructionS 0xE7 Nothing (decodeImm8 portOutAxImm),
         makeInstructionS 0xEC Nothing (decodeImplicit portInAlDx),
         makeInstructionS 0xED Nothing (decodeImplicit portInAxDx),
         makeInstructionS 0xEE Nothing (decodeImplicit portOutAlDx),
-        makeInstructionS 0xEF Nothing (decodeImplicit portOutAxDx)-}
+        makeInstructionS 0xEF Nothing (decodeImplicit portOutAxDx)
     ]
 
 -------------------------------------------------------------------------------

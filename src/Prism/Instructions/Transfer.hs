@@ -127,76 +127,44 @@ xlat = do
 
 -------------------------------------------------------------------------------
 
-{-
-portIn8 :: MonadIO m => Ctx -> Uint16 -> m Uint8
-portIn8 ctx portNum = do
-    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
-    ioPortRead (ctxIO ctx) handler portNum
+portInAlDx :: (CpuMonad m) => FuncImplicit m
+portInAlDx = do
+    portNum <- readOp dx
+    val <- readOp $ Port8 portNum
+    writeOp al val
 
-portIn16 :: MonadIO m => Ctx -> Uint16 -> m Uint16
-portIn16 ctx portNum = do
-    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
-    ioPortRead (ctxIO ctx) handler portNum
+portInAlImm :: (CpuMonad m) => FuncImm1 Uint8 m
+portInAlImm portNum =
+    readOp (Port8 $ fromIntegral portNum) >>= writeOp al
 
-portOut8 :: MonadIO m => Ctx -> Uint16 -> Uint8 -> m ()
-portOut8 ctx portNum val = do
-    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
-    ioPortWrite (ctxIO ctx) handler portNum val
+portInAxDx :: (CpuMonad m) => FuncImplicit m
+portInAxDx = do
+    portNum <- readOp dx
+    val <- readOp $ Port16 portNum
+    writeOp ax val
 
-portOut16 :: MonadIO m => Ctx -> Uint16 -> Uint16 -> m ()
-portOut16 ctx portNum val = do
-    let handler = findPortIndex (ioCtxPortRegion $ ctxIO ctx) portNum
-    ioPortWrite (ctxIO ctx) handler portNum val
+portInAxImm :: (CpuMonad m) => FuncImm1 Uint8 m
+portInAxImm portNum =
+    (readOp $ Port16 $ fromIntegral portNum) >>= writeOp ax
 
-portInAlDx :: FuncImplicit
-portInAlDx ctx = do
-    portNum <- readOp ctx dx
-    val <- portIn8 ctx portNum
-    writeOp ctx al val
-    return ctx
+portOutAlDx :: (CpuMonad m) => FuncImplicit m
+portOutAlDx = do
+    portNum <- readOp dx
+    val <- readOp al
+    writeOp (Port8 portNum) val
 
-portInAlImm :: FuncImm1 Uint8
-portInAlImm ctx portNum = do
-    (portIn8 ctx $ fromIntegral portNum) >>= writeOp ctx al
-    return ctx
+portOutAlImm :: (CpuMonad m) => FuncImm1 Uint8 m
+portOutAlImm portNum =
+    readOp al >>= writeOp (Port8 $ fromIntegral portNum)
 
-portInAxDx :: FuncImplicit
-portInAxDx ctx = do
-    portNum <- readOp ctx dx
-    val <- portIn16 ctx portNum
-    writeOp ctx ax val
-    return ctx
+portOutAxDx :: (CpuMonad m) => FuncImplicit m
+portOutAxDx = do
+    portNum <- readOp dx
+    val <- readOp ax
+    writeOp (Port16 portNum) val
 
-portInAxImm :: FuncImm1 Uint8
-portInAxImm ctx portNum = do
-    val <- portIn16 ctx $ fromIntegral portNum
-    writeOp ctx ax val
-    return ctx
+portOutAxImm :: (CpuMonad m) => FuncImm1 Uint8 m
+portOutAxImm portNum =
+    readOp ax >>= writeOp (Port16 $ fromIntegral portNum)
 
-portOutAlDx :: FuncImplicit
-portOutAlDx ctx = do
-    portNum <- readOp ctx dx
-    val <- readOp ctx al
-    portOut8 ctx portNum val
-    return ctx
-
-portOutAlImm :: FuncImm1 Uint8
-portOutAlImm ctx portNum = do
-    val <- readOp ctx al
-    portOut8 ctx (fromIntegral portNum) val
-    return ctx
-
-portOutAxDx :: FuncImplicit
-portOutAxDx ctx = do
-    portNum <- readOp ctx dx
-    val <- readOp ctx ax
-    portOut16 ctx portNum val
-    return ctx
-
-portOutAxImm :: FuncImm1 Uint8
-portOutAxImm ctx portNum = do
-    val <- readOp ctx ax
-    portOut16 ctx (fromIntegral portNum) val
-    return ctx
--}
 -------------------------------------------------------------------------------
