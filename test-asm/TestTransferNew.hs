@@ -17,6 +17,7 @@ import TestControlNew
 import TestStringNew
 import TestFlagsNew
 import TestProcessorNew
+import TestPeripheralsNew
 
 import NeatInterpolation
 
@@ -39,6 +40,7 @@ doTests env = do
         testFlagsCF env
         testFlagsOF env
         testProcessor env
+        --testPeripheral x86InstrList
 
 testAll = do
     env <- createTestEnv instrList

@@ -1,8 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module TestAsm.Run where
 
 import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.State.Strict
 
 import Control.Concurrent
 
@@ -25,31 +29,39 @@ import TestAsm.Common
 import Assembler
 
 -------------------------------------------------------------------------------
-{-
+
 data TestDev = TestDev deriving (Show)
 
-type PeripheralsTest = PeripheralsLocal TestDev
+type PeripheralsTest1 = PeripheralsLocal TestDev
+type PeripheralsTest = LocalTrans TestDev
 
 instance InterruptDispatcher PeripheralsTest where
-    dispatchInterruptUp peripherals int = return (peripherals, False)
-    dispatchInterruptDown peripherals int = return (peripherals, False)
-    ackInterrupt peripherals = return (peripherals, PrismInt 7)
+    dispatchIrqUp int = return False
+    dispatchIrqDown int = return False
+    ackIrq = return $ PrismInt 7
 
-instance PeripheralRunner PeripheralsTest where
-    runPeripherals ctx peripherals = return (ctx, peripherals)
-    peripheralCycles peripherals = return 99999999
-    needUpdate peripherals = return False
+instance PeripheralsMonad PeripheralsTest where
+    nextInstrTime = return 0
+    runPeripherals = return ()
 
+instance RunPeripheralsM PeripheralsTest1 PeripheralsTest PrismM where
+    runPeripheralsM ctx c = do
+        c1 <- ctxIO <$> get
+        (res, iCtx) <- liftIO $ ((runStateT . runLocal $ c) ctx)
+        let ioCtx = IOCtx iCtx
+                          (ioCtxMemRegion c1)
+                          (ioCtxPortRegion c1)
+        modify $ (\s -> s { ctxIO = ioCtx } )
+        return res
 
 class PeripheralsTestCreator p where
-    createTestPeripherals :: PeripheralLocal p -> IOQueue -> IO IOCtx
+    createTestPeripherals :: PeripheralLocal p -> IOQueue -> IOCtx
 
 instance PeripheralsTestCreator TestDev where
-    createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue = do
-        ref <- newIORef devices
-        return $ IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue ref) memRegion portRegion
--}
--------------------------------------------------------------------------------
+    createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
+
+------------------------------------------------------------------------------
 
 createTestEnv1 :: MonadIO m =>
                   IOCtx ->
@@ -95,7 +107,7 @@ createTestEnv instrList = do
     createTestEnv1 ioCtx Nothing instrList []
     where
         devicesStub = 0 :: Int
-{-
+
 createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator p) => 
                             [PrismInstruction] -> 
                             pR ->
@@ -108,14 +120,22 @@ createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator p) =>
                             m TestEnv
 createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList = do
     queue <- liftIO $ createIOQueue
-    ioCtx <- liftIO $ createTestPeripherals peripheralL queue
-    threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
-    createTestEnv1 ioCtx (Just threadId) instrList intList
+    let ioCtx = createTestPeripherals peripheralL queue
+    --threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
+    --createTestEnv1 ioCtx (Just threadId) instrList intList
+    createTestEnv1 ioCtx Nothing instrList intList
     where
         memSize = 1024 * 1024
         pageSize = 1024
-        (peripheralR, peripheralL) = createPeripheralsLR devR devL memSize pageSize portsR memsR portsL memsL
--}
+        (peripheralR, peripheralL) = createPeripheralsLR devR 
+                                                         devL
+                                                         memSize
+                                                         pageSize
+                                                         portsR
+                                                         memsR
+                                                         portsL
+                                                         memsL
+
 -------------------------------------------------------------------------------
 
 type RegEqFunc = MemReg -> Expectation
