@@ -19,6 +19,7 @@ import Foreign.Storable (peekByteOff, pokeByteOff)
 import Prism.Cpu.Types
 import Prism.Cpu.Monad
 import Prism.Cpu.Registers
+import Prism.Cpu.Peripherals
 
 -------------------------------------------------------------------------------
 
@@ -68,19 +69,43 @@ instance Operand MemSegExp16 CpuTrans Uint16 where
 
 instance Operand MemPhy8 CpuTrans Uint8 where
     readOp (MemPhy8 offset) = do
-        (MemMain mm) <- ctxMem <$> get
-        liftIO $ peekByteOff mm offset
+        s <- get
+        let (MemMain mm) = ctxMem s
+            ioCtx@(IOCtx _ ioMemRegion _) = ctxIO s
+            ioHandlerIndex = findMemIndex ioMemRegion offset
+        if ioHandlerIndex == emptyHandler then
+            liftIO $ peekByteOff mm offset
+            else
+                readMMIO8 ioCtx (MMIOInternal8 (ioHandlerIndex, offset))
     writeOp (MemPhy8 offset) val = do
-        (MemMain mm) <- ctxMem <$> get
-        liftIO $ pokeByteOff mm offset val
+        s <- get
+        let (MemMain mm) = ctxMem s
+            ioCtx@(IOCtx _ ioMemRegion _) = ctxIO s
+            ioHandlerIndex = findMemIndex ioMemRegion offset
+        if ioHandlerIndex == emptyHandler then
+            liftIO $ pokeByteOff mm offset val
+            else
+                writeMMIO8 ioCtx (MMIOInternal8 (ioHandlerIndex, offset)) val
 
 instance Operand MemPhy16 CpuTrans Uint16 where
     readOp (MemPhy16 offset) = do
-        (MemMain mm) <- ctxMem <$> get
-        liftIO $ peekByteOff mm offset
+        s <- get
+        let (MemMain mm) = ctxMem s
+            ioCtx@(IOCtx _ ioMemRegion _) = ctxIO s
+            ioHandlerIndex = findMemIndex ioMemRegion offset
+        if ioHandlerIndex == emptyHandler then
+            liftIO $ peekByteOff mm offset
+            else
+                readMMIO16 ioCtx (MMIOInternal16 (ioHandlerIndex, offset))
     writeOp (MemPhy16 offset) val = do
-        (MemMain mm) <- ctxMem <$> get
-        liftIO $ pokeByteOff mm offset val
+        s <- get
+        let (MemMain mm) = ctxMem s
+            ioCtx@(IOCtx _ ioMemRegion _) = ctxIO s
+            ioHandlerIndex = findMemIndex ioMemRegion offset
+        if ioHandlerIndex == emptyHandler then
+            liftIO $ pokeByteOff mm offset val
+            else
+                writeMMIO16 ioCtx (MMIOInternal16 (ioHandlerIndex, offset)) val
 
 -------------------------------------------------------------------------------
 
@@ -241,6 +266,24 @@ getEAI memReg (MemBp disp) = getEA2 memReg bp disp
 getEAI memReg (MemBx disp) = getEA2 memReg bx disp
 getEAI memReg (MemDirect disp) = return disp
 getEAI memReg MemSp = return 0
+
+-------------------------------------------------------------------------------
+
+readMMIO8 :: IOCtx -> MMIOInternal8 -> CpuTrans Uint8
+readMMIO8 (IOCtx s _ _) mmio =
+    runPeripheralsM s $ readOp mmio
+
+writeMMIO8 :: IOCtx -> MMIOInternal8 -> Uint8 -> CpuTrans ()
+writeMMIO8 (IOCtx s _ _) mmio val =
+    runPeripheralsM s $ writeOp mmio val
+
+readMMIO16 :: IOCtx -> MMIOInternal16 -> CpuTrans Uint16
+readMMIO16 (IOCtx s _ _) mmio =
+    runPeripheralsM s $ readOp mmio
+
+writeMMIO16 :: IOCtx -> MMIOInternal16 -> Uint16 -> CpuTrans ()
+writeMMIO16 (IOCtx s _ _) mmio val =
+    runPeripheralsM s $ writeOp mmio val
 
 -------------------------------------------------------------------------------
 

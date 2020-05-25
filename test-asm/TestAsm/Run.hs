@@ -121,9 +121,8 @@ createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator p) =>
 createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList = do
     queue <- liftIO $ createIOQueue
     let ioCtx = createTestPeripherals peripheralL queue
-    --threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
-    --createTestEnv1 ioCtx (Just threadId) instrList intList
-    createTestEnv1 ioCtx Nothing instrList intList
+    threadId <- liftIO . forkIO $ execPeripheralsOnce queue peripheralR
+    createTestEnv1 ioCtx (Just threadId) instrList intList
     where
         memSize = 1024 * 1024
         pageSize = 1024

@@ -1,5 +1,6 @@
 module Prism.Peripherals.Types where
 
+import Control.Monad.Trans (MonadIO)
 import Control.Exception (Exception)
 
 import qualified Data.Array as Array
@@ -65,6 +66,16 @@ data PeripheralLocal p = PeripheralLocal {
         peripheralMemL :: PeripheralArray (PeripheralHandlerMem p),
         peripheralDevicesL :: p
     }
+
+-------------------------------------------------------------------------------
+
+class (OperandVal a) => IOValMem a where
+    ioValMemRead :: (MonadIO m) => p -> PeripheralHandlerMem p -> MemOffset -> m (p, a)
+    ioValMemWrite :: (MonadIO m) => p -> PeripheralHandlerMem p -> MemOffset -> a -> m p
+
+class (OperandVal a) => IOValPort a where
+    ioValPortRead :: (MonadIO m) => p -> PeripheralHandlerPort p -> Uint16 -> m (p, a)
+    ioValPortWrite :: (MonadIO m) => p -> PeripheralHandlerPort p -> Uint16 -> a -> m p
 
 -------------------------------------------------------------------------------
 

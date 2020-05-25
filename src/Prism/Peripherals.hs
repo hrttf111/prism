@@ -19,6 +19,8 @@ module Prism.Peripherals (
         , LocalTransM (..)
         , PeripheralsLocal (..), LocalTrans (..)
         ------------------------------------------------------
+        , execPeripheralsOnce
+        ------------------------------------------------------
         , makeDummyIO
         ------------------------------------------------------
         , Peripheral (..), PeripheralLocal (..)
@@ -32,5 +34,6 @@ import Prism.Peripherals.Dummy
 import Prism.Peripherals.Interrupt
 import Prism.Peripherals.Queue
 import Prism.Peripherals.Local
+import Prism.Peripherals.Remote
 
 -------------------------------------------------------------------------------
