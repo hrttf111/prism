@@ -57,7 +57,6 @@ execPeripheralsOnce queue@(IOQueue req rsp) peripheral = do
             let handler = (peripheralPort peripheral) Array.! handlerIndex
             per <- ioValPortWrite devices handler (fromIntegral memOffset) val
             return $ peripheral { peripheralDevices = per }
-        _ -> return peripheral
         )
     putStrLn "Thread end"
     return ()

@@ -4,6 +4,7 @@ module Prism.Peripherals (
         , PeripheralHandlerMem (..)
         , PeripheralHandlerPort (..)
         , emptyWriteH, emptyReadH 
+        , emptyMemHandler
         ------------------------------------------------------
         , InterruptHandler 
         , InterruptHandlerLocation 
@@ -24,6 +25,9 @@ module Prism.Peripherals (
         , makeDummyIO
         ------------------------------------------------------
         , Peripheral (..), PeripheralLocal (..)
+        ------------------------------------------------------
+        , MemPairs (..), PagesBuilder (..)
+        , makePageArray, makePage, makePortList, makeMemP
         , createPeripheralsLR 
         ------------------------------------------------------
     ) where

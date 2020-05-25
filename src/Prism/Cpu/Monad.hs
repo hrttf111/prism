@@ -12,7 +12,7 @@ module Prism.Cpu.Monad (
         , PrismInterrupts (..)
         , CpuTransM (..), CpuTrans (..)
         , allocMemRegRaw, allocMemReg, allocMemMain
-        , clearRegs, copyMainMem 
+        , clearFlags, clearRegs, copyMainMem 
         , makeCtx, makeTransM
         , peekFirstByte
     ) where

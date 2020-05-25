@@ -58,6 +58,7 @@ module Prism.Cpu (
         , calcPF, calcZF, calcSF
         , calcOFAdd, calcOFSub
         , flagsToVal, eflagsToVal
+        , clearFlags 
         , valToFlags, valToEFlags
         , regToFlags
         , readFlags

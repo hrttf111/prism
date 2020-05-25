@@ -6,9 +6,8 @@ import Data.List (partition, sortOn, zip, takeWhile)
 import qualified Data.Array as Array
 import qualified Data.Array.Unboxed as UArray
 
-import Prism
-import PrismCpu
-import PrismPeripheral
+import Prism.Cpu
+import Prism.Peripherals
 
 -------------------------------------------------------------------------------
 
@@ -134,3 +133,5 @@ testPeripherals = do
             (portArray !! 192) `shouldBe` 2
             (portArray !! 0xFFFE) `shouldBe` 3
             (portArray !! 0xFFFF) `shouldBe` 0
+
+-------------------------------------------------------------------------------

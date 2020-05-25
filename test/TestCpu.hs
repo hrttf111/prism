@@ -6,19 +6,15 @@ import Data.Int
 import Data.Tuple
 import Foreign.Ptr
 
-import Prism
-import PrismCpu
-import PrismPeripheral
+import Prism.Cpu
+import Prism.Instructions.Arithmetic (div8)
 
-import Instruction.Arithmetic
+-------------------------------------------------------------------------------
 
 testDiv = do
     describe "DIV" $ do
         it "Unt8" $ do
-            (ioCtx, _) <- makeEmptyIO (1024*1024) (0 :: Int)
-            let 
-                ctx = makePrismCtx (MemReg nullPtr) (MemMain nullPtr) ioCtx
-            (snd $ div8 ctx 1000 50) `shouldBe` 20
+            (snd $ div8 clearFlags 1000 50) `shouldBe` 20
 
 testSign = do
     describe "Convert unsigned to singed (complement 2)" $ do
@@ -56,3 +52,5 @@ testSign = do
             (signedOp op (0xFFFF :: Uint16) (0x0001 :: Uint16)) `shouldBe` (0xFFFF :: Uint16)
             (signedOp op (0x08 :: Uint16) (0x08 :: Uint16)) `shouldBe` (0x0040 :: Uint16)
             (signedOp op (0xFFFF :: Uint16) (0x000A :: Uint16)) `shouldBe` ((0xFFFF - 9) :: Uint16)
+
+-------------------------------------------------------------------------------

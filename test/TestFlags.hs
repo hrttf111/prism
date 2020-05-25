@@ -1,9 +1,80 @@
 module TestFlags where
 
+import Data.Int (Int8)
+
 import Test.Hspec
 
-import Prism
-import PrismCpu
+import Prism.Cpu
+
+-------------------------------------------------------------------------------
+
+calcCFCarry8 :: Uint8 -> Uint8 -> Bool
+calcCFCarry8 = calcCFCarry
+
+calcCFBorrow8 :: Uint8 -> Uint8 -> Bool
+calcCFBorrow8 = calcCFBorrow
+
+calcCFCarry16 :: Uint16 -> Uint16 -> Bool
+calcCFCarry16 = calcCFCarry
+
+calcCFBorrow16 :: Uint16 -> Uint16 -> Bool
+calcCFBorrow16 = calcCFBorrow
+
+calcPF8 :: Uint8 -> Bool
+calcPF8 = calcPF
+
+calcPF16 :: Uint16 -> Bool
+calcPF16 = calcPF
+
+calcAFCarry8 :: Uint8 -> Uint8 -> Bool
+calcAFCarry8 = calcAFCarry
+
+calcAFBorrow8 :: Uint8 -> Uint8 -> Bool
+calcAFBorrow8 = calcAFBorrow
+
+calcAFCarry16 :: Uint16 -> Uint16 -> Bool
+calcAFCarry16 = calcAFCarry
+
+calcAFBorrow16 :: Uint16 -> Uint16 -> Bool
+calcAFBorrow16 = calcAFBorrow
+
+calcZF8 :: Uint8 -> Bool
+calcZF8 = calcZF
+
+calcZF16 :: Uint16 -> Bool
+calcZF16 = calcZF
+
+calcSF8 :: Uint8 -> Bool
+calcSF8 = calcSF
+
+calcSF16 :: Uint16 -> Bool
+calcSF16 = calcSF
+
+calcOFAdd8i :: Int8 -> Int8 -> Int8 -> Bool
+calcOFAdd8i before val after | before >= 0 =
+    if val >= 0 then before > after else False
+calcOFAdd8i before val after =
+    if val <= 0 then before < after else False
+
+calcOFSub8i :: Int8 -> Int8 -> Int8 -> Bool
+calcOFSub8i before val after | before >= 0 =
+    if val <= 0 then before > after else False
+calcOFSub8i before val after =
+    if val >= 0 then before < after else False
+
+calcOFAdd8 :: Uint8 -> Uint8 -> Uint8 -> Bool
+calcOFAdd8 = calcOFAdd
+
+calcOFSub8 :: Uint8 -> Uint8 -> Uint8 -> Bool
+calcOFSub8 = calcOFSub
+
+calcOFAdd16 :: Uint16 -> Uint16 -> Uint16 -> Bool
+calcOFAdd16 = calcOFAdd
+
+calcOFSub16 :: Uint16 -> Uint16 -> Uint16 -> Bool
+calcOFSub16 = calcOFSub
+
+-------------------------------------------------------------------------------
 
 testFlagsCF =
     describe "Flags CF" $ do
@@ -125,3 +196,5 @@ testFlagsOF =
             (calcOFSub16 0x7FFF 0xFFFF 0x8000) `shouldBe` True
             (calcOFSub16 0x8000 1 0x7FFF) `shouldBe` True
             (calcOFSub16 0x8001 120 9) `shouldBe` True
+
+-------------------------------------------------------------------------------

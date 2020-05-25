@@ -2,9 +2,6 @@ module TestPic where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
-import PrismPeripheral
 import Peripherals.Pic
 
 -------------------------------------------------------------------------------
@@ -20,3 +17,5 @@ testPic = do
             (picFindHighest 7 0xF0) `shouldBe` (Just 4)
             (picFindHighest 4 0x0F) `shouldBe` (Just 0)
             (picFindHighest 4 0x00) `shouldBe` (Nothing)
+
+-------------------------------------------------------------------------------
