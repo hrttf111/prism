@@ -11,17 +11,13 @@ import Prism.Decoder
 
 -------------------------------------------------------------------------------
 
-{-runPeripheralsM :: Ctx -> PrismCtx IO Ctx
-runPeripheralsM ctx =
-    if (ctxCycles ctx) == 0 then
-        processPeripherals ctx
-    else do
-        doUpdate <- liftIO $ needUpdate (ctxIO ctx)
-        if doUpdate then
-            updatePeripherals ctx
-        else
-            decCycles ctx
-            -}
+runPeripheralsR :: PrismM ()
+runPeripheralsR = do
+    needUpdate <- needUpdateP
+    if needUpdate then
+        runP
+    else
+        decCyclesP
 
 runInstructionM :: PrismDecoder -> MemOffset -> PrismM ()
 runInstructionM dec offset = do
@@ -45,11 +41,11 @@ runCpu dec offset cont = do
     intActive <- interruptActive
     if intActive then
         processInterrupts
-            -- >> runPeripheralsM
+            >> runPeripheralsR
             >> cont
     else
         runInstructionM dec offset
-            -- >> runPeripheralsM
+            >> runPeripheralsR
             >> cont
 
 -------------------------------------------------------------------------------

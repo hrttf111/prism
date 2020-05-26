@@ -181,10 +181,13 @@ class ( Monad m
       ) => CpuMonad m where
     halt :: m ()
     incCycles :: m ()
+    decCyclesP :: m ()
     updateIP :: Uint16 -> m ()
     instrAddress :: m MemOffset
     needStop :: m Bool
+    needUpdateP :: m Bool
     overrideSegment :: Maybe RegSeg -> m ()
     nextInstrByte :: m Uint8
+    runP :: m ()
 
 -------------------------------------------------------------------------------

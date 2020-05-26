@@ -74,6 +74,7 @@ data Ctx = Ctx {
         ctxReplaceSeg :: Maybe RegSeg,
         ctxStop :: Bool,
         ctxCycles :: Int,
+        ctxCyclesP :: Int,
         ctxInterrupts :: PrismInterrupts,
         ctxIO :: IOCtx
     } deriving (Show)
@@ -173,6 +174,7 @@ makeCtx memReg memMain ioCtx =
         clearEFlags
         noReplaceSeg
         noStop
+        maxCycles
         maxCycles
         emptyPrismInterrupts
         ioCtx

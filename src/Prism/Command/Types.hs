@@ -7,6 +7,7 @@ module Prism.Command.Types where
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Concurrent.STM
 
+import qualified Data.ByteString as B
 import Data.Word (Word32, Word16, Word8)
 import Data.Set
 
@@ -16,6 +17,9 @@ import Foreign.Marshal.Array (pokeArray)
 import Prism.Cpu
 
 -------------------------------------------------------------------------------
+
+data RegState = RegState {
+    } deriving (Show)
 
 class PrismMsgQueue a b | a -> b where
     sendCpuMsgIO :: (MonadIO m) => a -> b -> m ()
@@ -29,13 +33,16 @@ data PrismCpuCommand = PCmdInterruptUp PrismIRQ
                        | PCmdCont
                        | PCmdBreak MemOffset
                        | PCmdBreakRemove MemOffset
+                       | PCmdReadRegs
+                       | PCmdReadMem MemOffset Int
                        | PCmdWriteMem Int [Word8]
                        | PCmdWriteReg8 Reg8 Uint8
                        | PCmdWriteReg16 Reg16 Uint16
                        | PCmdWriteRegSeg RegSeg Uint16
-                       | PCmdReadCtx deriving (Show, Eq)
+                       deriving (Show, Eq)
 
-data PrismCpuResponse = PRspCtx Ctx
+data PrismCpuResponse = PRspRegs RegState
+                        | PRspMem B.ByteString
                         | PRspCont
                         | PRspStep deriving (Show)
 
