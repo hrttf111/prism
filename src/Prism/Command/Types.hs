@@ -19,6 +19,21 @@ import Prism.Cpu
 -------------------------------------------------------------------------------
 
 data RegState = RegState {
+        rsAX :: Uint16,
+        rsCX :: Uint16,
+        rsDX :: Uint16,
+        rsBX :: Uint16,
+        rsSP :: Uint16,
+        rsBP :: Uint16,
+        rsSI :: Uint16,
+        rsDI :: Uint16,
+        rsFlags :: Flags,
+        rsEFlags :: EFlags,
+        rsCS :: Uint16,
+        rsSS :: Uint16,
+        rsDS :: Uint16,
+        rsES :: Uint16,
+        rsIP :: Uint16
     } deriving (Show)
 
 class PrismMsgQueue a b | a -> b where
@@ -53,7 +68,9 @@ data PrismComm = PrismComm {
         commCmdQueue :: PrismCmdQueue,
         commRspQueue :: PrismRspQueue,
         commBreakpoints :: Set MemOffset,
-        commWaitResponse :: Bool
+        commBreakpointsEnabled :: Bool,
+        commWaitResponse :: Bool,
+        commCycles :: Int
     }
 
 instance PrismMsgQueue PrismCmdQueue PrismCpuCommand where

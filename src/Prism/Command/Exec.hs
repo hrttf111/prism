@@ -1,19 +1,21 @@
 module Prism.Command.Exec where
 
+import Control.Monad.State.Strict
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Concurrent.STM
 
+import Data.ByteString.Internal (createUptoN)
 import Data.Word (Word32, Word16, Word8)
 import Data.Set
 
 import Foreign.Ptr
-import Foreign.Marshal.Array (pokeArray)
+import Foreign.Marshal.Array (pokeArray, copyArray)
 
 import Prism.Cpu
 import Prism.Command.Types
 
 -------------------------------------------------------------------------------
-{-
+
 sendAndWaitCpuMsg :: (PrismMsgQueue a1 b1, PrismMsgQueue a2 b2, MonadIO m) => a1 -> a2 -> b1 -> m b2
 sendAndWaitCpuMsg queue1 queue2 msg1 = sendCpuMsgIO queue1 msg1 >> recvCpuMsgIO queue2
 
@@ -21,98 +23,136 @@ sendAndWaitCpuMsg queue1 queue2 msg1 = sendCpuMsgIO queue1 msg1 >> recvCpuMsgIO 
 
 -------------------------------------------------------------------------------
 
-processPrismCommand :: (MonadIO m) => PrismComm -> Ctx -> MemOffset -> m (Maybe (PrismComm, Ctx))
-processPrismCommand comm ctx offset =
+processPrismCommand :: PrismComm -> MemOffset -> PrismM PrismComm
+processPrismCommand comm offset = do
+    cycles <- ctxCycles <$> get
+    if needUpdateComm comm cycles then
+        updateComm comm offset
+        else
+            return comm
+
+needUpdateComm :: PrismComm -> Int -> Bool
+needUpdateComm comm cycles =
+    (commBreakpointsEnabled comm) || (cycles > commCycles comm)
+
+updateComm :: PrismComm -> MemOffset -> PrismM PrismComm
+updateComm comm offset = do
     if member offset (commBreakpoints comm) then do
-            if commWaitResponse comm then processComm comm ctx
+            if commWaitResponse comm then processComm comm
                 else do
                     liftIO $ putStrLn $ "Break " ++ (show offset)
                     sendCpuMsgIO (commRspQueue comm) PRspCont
-                    cpuProcessPause comm ctx
+                    cpuProcessPause comm
         else
-            processComm comm ctx
+            processComm comm
 
-processComm :: (MonadIO m) => PrismComm -> Ctx -> m (Maybe (PrismComm, Ctx))
-processComm comm ctx = do
+processComm :: PrismComm -> PrismM PrismComm
+processComm comm = do
     msg <- tryRecvCpuMsgIO (commCmdQueue comm)
     case msg of
         Just m -> case m of
-            PCmdBreak addr -> cpuProcessBreak comm ctx addr
-            PCmdBreakRemove addr -> cpuProcessBreakRemove comm ctx addr
-            PCmdInterruptUp i -> cpuInterruptUp comm ctx i
-            PCmdInterruptDown i -> cpuInterruptDown comm ctx i 
-            PCmdPause -> cpuProcessPause comm ctx
-            PCmdStep -> cpuProcessStep comm ctx
-            PCmdCont -> cpuProcessCont comm ctx
-            PCmdWriteMem addr bytes -> cpuProcessMemWrite comm ctx addr bytes
-            PCmdWriteReg8 reg val -> cpuProcessWriteReg8 comm ctx reg val
-            PCmdWriteReg16 reg val -> cpuProcessWriteReg16 comm ctx reg val
-            PCmdWriteRegSeg reg val -> cpuProcessWriteRegSeg comm ctx reg val
-            PCmdReadCtx -> cpuProcessReadCtx comm ctx
+            PCmdBreak addr -> cpuProcessBreak comm addr
+            PCmdBreakRemove addr -> cpuProcessBreakRemove comm addr
+            PCmdInterruptUp i -> cpuInterruptUp comm i
+            PCmdInterruptDown i -> cpuInterruptDown comm i 
+            PCmdPause -> cpuProcessPause comm
+            PCmdStep -> cpuProcessStep comm
+            PCmdCont -> cpuProcessCont comm
+            PCmdWriteMem addr bytes -> cpuProcessMemWrite comm addr bytes
+            PCmdWriteReg8 reg val -> cpuProcessWriteReg8 comm reg val
+            PCmdWriteReg16 reg val -> cpuProcessWriteReg16 comm reg val
+            PCmdWriteRegSeg reg val -> cpuProcessWriteRegSeg comm reg val
+            PCmdReadMem offset size -> cpuProcessReadMem comm offset size
+            PCmdReadRegs -> cpuProcessReadRegs comm
         Nothing ->
-            if commWaitResponse comm then processComm comm ctx
-                else return Nothing
+            if commWaitResponse comm then processComm comm
+                else do
+                    c <- ctxCycles <$> get
+                    return $ comm { commCycles = (c + 10) }
 
-cpuInterruptUp :: (MonadIO m) => PrismComm -> Ctx -> PrismIRQ -> m (Maybe (PrismComm, Ctx))
-cpuInterruptUp comm ctx int = do
-    (ioCtx_, intrOn) <- liftIO $ dispatchInterruptUp (ctxIO ctx) int
-    let interrupts = (ctxInterrupts ctx)
-        interrupts_ = if intrOn then interrupts {intIntrOn = True} else interrupts
-    return $ Just (comm, ctx { ctxIO = ioCtx_, ctxInterrupts = interrupts_})
+cpuInterruptUp :: PrismComm -> PrismIRQ -> PrismM PrismComm
+cpuInterruptUp comm irq =
+    dispatchIrqUp irq >> return comm
 
-cpuInterruptDown :: (MonadIO m) => PrismComm -> Ctx -> PrismIRQ -> m (Maybe (PrismComm, Ctx))
-cpuInterruptDown comm ctx int = do
-    (ioCtx_, intrOn) <- liftIO $ dispatchInterruptDown (ctxIO ctx) int
-    let interrupts = (ctxInterrupts ctx)
-        interrupts_ = if not intrOn then interrupts {intIntrOn = False} else interrupts
-    return $ Just (comm, ctx { ctxIO = ioCtx_, ctxInterrupts = interrupts_})
+cpuInterruptDown :: PrismComm -> PrismIRQ -> PrismM PrismComm
+cpuInterruptDown comm irq =
+    dispatchIrqDown irq >> return comm
 
-cpuProcessBreak :: (MonadIO m) => PrismComm -> Ctx -> Int -> m (Maybe (PrismComm, Ctx))
-cpuProcessBreak comm ctx b = 
-    return $ Just (comm {commBreakpoints = insert b (commBreakpoints comm)}, ctx)
+cpuProcessBreak :: PrismComm -> Int -> PrismM PrismComm
+cpuProcessBreak comm b = 
+    return $ comm {commBreakpoints = insert b (commBreakpoints comm), commBreakpointsEnabled = True}
 
-cpuProcessBreakRemove :: (MonadIO m) => PrismComm -> Ctx -> Int -> m (Maybe (PrismComm, Ctx))
-cpuProcessBreakRemove comm ctx b =
-    return $ Just (comm {commBreakpoints = delete b (commBreakpoints comm)}, ctx)
+cpuProcessBreakRemove :: PrismComm -> Int -> PrismM PrismComm
+cpuProcessBreakRemove comm b =
+    return $ comm {commBreakpoints = newSet, commBreakpointsEnabled = Data.Set.null newSet}
+    where
+        newSet = delete b (commBreakpoints comm)
 
-cpuProcessPause :: (MonadIO m) => PrismComm -> Ctx -> m (Maybe (PrismComm, Ctx))
-cpuProcessPause comm ctx = return $ Just (comm {commWaitResponse = True}, ctx)
+cpuProcessPause :: PrismComm -> PrismM PrismComm
+cpuProcessPause comm = return $ comm {commWaitResponse = True}
 
-cpuProcessStep :: (MonadIO m) => PrismComm -> Ctx -> m (Maybe (PrismComm, Ctx))
-cpuProcessStep comm ctx =
+cpuProcessStep :: PrismComm -> PrismM PrismComm
+cpuProcessStep comm =
     sendCpuMsgIO (commCmdQueue comm) PCmdPause
     >> sendCpuMsgIO (commRspQueue comm) PRspStep
-    >> return Nothing
+    >> return comm
 
-cpuProcessCont :: (MonadIO m) => PrismComm -> Ctx -> m (Maybe (PrismComm, Ctx))
-cpuProcessCont comm ctx = do
-    return $ Just (comm {commWaitResponse = False}, ctx)
+cpuProcessCont :: PrismComm -> PrismM PrismComm
+cpuProcessCont comm = do
+    return $ comm {commWaitResponse = False}
 
-cpuProcessMemWrite :: (MonadIO m) => PrismComm -> Ctx -> Int -> [Word8] -> m (Maybe (PrismComm, Ctx))
-cpuProcessMemWrite comm ctx addr bytes = do
+cpuProcessMemWrite :: PrismComm -> Int -> [Word8] -> PrismM PrismComm
+cpuProcessMemWrite comm addr bytes = do
+    ctx <- get
     liftIO $ pokeArray (ptrMem $ ctxMem ctx) bytes
-    return $ Just (comm, ctx)
+    return comm
     where
         ptrMem (MemMain ptr) = plusPtr ptr addr
 
-cpuProcessWriteReg8 :: (MonadIO m) => PrismComm -> Ctx -> Reg8 -> Word8 -> m (Maybe (PrismComm, Ctx))
-cpuProcessWriteReg8 comm ctx reg val = do
-    writeReg8 (ctxReg ctx) reg val
-    return $ Just (comm, ctx)
+cpuProcessWriteReg8 :: PrismComm -> Reg8 -> Word8 -> PrismM PrismComm
+cpuProcessWriteReg8 comm reg val = do
+    writeOp reg val
+    return comm
 
-cpuProcessWriteReg16 :: (MonadIO m) => PrismComm -> Ctx -> Reg16 -> Word16 -> m (Maybe (PrismComm, Ctx))
-cpuProcessWriteReg16 comm ctx reg val = do
-    writeReg16 (ctxReg ctx) reg val
-    return $ Just (comm, ctx)
+cpuProcessWriteReg16 :: PrismComm -> Reg16 -> Word16 -> PrismM PrismComm
+cpuProcessWriteReg16 comm reg val = do
+    writeOp reg val
+    return comm
 
-cpuProcessWriteRegSeg :: (MonadIO m) => PrismComm -> Ctx -> RegSeg -> Word16 -> m (Maybe (PrismComm, Ctx))
-cpuProcessWriteRegSeg comm ctx reg val = do
-    writeSeg (ctxReg ctx) reg val
-    return $ Just (comm, ctx)
+cpuProcessWriteRegSeg :: PrismComm -> RegSeg -> Word16 -> PrismM PrismComm
+cpuProcessWriteRegSeg comm reg val = do
+    writeOp reg val
+    return comm
 
-cpuProcessReadCtx :: (MonadIO m) => PrismComm -> Ctx -> m (Maybe (PrismComm, Ctx))
-cpuProcessReadCtx comm ctx = do
-    sendCpuMsgIO (commRspQueue comm) (PRspCtx ctx)
-    return $ Just (comm, ctx)
--}
+cpuProcessReadMem :: PrismComm -> MemOffset -> Int -> PrismM PrismComm
+cpuProcessReadMem comm offset size = do
+    ctx <- get
+    b <- liftIO $ createUptoN size $ readM (ctxMem ctx)
+    sendCpuMsgIO (commRspQueue comm) (PRspMem b)
+    return comm
+    where
+        readM (MemMain ptr) ptrB = do
+            copyArray ptr ptrB size
+            return size
+
+cpuProcessReadRegs :: PrismComm -> PrismM PrismComm
+cpuProcessReadRegs comm = do
+    rs <- (RegState <$> readOp ax
+                 <*> readOp cx
+                 <*> readOp dx
+                 <*> readOp bx
+                 <*> readOp sp
+                 <*> readOp bp
+                 <*> readOp si
+                 <*> readOp di
+                 <*> getFlags
+                 <*> getFlags
+                 <*> readOp cs
+                 <*> readOp ss
+                 <*> readOp ds
+                 <*> readOp es
+                 <*> readOp ip)
+    sendCpuMsgIO (commRspQueue comm) (PRspRegs rs)
+    return comm
+
 -------------------------------------------------------------------------------
