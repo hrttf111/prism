@@ -20,24 +20,15 @@ import Prism.Cpu.Peripherals
 -------------------------------------------------------------------------------
 
 instance CpuMonad CpuTrans where
-    halt = modify (\s -> s { ctxStop = True } )
-    incCycles = modify (\s -> s { ctxCycles = ((ctxCycles s) + 1) } )
-    decCyclesP = modify (\s -> s { ctxCyclesP = ((ctxCyclesP s) - 1) } )
-    updateIP val = ((val +) <$> readOp ip) >>= writeOp ip
-    instrAddress = do
+    cpuHalt = modify (\s -> s { ctxStop = True } )
+    cpuOverrideSegment regSeg = modify (\s -> s { ctxReplaceSeg = regSeg } )
+    cpuUpdateIP val = ((val +) <$> readOp ip) >>= writeOp ip
+    cpuInstrAddress = do
         valCs <- fromIntegral <$> readOp cs
         valIp <- fromIntegral <$> readOp ip
         return $ (shiftL valCs 4) + valIp
-    needStop = ctxStop <$> get
-    needUpdateP = ((==0) . ctxCyclesP) <$> get
-    overrideSegment regSeg = modify (\s -> s { ctxReplaceSeg = regSeg } )
-    nextInstrByte = do
+    cpuNextInstrByte = do
         ctx <- get
-        peekFirstByte (ctxMem ctx) =<< instrAddress
-    runP = do
-        ioCtx <- ctxIO <$> get
-        f ioCtx
-        where
-            f (IOCtx a _ _) = runPeripheralsM a $ runPeripherals
+        peekFirstByte (ctxMem ctx) =<< cpuInstrAddress
 
 -------------------------------------------------------------------------------

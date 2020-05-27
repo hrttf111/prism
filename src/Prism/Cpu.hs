@@ -33,6 +33,7 @@ module Prism.Cpu (
         , emptyPage, emptyHandler
         , findMemIndex, findPortIndex
         , IOCtx (..)
+        , PrismInterrupts (..)
         ------------------------------------------------------
         , al, cl, dl, bl, ah, ch, dh, bh
         , ax, cx, dx, bx, sp, bp, si, di

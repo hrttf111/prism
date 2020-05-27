@@ -9,6 +9,7 @@ module Prism.Command (
         , RegState (..)
         , newPrismComm
         , sendAndWaitCpuMsg
+        , processPrismCommand
         ------------------------------------------------------
     ) where
 

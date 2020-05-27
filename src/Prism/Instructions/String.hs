@@ -141,7 +141,7 @@ rep execInstr zfOne = do
         ip_ <- readOp ip
         execInstr
         writeOp ip ip_
-        instr <- nextInstrByte
+        instr <- cpuNextInstrByte
         case instr of
             0xA6 -> processZf
             0xA7 -> processZf
@@ -149,7 +149,7 @@ rep execInstr zfOne = do
             0xAF -> processZf
             _ -> doNext
     where
-        doExit = updateIP 1
+        doExit = cpuUpdateIP 1
         doNext = rep execInstr zfOne
         processZf = do
             zf_ <- getFlag ZF

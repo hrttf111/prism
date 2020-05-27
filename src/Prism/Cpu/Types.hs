@@ -179,15 +179,10 @@ class ( Monad m
       , InterruptRun m
       , CpuDebug m
       ) => CpuMonad m where
-    halt :: m ()
-    incCycles :: m ()
-    decCyclesP :: m ()
-    updateIP :: Uint16 -> m ()
-    instrAddress :: m MemOffset
-    needStop :: m Bool
-    needUpdateP :: m Bool
-    overrideSegment :: Maybe RegSeg -> m ()
-    nextInstrByte :: m Uint8
-    runP :: m ()
+    cpuHalt :: m ()
+    cpuOverrideSegment :: Maybe RegSeg -> m ()
+    cpuUpdateIP :: Uint16 -> m ()
+    cpuInstrAddress :: m MemOffset
+    cpuNextInstrByte :: m Uint8
 
 -------------------------------------------------------------------------------

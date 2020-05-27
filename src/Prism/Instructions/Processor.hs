@@ -29,7 +29,7 @@ sti = setFlag IF True
 -------------------------------------------------------------------------------
 
 hlt :: (CpuMonad m) => FuncImplicit m
-hlt = halt
+hlt = cpuHalt
 
 wait :: (CpuMonad m) => FuncImplicit m
 wait = return ()
@@ -55,8 +55,8 @@ iret = retInterrupt
 
 segmentOverride :: (CpuMonad m) => FuncImplicit m -> RegSeg -> FuncImplicit m
 segmentOverride execInstr regSeg = do
-    overrideSegment $ Just regSeg
+    cpuOverrideSegment $ Just regSeg
     execInstr
-    overrideSegment Nothing
+    cpuOverrideSegment Nothing
 
 -------------------------------------------------------------------------------
