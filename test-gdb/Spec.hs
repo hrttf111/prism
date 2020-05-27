@@ -6,9 +6,10 @@ import Text.Parsec.Text
 import Data.Text
 import Data.Word
 
-import GDB.GDB
-import GDB.Protocol
+import Prism.GDB.Types
+import Prism.GDB.Protocol
 
+-------------------------------------------------------------------------------
 
 testHaltReason = do
     describe "Parse HaltReason - '?'" $ do
@@ -49,3 +50,5 @@ testHaltReason = do
 main :: IO ()
 main = do
     hspec testHaltReason
+
+-------------------------------------------------------------------------------
