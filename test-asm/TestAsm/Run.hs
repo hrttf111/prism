@@ -22,6 +22,7 @@ import Test.Hspec
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Run
+import Prism.Command
 import Prism.Peripherals
 import Prism.Instructions (internalInstrList)
 
@@ -146,15 +147,13 @@ execPrism regs env cd = do
     let memRegP = ctxReg ctx
     mapM_ (\f -> f memRegP) regs
 
-{-
 execPrismHalt :: (HasCallStack) => [RegEqFunc] -> TestEnv -> PrismComm -> Text -> Expectation
 execPrismHalt regs env comm cd = do
     code16 <- (assembleNative16 env) cd
     ctx <- (executePrism env) code16
-        (\decoder _ ctx -> decodeHaltCpu decoder comm ctx)
+        (\decoder _ -> decodeHaltCpu decoder comm)
     let memRegP = ctxReg ctx
     mapM_ (\f -> f memRegP) regs
-    -}
 
 execAndCmp :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> Text -> Expectation
 execAndCmp regs env cd = do

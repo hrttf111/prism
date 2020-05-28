@@ -86,6 +86,6 @@ instance PrismMsgQueue PrismRspQueue PrismCpuResponse where
 newPrismComm stopCPU = do
     queueCmd <- newTQueueIO :: IO (TQueue PrismCpuCommand)
     queueRsp <- newTQueueIO :: IO (TQueue PrismCpuResponse)
-    return $ PrismComm (PrismCmdQueue queueCmd) (PrismRspQueue queueRsp) empty stopCPU
+    return $ PrismComm (PrismCmdQueue queueCmd) (PrismRspQueue queueRsp) empty stopCPU False 0
 
 -------------------------------------------------------------------------------
