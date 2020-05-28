@@ -3,14 +3,17 @@
 module TestTransfer where
 
 import Test.Hspec
+import Test.Hspec.Core.Runner
 
-import Prism
-import PrismCpu
-import Instruction.Transfer
+import Prism.Cpu
+import Prism.Instructions
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
+
+-------------------------------------------------------------------------------
 
 testMov env = 
     describe "MOV [8] REG <- IMM" $ do
@@ -166,3 +169,5 @@ testMovMem env = do
                 mov ax, [16]
                 mov bx, [ds:16]
             |]
+
+-------------------------------------------------------------------------------

@@ -2,7 +2,7 @@ module TestPic where
 
 import Test.Hspec
 
-import Peripherals.Pic
+import Prism.PC.Pic
 
 -------------------------------------------------------------------------------
 

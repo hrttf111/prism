@@ -7,11 +7,12 @@ import Test.Hspec
 import Data.IORef
 import Control.Concurrent
 
-import Prism
-import PrismCpu
-import PrismPeripheral
+import Prism.Cpu
+import Prism.Instructions
+import Prism.Peripherals
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
 

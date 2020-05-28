@@ -1,6 +1,7 @@
 import TestFlags
 
 import Test.Hspec
+
 import TestFlags
 import TestCpu
 import TestPeripherals

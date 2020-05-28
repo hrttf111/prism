@@ -3,8 +3,18 @@
 import Test.Hspec
 import Test.Hspec.Core.Runner
 
+import Control.Monad.Trans (MonadIO, liftIO)
+
+import NeatInterpolation
+import Data.Text (Text)
+
+import Prism.Instructions
+
 import Assembler
-import TestCommon
+
+import TestAsm.Run
+import TestAsm.Common
+
 import TestFlags
 import TestTransfer
 import TestArithmetic
@@ -15,47 +25,30 @@ import TestString
 import TestPeripherals
 import TestPC
 
-import PrismCpu
-import Instruction.Transfer
-import Instruction.Arithmetic
-import Instruction.Processor
-import Instruction.Logical
-import Instruction.Control
-import Instruction.String
-
-import NeatInterpolation
-import Data.Text (Text)
-
-import Control.Monad.Trans (MonadIO, liftIO)
-
-import qualified TestTransferNew as TN
-
-instrList = transferInstrList 
-    ++ arithmeticInstrList
-    ++ processorInstrList
-    ++ logicalInstrList
-    ++ controlInstrList
-    ++ stringInstrList
-    ++ repInstrList stringInstrList
+-------------------------------------------------------------------------------
 
 doTests env = do
         testMov env
         testMovMem env
         testAdd env
-        testSub env
         testInc env
-        testArithMuldiv env
+        testSub env
         testArithOther env
+        testArithMuldiv env
         testLog env
         testControl env
-        testProcessor env
         testString env
+        testFlagsZF env
+        testFlagsCF env
+        testFlagsOF env
+        testProcessor env
+        testPeripheral x86InstrList
+        testPC x86InstrList
 
 main :: IO ()
 main = do
-    env <- createTestEnv instrList
+    env <- createTestEnv x86InstrList
     runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
-    runSpec (testPeripheral instrList) defaultConfig {configConcurrentJobs=(Just 1)}
-    runSpec (testPC instrList) defaultConfig {configConcurrentJobs=(Just 1)}
-    TN.testAll
     return ()
+
+-------------------------------------------------------------------------------

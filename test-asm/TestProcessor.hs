@@ -4,12 +4,15 @@ module TestProcessor where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
+import Prism.Cpu
+import Prism.Instructions
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
+
+-------------------------------------------------------------------------------
 
 testProcessor env = do
     describe "Software interrupts" $ do
@@ -56,3 +59,5 @@ testProcessor env = do
                 mov bx, 0xFFAA
             |]
             -}
+
+-------------------------------------------------------------------------------

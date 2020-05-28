@@ -4,12 +4,14 @@ module TestString where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
+import Prism.Cpu
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
+
+-------------------------------------------------------------------------------
 
 testString env = do
     describe "String" $ do
@@ -153,3 +155,5 @@ testString env = do
                 mov al, 0xDD
                 repne scasb
             |]
+
+-------------------------------------------------------------------------------

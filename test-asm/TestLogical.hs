@@ -4,13 +4,14 @@ module TestLogical where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
-import Instruction.Transfer
+import Prism.Cpu
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
+
+-------------------------------------------------------------------------------
 
 testLog env = do
     describe "NOT" $ do
@@ -192,3 +193,5 @@ testLog env = do
                 mov cl, 4
                 rcr al, cl
             |]
+
+-------------------------------------------------------------------------------

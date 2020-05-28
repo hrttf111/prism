@@ -4,13 +4,14 @@ module TestControl where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
-import Instruction.Transfer
+import Prism.Cpu
 
-import TestCommon
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
+
+-------------------------------------------------------------------------------
 
 testControl env = do
     describe "Unconditional jump" $ do
@@ -45,3 +46,5 @@ testControl env = do
                 L1:
                 mov cx, 10
             |]
+
+-------------------------------------------------------------------------------

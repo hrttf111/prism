@@ -4,11 +4,15 @@ module TestFlags where
 
 import Test.Hspec
 
-import Prism
-import PrismCpu
-import TestCommon
+import Prism.Cpu
+import Prism.Instructions
+
+import TestAsm.Run
+import TestAsm.Common
 
 import NeatInterpolation
+
+-------------------------------------------------------------------------------
 
 testFlagsZF env = 
     describe "Flags ZF" $ do
@@ -148,3 +152,5 @@ testFlagsOF env =
             (flags, _) <- readFlags memRegN
             (flagOF flags) `shouldBe` False
             (flagCF flags) `shouldBe` True
+
+-------------------------------------------------------------------------------

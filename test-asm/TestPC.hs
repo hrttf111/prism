@@ -4,45 +4,38 @@ module TestPC where
 
 import Test.Hspec
 
-import Data.IORef
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Control.Concurrent
 
-import Prism
-import PrismCpu
-import PrismPeripheral
-import PrismInterrupt
-import PrismCommand
+import Prism.Cpu
+import Prism.Command
+import Prism.Peripherals
+import Prism.PC
 
-import Peripherals.Local
-import Peripherals.PC
-
-import TestCommon
+import TestAsm.Common
+import TestAsm.Run
 
 import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
 instance PeripheralsTestCreator PC where
-    createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue = do
-        ref <- newIORef devices
-        return $ IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue ref) memRegion portRegion
+    createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
 
 type TestInterruptHandler = Uint8 -> Uint8 -> Uint8
 
 testInterruptHandler :: TestInterruptHandler -> InterruptHandler
-testInterruptHandler handler ctx int =
-    (liftIO $ putStrLn "In handler") >> (handler int <$> readReg8 memReg al) >>= writeReg8 memReg al >> return ctx
-    where
-        memReg = ctxReg ctx
+testInterruptHandler handler int =
+    (liftIO $ putStrLn "In handler") >> (handler int <$> readOp al) >>= writeOp al
 
 testSendIRQUp :: PrismCmdQueue -> PrismIRQ -> InterruptHandler
-testSendIRQUp queue irq ctx _ =
-    sendCpuMsgIO queue (PCmdInterruptUp irq) >> return ctx
+testSendIRQUp queue irq _ =
+    sendCpuMsgIO queue (PCmdInterruptUp irq)
 
 testSendIRQDown :: PrismCmdQueue -> PrismIRQ -> InterruptHandler
-testSendIRQDown queue irq ctx _ =
-    sendCpuMsgIO queue (PCmdInterruptDown irq) >> return ctx
+testSendIRQDown queue irq _ =
+    sendCpuMsgIO queue (PCmdInterruptDown irq)
 
 -------------------------------------------------------------------------------
 
