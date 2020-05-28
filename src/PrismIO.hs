@@ -12,8 +12,6 @@ import qualified Data.ByteString as BS
 import Control.Monad.Trans (liftIO, MonadIO)
 import System.IO (FilePath)
 
-import Prism
-
 -------------------------------------------------------------------------------
 
 readCodeToPtr :: MonadIO m => FilePath -> Ptr Word8 -> Int -> m (Ptr Word8, Int)

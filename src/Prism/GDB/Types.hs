@@ -16,9 +16,6 @@ import Control.Monad.Logger
 
 import Control.Exception.Lifted (bracket)
 
---import Control.Concurrent.STM
---import Data.Word (Word8, Word32)
-
 import Text.Parsec
 import Text.Parsec.Text
 import qualified Data.Text as T
