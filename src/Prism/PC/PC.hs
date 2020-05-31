@@ -74,11 +74,13 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
         cpuCtx <- get
         (res, pcCtx) <- liftIO $ ((runStateT . runLocal $ c) ctx)
         let c1 = ctxIO cpuCtx
-            (cpuCtx', pcCtx') = processInterrupts cpuCtx pcCtx
+            (pTime, sched') = reschedule (localScheduler pcCtx) (SchedTime $ ctxCycles cpuCtx)
+            (cpuCtx', pcCtx') = processInterrupts cpuCtx $ pcCtx { localScheduler = sched' }
             ioCtx = IOCtx pcCtx'
                           (ioCtxMemRegion c1)
                           (ioCtxPortRegion c1)
-        put $ cpuCtx' { ctxIO = ioCtx }
+            cyclesP = maybe 9999999999 (\(SchedTime t) -> t) pTime
+        put $ cpuCtx' { ctxIO = ioCtx, ctxCyclesP = cyclesP }
         return res
         where
             processInterrupts :: Ctx -> PeripheralsPC' -> (Ctx, PeripheralsPC')

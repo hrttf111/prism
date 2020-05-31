@@ -1,4 +1,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Prism.Peripherals.Scheduler (
         ------------------------------------------------------
@@ -18,25 +20,33 @@ import Prism.Peripherals.Types
 
 -------------------------------------------------------------------------------
 
-newtype SchedTime = SchedType Int deriving (Show, Eq, Ord, Num)
+newtype SchedTime = SchedTime Int deriving (Show, Eq, Ord, Num)
 newtype SchedId = SchedId Int deriving (Show, Eq, Ord)
 
 type SchedHandler p = SchedId -> p -> IO p
 
+instance Show (SchedHandler p) where
+    show _ = "SchedHandler"
+
+instance Eq (SchedHandler p) where
+    _ == _ = True
+    _ /= _ = False
+
 data SchedCommand p = SchedEventAdd SchedId SchedTime (SchedHandler p)
                     | SchedEventRemove SchedId
+                    deriving (Show, Eq)
 
 data Event p = Event {
         evId :: SchedId,
         evStart :: SchedTime,
         evExpires :: SchedTime,
         evHandler :: SchedHandler p
-    }
+    } deriving (Show, Eq)
 
 data Scheduler p = Scheduler {
         schEvents :: [Event p],
         schCommands :: [SchedCommand p]
-    }
+    } deriving (Show, Eq)
 
 emptyScheduler = Scheduler [] []
 
@@ -58,7 +68,7 @@ schedEventRemove scheduler id =
 
 execCommands :: Scheduler p -> SchedTime -> [Event p]
 execCommands scheduler currentTime =
-    sortOn evId $
+    sortOn evExpires $
     foldr execCommand (schEvents scheduler) (schCommands scheduler)
     where
         execCommand (SchedEventAdd id timeout handler) events =

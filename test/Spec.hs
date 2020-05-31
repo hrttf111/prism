@@ -6,6 +6,7 @@ import TestFlags
 import TestCpu
 import TestPeripherals
 import TestPic
+import TestScheduler
 
 main :: IO ()
 main = hspec $ do
@@ -19,3 +20,4 @@ main = hspec $ do
     testDiv
     testPeripherals
     testPic
+    testScheduler
