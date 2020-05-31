@@ -78,10 +78,6 @@ runBinary binPath_  enableGDB_ = do
     intM <- configureInterrups memMain 0xFF000 [(PrismInt 0x10, videoInterrupt)]
     ctxNew <- runPrismM ctx $ do
         clearRegs
-        --(liftIO $ BS.readFile binPath_) >>= copyMainMem 0
-        --writeOp ss 1000
-        --writeOp sp 640
-        --writeOp ds (div 8000 16)
         writeOp ip bootloaderStart
         writeOp cs 0
         decodeHaltCpu (decoder intM) comm
