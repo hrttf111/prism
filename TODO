@@ -16,6 +16,33 @@
 
 -------------------------------------------------------
 
+newtype SchedUnits = SchedUnits Int
+newtype SchedId = SchedId Int
+type SchedHandler = SchedId -> IO ()
+
+data SchedCommand = SchedAdd { 
+        saId :: SchedId,
+        saTimeout :: SchedUnits,
+        saHandler :: SchedHandler
+    } |  SchedRemove SchedId
+
+data Event = Event {
+        evId :: SchedId,
+        evStart :: SchedUnits,
+        evExpires :: SchedUnits,
+        evHandler :: SchedHandler
+    }
+
+data EventScheduler = EventScheduler {
+        schEvents :: [Event],
+        schCommands :: [SchedCommand]
+    }
+
+schedCommand :: EventScheduler -> SchedCommand -> EventScheduler
+schedUpdate :: EventScheduler -> SchedUnits -> (Maybe SchedUnits, [SchedHandler], EventScheduler)
+
+-------------------------------------------------------
+
 PIC
 
  - IRR - input interrupts which are active
