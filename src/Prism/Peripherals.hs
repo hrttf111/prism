@@ -30,6 +30,12 @@ module Prism.Peripherals (
         , makePageArray, makePage, makePortList, makeMemP
         , createPeripheralsLR 
         ------------------------------------------------------
+        , SchedTime (..), SchedId (..), SchedHandler
+        , Scheduler (..)
+        , schedEventAdd, schedEventRemove
+        , expireSched, reschedule
+        , emptyScheduler
+        ------------------------------------------------------
     ) where
 
 import Prism.Peripherals.Types
@@ -39,5 +45,6 @@ import Prism.Peripherals.Interrupt
 import Prism.Peripherals.Queue
 import Prism.Peripherals.Local
 import Prism.Peripherals.Remote
+import Prism.Peripherals.Scheduler
 
 -------------------------------------------------------------------------------

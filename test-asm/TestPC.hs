@@ -21,7 +21,7 @@ import NeatInterpolation
 
 instance PeripheralsTestCreator PC where
     createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
-        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
 type TestInterruptHandler = Uint8 -> Uint8 -> Uint8
 

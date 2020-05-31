@@ -15,6 +15,7 @@ import Prism.Cpu
 import Prism.Peripherals.Types
 import Prism.Peripherals.Builder
 import Prism.Peripherals.Queue
+import Prism.Peripherals.Scheduler
 
 -------------------------------------------------------------------------------
 
@@ -24,6 +25,7 @@ data PeripheralsLocal p = PeripheralsLocal {
         localPeripheralPort :: PeripheralArray (PeripheralHandlerPort p),
         localPeripheralMem :: PeripheralArray (PeripheralHandlerMem p),
         localIOQueue :: IOQueue,
+        localScheduler :: Scheduler (PeripheralsLocal p),
         localPeripherals :: p
     }
 
