@@ -21,7 +21,7 @@ import NeatInterpolation
 
 instance PeripheralsTestCreator PC where
     createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
-        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
 
 type TestInterruptHandler = Uint8 -> Uint8 -> Uint8
 
@@ -36,6 +36,13 @@ testSendIRQUp queue irq _ =
 testSendIRQDown :: PrismCmdQueue -> PrismIRQ -> InterruptHandler
 testSendIRQDown queue irq _ =
     sendCpuMsgIO queue (PCmdInterruptDown irq)
+
+testScheduleWrite :: PC -> Uint16 -> Uint8 -> IO PC
+testScheduleWrite pc _ val = do
+    let scheduler = schedEventAdd (pcScheduler pc) (SchedId 1) (SchedTime $ fromIntegral val) handler
+        handler _ pc = putStrLn "Sched event" >> return pc
+    putStrLn $ "Do scheduling " ++ (show val)
+    return $ pc { pcScheduler = scheduler }
 
 -------------------------------------------------------------------------------
 
@@ -139,6 +146,26 @@ testPC instrList = do
                 mov bl, 0
                 sti
                 int 0x11
+                mov cx, 10
+                LOOP1:
+                inc bl
+                loop LOOP1
+                hlt
+            |]
+    describe "Test PC Scheduler" $ do
+        it "Sched" $ do
+            comm <- newPrismComm False
+            let devices = createPC
+                devR = 0
+                pcPortsExt = pcPorts ++ [
+                        PeripheralPort 0x89
+                            (PeripheralHandlerPort testScheduleWrite emptyWriteH emptyReadH emptyReadH)
+                    ]
+                intList = []
+            env <- createPeripheralsTestEnv instrList devR [] [] devices pcPortsExt [] intList
+            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+                mov al, 5
+                out 0x89, al
                 mov cx, 10
                 LOOP1:
                 inc bl

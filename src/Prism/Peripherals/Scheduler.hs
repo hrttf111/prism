@@ -6,7 +6,7 @@ module Prism.Peripherals.Scheduler (
         ------------------------------------------------------
         SchedTime (..)
         , SchedId (..)
-        , SchedHandler
+        , SchedHandler, SchedHandlerOut
         , Scheduler (..)
         , schedEventAdd, schedEventRemove
         , expireSched, reschedule
@@ -24,11 +24,19 @@ newtype SchedTime = SchedTime Int deriving (Show, Eq, Ord, Num)
 newtype SchedId = SchedId Int deriving (Show, Eq, Ord)
 
 type SchedHandler p = SchedId -> p -> IO p
+type SchedHandlerOut p = p -> IO p
 
 instance Show (SchedHandler p) where
     show _ = "SchedHandler"
 
 instance Eq (SchedHandler p) where
+    _ == _ = True
+    _ /= _ = False
+
+instance Show (SchedHandlerOut p) where
+    show _ = "SchedHandlerOut"
+
+instance Eq (SchedHandlerOut p) where
     _ == _ = True
     _ /= _ = False
 
@@ -84,13 +92,13 @@ reschedule scheduler currentTime =
         newId = uncons $ newEvents
         newTime = (evExpires . fst) <$> newId
 
-expireSched :: Scheduler p -> SchedTime -> (Maybe SchedTime, [SchedHandler p], Scheduler p)
+expireSched :: Scheduler p -> SchedTime -> (Maybe SchedTime, [SchedHandlerOut p], Scheduler p)
 expireSched scheduler currentTime =
     (newTime, expiredHandlers, Scheduler newEvents [])
     where
         (expiredEvents, newEvents) =
             partition ((<= currentTime) . evExpires)$ execCommands scheduler currentTime
-        expiredHandlers = map evHandler expiredEvents
+        expiredHandlers = map (\e -> (evHandler e) (evId e)) expiredEvents
         newTime = (evExpires . fst) <$> (uncons $ newEvents)
 
 -------------------------------------------------------------------------------

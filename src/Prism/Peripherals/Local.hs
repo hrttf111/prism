@@ -25,7 +25,6 @@ data PeripheralsLocal p = PeripheralsLocal {
         localPeripheralPort :: PeripheralArray (PeripheralHandlerPort p),
         localPeripheralMem :: PeripheralArray (PeripheralHandlerMem p),
         localIOQueue :: IOQueue,
-        localScheduler :: Scheduler (PeripheralsLocal p),
         localPeripherals :: p
     }
 
