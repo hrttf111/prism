@@ -16,7 +16,7 @@ makePairs start offsets = zip [start..]
                         $ map (uncurry MemLocation)
                         $ sortOn fst offsets
 
-makeMemPeripherals :: [MemLocation] -> [PeripheralMem p]
+makeMemPeripherals :: [MemLocation] -> [PeripheralMem IO]
 makeMemPeripherals offsets = map (flip PeripheralMem emptyMemHandler) offsets
 
 makePortPeripherals = id

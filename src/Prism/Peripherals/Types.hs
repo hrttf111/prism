@@ -15,28 +15,28 @@ instance Exception IOCtxException
 
 ------------------------------------------------------------------------------
 
-data PeripheralHandlerMem p = PeripheralHandlerMem {
-        peripheralMemWrite8 :: p -> MemOffset -> Uint8 -> IO p,
-        peripheralMemWrite16 :: p -> MemOffset -> Uint16 -> IO p,
-        peripheralMemRead8 :: p -> MemOffset -> IO (p, Uint8),
-        peripheralMemRead16 :: p -> MemOffset -> IO (p, Uint16)
+data PeripheralHandlerMem m = PeripheralHandlerMem {
+        peripheralMemWrite8 :: MemOffset -> Uint8 -> m (),
+        peripheralMemWrite16 :: MemOffset -> Uint16 -> m (),
+        peripheralMemRead8 :: MemOffset -> m Uint8,
+        peripheralMemRead16 :: MemOffset -> m Uint16
     }
 
-data PeripheralHandlerPort p = PeripheralHandlerPort {
-        peripheralPortWrite8 :: p -> Uint16 -> Uint8 -> IO p,
-        peripheralPortWrite16 :: p -> Uint16 -> Uint16 -> IO p,
-        peripheralPortRead8 :: p -> Uint16 -> IO (p, Uint8),
-        peripheralPortRead16 :: p -> Uint16 -> IO (p, Uint16)
+data PeripheralHandlerPort m = PeripheralHandlerPort {
+        peripheralPortWrite8 :: Uint16 -> Uint8 -> m (),
+        peripheralPortWrite16 :: Uint16 -> Uint16 -> m (),
+        peripheralPortRead8 :: Uint16 -> m Uint8,
+        peripheralPortRead16 :: Uint16 -> m Uint16
     }
     
-data PeripheralPort p = PeripheralPort {
+data PeripheralPort m = PeripheralPort {
         peripheralPortLoc :: Uint16,
-        peripheralPortHandlers :: PeripheralHandlerPort p
+        peripheralPortHandlers :: PeripheralHandlerPort m
     }
 
-data PeripheralMem p = PeripheralMem {
+data PeripheralMem m = PeripheralMem {
         peripheralMemLoc :: MemLocation,
-        peripheralMemHandlers :: PeripheralHandlerMem p
+        peripheralMemHandlers :: PeripheralHandlerMem m
     }
 
 instance Show (PeripheralMem p) where
@@ -49,47 +49,37 @@ instance Eq (PeripheralMem p) where
 
 type PeripheralArray p = Array.Array IOHandlerIndex p
 
-data Peripheral p = Peripheral {
+data Peripheral m p = Peripheral {
         peripheralPortRegion :: PortIORegion,
         peripheralMemRegion :: MemIORegion,
-        peripheralPort :: PeripheralArray (PeripheralHandlerPort p),
-        peripheralMem :: PeripheralArray (PeripheralHandlerMem p),
+        peripheralPort :: PeripheralArray (PeripheralHandlerPort m),
+        peripheralMem :: PeripheralArray (PeripheralHandlerMem m),
         peripheralDevices :: p
     }
 
-data PeripheralLocal p = PeripheralLocal {
+data PeripheralLocal m p = PeripheralLocal {
         peripheralLocalMaxPortL :: IOHandlerIndex,
         peripheralLocalMaxMemL :: IOHandlerIndex,
         peripheralPortRegionL :: PortIORegion,
         peripheralMemRegionL :: MemIORegion,
-        peripheralPortL :: PeripheralArray (PeripheralHandlerPort p),
-        peripheralMemL :: PeripheralArray (PeripheralHandlerMem p),
+        peripheralPortL :: PeripheralArray (PeripheralHandlerPort m),
+        peripheralMemL :: PeripheralArray (PeripheralHandlerMem m),
         peripheralDevicesL :: p
     }
 
 -------------------------------------------------------------------------------
 
-class (OperandVal a) => IOValMem a where
-    ioValMemRead :: (MonadIO m) => p -> PeripheralHandlerMem p -> MemOffset -> m (p, a)
-    ioValMemWrite :: (MonadIO m) => p -> PeripheralHandlerMem p -> MemOffset -> a -> m p
+emptyReadH :: (Monad m, OperandVal b) => a -> m b
+emptyReadH _ = return 0
 
-class (OperandVal a) => IOValPort a where
-    ioValPortRead :: (MonadIO m) => p -> PeripheralHandlerPort p -> Uint16 -> m (p, a)
-    ioValPortWrite :: (MonadIO m) => p -> PeripheralHandlerPort p -> Uint16 -> a -> m p
+emptyWriteH :: (Monad m) => a -> b -> m ()
+emptyWriteH _ _ = return ()
 
--------------------------------------------------------------------------------
-
-emptyReadH :: (OperandVal b) => p -> a -> IO (p, b)
-emptyReadH p _ = return (p, 0)
-
-emptyWriteH :: p -> a -> b -> IO p
-emptyWriteH p _ _ = return p
-
-emptyMemHandler :: PeripheralHandlerMem p
+emptyMemHandler :: (Monad m) => PeripheralHandlerMem m
 emptyMemHandler = 
     PeripheralHandlerMem emptyWriteH emptyWriteH emptyReadH emptyReadH
 
-emptyPortHandler :: PeripheralHandlerPort p
+emptyPortHandler :: (Monad m) => PeripheralHandlerPort m
 emptyPortHandler =
     PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH emptyReadH
 

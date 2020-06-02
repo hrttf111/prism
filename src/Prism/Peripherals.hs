@@ -20,7 +20,8 @@ module Prism.Peripherals (
         , LocalTransM (..)
         , PeripheralsLocal (..), LocalTrans (..)
         ------------------------------------------------------
-        , execPeripheralsOnce
+        , RemoteTrans (..)
+        , runRemotePeripherals, execPeripheralsOnce
         ------------------------------------------------------
         , makeDummyIO
         ------------------------------------------------------

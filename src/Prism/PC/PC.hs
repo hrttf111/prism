@@ -29,41 +29,36 @@ type PeripheralsPC = LocalTrans PC
 
 instance InterruptDispatcher PeripheralsPC where
     dispatchIrqUp (PrismIRQ irq) = do
-        pc <- localPeripherals <$> get
+        pc <- getPC
         if irq < 8 then do
             let pic = picRaiseIrq (pcPicMaster pc) irq
-            pc_ <- pcPicUpdateMaster pc pic True
-            modify (\s -> s { localPeripherals = pc_ })
-            return $ pcIntrUp pc_
+            putPC $ pcPicUpdateMaster pc pic True
+            getPCIntrUp
             else do
                 let pic = picRaiseIrq (pcPicSlave pc) irq
-                pc_ <- pcPicUpdateSlave pc pic True
-                modify (\s -> s { localPeripherals = pc_ })
-                return $ pcIntrUp pc_
+                putPC $ pcPicUpdateSlave pc pic True
+                getPCIntrUp
     dispatchIrqDown (PrismIRQ irq) = do
-        pc <- localPeripherals <$> get
+        pc <- getPC
         if irq < 8 then do
             let pic = picLowerIrq (pcPicMaster pc) irq
-            pc_ <- pcPicUpdateMaster pc pic True
-            modify (\s -> s { localPeripherals = pc_ })
-            return $ pcIntrUp pc_
+            putPC $ pcPicUpdateMaster pc pic True
+            getPCIntrUp
             else do
                 let pic = picLowerIrq (pcPicSlave pc) irq
-                pc_ <- pcPicUpdateSlave pc pic True
-                modify (\s -> s { localPeripherals = pc_ })
-                return $ pcIntrUp pc_
+                putPC $ pcPicUpdateSlave pc pic True
+                getPCIntrUp
     ackIrq = do
-        pc <- localPeripherals <$> get
+        pc <- getPC
         let (picMaster, int) = picAck $ pcPicMaster pc
         if int == 2 then do
             let (picSlave, intS) = picAck $ pcPicSlave pc
-            pc_ <- pcPicUpdateSlave pc picSlave True
-            pc__ <- pcPicUpdateMaster pc_ picMaster True
-            modify (\s -> s { localPeripherals = pc__ })
+                pc_ = pcPicUpdateSlave pc picSlave True
+                pc__ = pcPicUpdateMaster pc_ picMaster True
+            putPC pc__
             return $ picGetPrismInt picSlave intS
         else do
-            pc_ <- pcPicUpdateMaster pc picMaster True
-            modify (\s -> s { localPeripherals = pc_ })
+            putPC $ pcPicUpdateMaster pc picMaster True
             return $ picGetPrismInt picMaster int
 
 instance PeripheralsMonad PeripheralsPC where
@@ -123,22 +118,33 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
 
 -------------------------------------------------------------------------------
 
+getPC :: PeripheralsPC PC
+getPC = localPeripherals <$> get
+
+putPC :: PC -> PeripheralsPC ()
+putPC pc = modify $ \s -> s { localPeripherals = pc }
+
+getPCIntrUp :: PeripheralsPC Bool
+getPCIntrUp = pcIntrUp <$> getPC
+
+-------------------------------------------------------------------------------
+
 pcIntrUp :: PC -> Bool
 pcIntrUp =
     picStateIntr . picState . pcPicMaster
 
-pcPicUpdateMaster :: (MonadIO m) => PC -> Pic -> Bool -> m PC
+pcPicUpdateMaster :: PC -> Pic -> Bool -> PC
 pcPicUpdateMaster pc pic update =
     if update then
         case picUpdate pic of
             (pic_, PicIntrActive active) ->
-                return pc { pcPicMaster = pic_, pcNeedUpdate = active }
+                pc { pcPicMaster = pic_, pcNeedUpdate = active }
             (pic_, _) ->
-                return pc { pcPicMaster = pic_, pcNeedUpdate = False }
+                pc { pcPicMaster = pic_, pcNeedUpdate = False }
         else 
-            return pc { pcPicMaster = pic , pcNeedUpdate = False }
+            pc { pcPicMaster = pic , pcNeedUpdate = False }
 
-pcPicUpdateSlave :: (MonadIO m) => PC -> Pic -> Bool -> m PC
+pcPicUpdateSlave :: PC -> Pic -> Bool -> PC
 pcPicUpdateSlave pc pic update =
     if update then
         case picUpdate pic of
@@ -148,63 +154,67 @@ pcPicUpdateSlave pc pic update =
                     in
                 pcPicUpdateMaster (pc { pcPicSlave = pic_ }) picMaster True
             (pic_, _) ->
-                return pc { pcPicSlave = pic_, pcNeedUpdate = False  }
+                pc { pcPicSlave = pic_, pcNeedUpdate = False  }
         else 
-            return pc { pcPicSlave = pic, pcNeedUpdate = False }
+            pc { pcPicSlave = pic, pcNeedUpdate = False }
 
 -------------------------------------------------------------------------------
 
-pcPortRead8PicDataMaster :: PC -> Uint16 -> IO (PC, Uint8)
-pcPortRead8PicDataMaster pc port =
+pcPortRead8PicDataMaster :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PicDataMaster port = do
+    pc <- getPC
     let (pic, update, val) = picReadData $ pcPicMaster pc
-        in
-    pcPicUpdateMaster pc pic update >>= \pc_ -> return (pc_, val)
+    putPC $ pcPicUpdateMaster pc pic update
+    return val
 
-pcPortWrite8PicDataMaster :: PC -> Uint16 -> Uint8 -> IO PC
-pcPortWrite8PicDataMaster pc port val =
+pcPortWrite8PicDataMaster :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PicDataMaster port val = do
+    pc <- getPC
     let commands = picDecodeData val $ picInitStage . picState $ pcPicMaster pc
         (pic, update) = picWriteCommands (pcPicMaster pc) commands
-        in
-    pcPicUpdateMaster pc pic update
+    putPC $ pcPicUpdateMaster pc pic update
 
-pcPortRead8PicControlMaster :: PC -> Uint16 -> IO (PC, Uint8)
-pcPortRead8PicControlMaster pc port =
+pcPortRead8PicControlMaster :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PicControlMaster port = do
+    pc <- getPC
     let (pic, update, val) = picReadControl $ pcPicMaster pc
-        in
-    pcPicUpdateMaster pc pic update >>= \pc_ -> return (pc_, val)
+    putPC $ pcPicUpdateMaster pc pic update
+    return val
 
-pcPortWrite8PicControlMaster :: PC -> Uint16 -> Uint8 -> IO PC
-pcPortWrite8PicControlMaster pc port val =
+pcPortWrite8PicControlMaster :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PicControlMaster port val = do
+    pc <- getPC
     let commands = picDecodeCommand val $ pcPicMaster pc
         (pic, update) = picWriteCommands (pcPicMaster pc) commands
-        in
-    pcPicUpdateMaster pc pic update
+    putPC $ pcPicUpdateMaster pc pic update
 
-pcPortRead8PicDataSlave :: PC -> Uint16 -> IO (PC, Uint8)
-pcPortRead8PicDataSlave pc port =
+pcPortRead8PicDataSlave :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PicDataSlave port = do
+    pc <- getPC
     let (pic, update, val) = picReadData $ pcPicSlave pc
-        in
-    pcPicUpdateSlave pc pic update >>= \pc_ -> return (pc_, val)
+    putPC $ pcPicUpdateSlave pc pic update
+    return val
 
-pcPortWrite8PicDataSlave :: PC -> Uint16 -> Uint8 -> IO PC
-pcPortWrite8PicDataSlave pc port val =
+pcPortWrite8PicDataSlave :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PicDataSlave port val = do
+    pc <- getPC
     let commands = picDecodeData val $ picInitStage . picState $ pcPicSlave pc
         (pic, update) = picWriteCommands (pcPicSlave pc) commands
-        in
-    pcPicUpdateSlave pc pic update
+    putPC $ pcPicUpdateSlave pc pic update
 
-pcPortRead8PicControlSlave :: PC -> Uint16 -> IO (PC, Uint8)
-pcPortRead8PicControlSlave pc port =
+pcPortRead8PicControlSlave :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PicControlSlave port = do
+    pc <- getPC
     let (pic, update, val) = picReadControl $ pcPicSlave pc
-        in
-    pcPicUpdateSlave pc pic update >>= \pc_ -> return (pc_, val)
+    putPC $ pcPicUpdateSlave pc pic update
+    return val
 
-pcPortWrite8PicControlSlave :: PC -> Uint16 -> Uint8 -> IO PC
-pcPortWrite8PicControlSlave pc port val =
+pcPortWrite8PicControlSlave :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PicControlSlave port val = do
+    pc <- getPC
     let commands = picDecodeCommand val $ pcPicSlave pc
         (pic, update) = picWriteCommands (pcPicSlave pc) commands
-        in
-    pcPicUpdateSlave pc pic update
+    putPC $ pcPicUpdateSlave pc pic update
 
 
 pcPorts = [

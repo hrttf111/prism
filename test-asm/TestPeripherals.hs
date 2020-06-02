@@ -5,6 +5,7 @@ module TestPeripherals where
 import Test.Hspec
 
 import Data.IORef
+import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Concurrent
 
 import Prism.Cpu
@@ -18,14 +19,14 @@ import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
-testPeriphRead :: (OperandVal a, Integral b) =>
-    a -> p -> b -> IO (p, a)
-testPeriphRead val peripheral offset = return (peripheral, val)
+testPeriphRead :: (Monad m, OperandVal a, Integral b) =>
+    a -> b -> m a
+testPeriphRead val offset = return val
 
-testPeriphWrite :: (OperandVal a, Integral b) => 
-    IORef a -> p -> b -> a -> IO p
-testPeriphWrite ref peripheral offset val =
-    atomicWriteIORef ref val >> return peripheral
+testPeriphWrite :: (MonadIO m, OperandVal a, Integral b) => 
+    IORef a -> b -> a -> m ()
+testPeriphWrite ref offset val =
+    liftIO $ atomicWriteIORef ref val >> return ()
 
 -------------------------------------------------------------------------------
 

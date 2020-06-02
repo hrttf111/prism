@@ -22,8 +22,8 @@ import Prism.Peripherals.Scheduler
 data PeripheralsLocal p = PeripheralsLocal {
         localMaxPort :: IOHandlerIndex,
         localMaxMem :: IOHandlerIndex,
-        localPeripheralPort :: PeripheralArray (PeripheralHandlerPort p),
-        localPeripheralMem :: PeripheralArray (PeripheralHandlerMem p),
+        localPeripheralPort :: PeripheralArray (PeripheralHandlerPort (LocalTrans p)),
+        localPeripheralMem :: PeripheralArray (PeripheralHandlerMem (LocalTrans p)),
         localIOQueue :: IOQueue,
         localPeripherals :: p
     }
@@ -63,19 +63,14 @@ instance Operand MMIOInternal8 (LocalTrans p) Uint8 where
             ioValRemoteRead (localIOQueue peripherals) IOMemType handlerIndex offset
             else do
                 let handler = (localPeripheralMem peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                (devices_, val) <- liftIO $ (peripheralMemRead8 handler) devices offset
-                modify (\s -> s { localPeripherals = devices_ } )
-                return val
+                (peripheralMemRead8 handler) offset
     writeOp (MMIOInternal8 (handlerIndex, offset)) val = do
         peripherals <- get
         if handlerIndex <= (localMaxMem peripherals) then
             ioValRemoteWrite (localIOQueue peripherals) IOMemType handlerIndex offset val
             else do
                 let handler = (localPeripheralMem peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                devices_ <- liftIO $ (peripheralMemWrite8 handler) devices offset val
-                modify (\s -> s { localPeripherals = devices_ } )
+                (peripheralMemWrite8 handler) offset val
 
 instance Operand MMIOInternal16 (LocalTrans p) Uint16 where
     readOp (MMIOInternal16 (handlerIndex, offset)) = do
@@ -84,19 +79,14 @@ instance Operand MMIOInternal16 (LocalTrans p) Uint16 where
             ioValRemoteRead (localIOQueue peripherals) IOMemType handlerIndex offset
             else do
                 let handler = (localPeripheralMem peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                (devices_, val) <- liftIO $ (peripheralMemRead16 handler) devices offset
-                modify (\s -> s { localPeripherals = devices_ } )
-                return val
+                (peripheralMemRead16 handler) offset
     writeOp (MMIOInternal16 (handlerIndex, offset)) val = do
         peripherals <- get
         if handlerIndex <= (localMaxMem peripherals) then
             ioValRemoteWrite (localIOQueue peripherals) IOMemType handlerIndex offset val
             else do
                 let handler = (localPeripheralMem peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                devices_ <- liftIO $ (peripheralMemWrite16 handler) devices offset val
-                modify (\s -> s { localPeripherals = devices_ } )
+                (peripheralMemWrite16 handler) offset val
 
 -------------------------------------------------------------------------------
 
@@ -107,19 +97,14 @@ instance Operand PortInternal8 (LocalTrans p) Uint8 where
             ioValRemoteRead (localIOQueue peripherals) IOPortType handlerIndex (fromIntegral port)
             else do
                 let handler = (localPeripheralPort peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                (devices_, val) <- liftIO $ (peripheralPortRead8 handler) devices port
-                modify (\s -> s { localPeripherals = devices_ } )
-                return val
+                (peripheralPortRead8 handler) port
     writeOp (PortInternal8 (handlerIndex, port)) val = do
         peripherals <- get
         if handlerIndex <= (localMaxPort peripherals) then
             ioValRemoteWrite (localIOQueue peripherals) IOPortType handlerIndex (fromIntegral port) val
             else do
                 let handler = (localPeripheralPort peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                devices_ <- liftIO $ (peripheralPortWrite8 handler) devices port val
-                modify (\s -> s { localPeripherals = devices_ } )
+                (peripheralPortWrite8 handler) port val
 
 instance Operand PortInternal16 (LocalTrans p) Uint16 where
     readOp (PortInternal16 (handlerIndex, port)) = do
@@ -128,18 +113,13 @@ instance Operand PortInternal16 (LocalTrans p) Uint16 where
             ioValRemoteRead (localIOQueue peripherals) IOPortType handlerIndex (fromIntegral port)
             else do
                 let handler = (localPeripheralPort peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                (devices_, val) <- liftIO $ (peripheralPortRead16 handler) devices port
-                modify (\s -> s { localPeripherals = devices_ } )
-                return val
+                (peripheralPortRead16 handler) port
     writeOp (PortInternal16 (handlerIndex, port)) val = do
         peripherals <- get
         if handlerIndex <= (localMaxPort peripherals) then
             ioValRemoteWrite (localIOQueue peripherals) IOPortType handlerIndex (fromIntegral port) val
             else do
                 let handler = (localPeripheralPort peripherals) Array.! handlerIndex
-                    devices = localPeripherals peripherals
-                devices_ <- liftIO $ (peripheralPortWrite16 handler) devices port val
-                modify (\s -> s { localPeripherals = devices_ } )
+                (peripheralPortWrite16 handler) port val
 
 -------------------------------------------------------------------------------

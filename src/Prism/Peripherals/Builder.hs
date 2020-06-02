@@ -153,9 +153,9 @@ convertMemPairs memPairs =
 createPeripherals :: p
                      -> Int
                      -> Int
-                     -> [PeripheralPort p] 
-                     -> [PeripheralMem p] 
-                     -> Peripheral p
+                     -> [PeripheralPort m] 
+                     -> [PeripheralMem m] 
+                     -> Peripheral m p
 createPeripherals devices memSize pageSize portEntries memEntries = 
     fst $ createPeripheralsLR devices devStub memSize pageSize portEntries memEntries [] []
     where
@@ -166,11 +166,11 @@ createPeripheralsLR :: pR
                      -> pL
                      -> Int
                      -> Int
-                     -> [PeripheralPort pR] 
-                     -> [PeripheralMem pR] 
-                     -> [PeripheralPort pL] 
-                     -> [PeripheralMem pL] 
-                     -> (Peripheral pR, PeripheralLocal pL)
+                     -> [PeripheralPort mR]
+                     -> [PeripheralMem mR]
+                     -> [PeripheralPort mL]
+                     -> [PeripheralMem mL]
+                     -> (Peripheral mR pR, PeripheralLocal mL pL)
 createPeripheralsLR devicesR devicesL memSize pageSize portEntriesR memEntriesR portEntriesL memEntriesL = 
         (Peripheral portRegion memRegion portHandlersR memHandlersR devicesR
         , PeripheralLocal portMax memMax portRegion memRegion portHandlersL memHandlersL devicesL)
@@ -197,7 +197,7 @@ createPeripheralsLR devicesR devicesL memSize pageSize portEntriesR memEntriesR 
 
 -------------------------------------------------------------------------------
 
-makeEmptyPeripherals :: Int -> p -> Peripheral p
+makeEmptyPeripherals :: Int -> p -> Peripheral m p
 makeEmptyPeripherals memSize devices =
     createPeripherals devices memSize memSize [] [] 
 

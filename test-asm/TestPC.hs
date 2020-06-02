@@ -1,10 +1,13 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module TestPC where
 
 import Test.Hspec
 
-import Control.Monad.Trans (lift, liftIO, MonadIO)
+import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Concurrent
 
 import Prism.Cpu
@@ -19,7 +22,7 @@ import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
-instance PeripheralsTestCreator PC where
+instance PeripheralsTestCreator PeripheralsPC PC where
     createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
         IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
 
@@ -37,14 +40,21 @@ testSendIRQDown :: PrismCmdQueue -> PrismIRQ -> InterruptHandler
 testSendIRQDown queue irq _ =
     sendCpuMsgIO queue (PCmdInterruptDown irq)
 
-testScheduleWrite :: PC -> Uint16 -> Uint8 -> IO PC
-testScheduleWrite pc _ val = do
+testScheduleWrite :: Uint16 -> Uint8 -> PeripheralsPC ()
+testScheduleWrite _ val = do
+    pc <- getPC
     let scheduler = schedEventAdd (pcScheduler pc) (SchedId 1) (SchedTime $ fromIntegral val) handler
         handler _ pc = putStrLn "Sched event" >> return pc
-    putStrLn $ "Do scheduling " ++ (show val)
-    return $ pc { pcScheduler = scheduler }
+    liftIO $ putStrLn $ "Do scheduling " ++ (show val)
+    putPC $ pc { pcScheduler = scheduler }
 
 -------------------------------------------------------------------------------
+
+emptyMemR :: [PeripheralMem (RemoteTrans Int)]
+emptyMemR = []
+
+emptyPortR :: [PeripheralPort (RemoteTrans Int)]
+emptyPortR = []
 
 testPC instrList = do
     describe "Test PC PIC" $ do
@@ -56,7 +66,7 @@ testPC instrList = do
                 intList = [
                     (PrismInt 0x10, testInterruptHandler testHandler)
                     ]
-            env <- createPeripheralsTestEnv instrList devR [] [] devices pcPorts [] intList
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
                 mov al, 134
                 int 0x10
@@ -70,7 +80,7 @@ testPC instrList = do
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 0)),
                     (PrismInt 0x20, testInterruptHandler testHandler)
                     ]
-            env <- createPeripheralsTestEnv instrList devR [] [] devices pcPorts [] intList
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
@@ -108,7 +118,7 @@ testPC instrList = do
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 8)),
                     (PrismInt 0x28, testInterruptHandler testHandler)
                     ]
-            env <- createPeripheralsTestEnv instrList devR [] [] devices pcPorts [] intList
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
@@ -162,8 +172,8 @@ testPC instrList = do
                             (PeripheralHandlerPort testScheduleWrite emptyWriteH emptyReadH emptyReadH)
                     ]
                 intList = []
-            env <- createPeripheralsTestEnv instrList devR [] [] devices pcPortsExt [] intList
-            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPortsExt [] intList
+            execPrismHalt [(al `shouldEq` 5)] env comm $ [text|
                 mov al, 5
                 out 0x89, al
                 mov cx, 10

@@ -79,7 +79,8 @@ instance PeripheralsMonad DummyTrans where
 
 -------------------------------------------------------------------------------
 
-makeDummyIO :: Int -> p -> IO (IOCtx, Peripheral p)
+--makeDummyIO :: (Monad m) => Int -> p -> IO (IOCtx, Peripheral m p)
+makeDummyIO :: Int -> p -> IO (IOCtx, Peripheral IO p)
 makeDummyIO memSize devices = do
     let peripheral = makeEmptyPeripherals memSize devices
         ioCtx = IOCtx (DummyCtx 0)
