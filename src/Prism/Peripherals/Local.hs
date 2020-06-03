@@ -25,6 +25,7 @@ data PeripheralsLocal p = PeripheralsLocal {
         localPeripheralPort :: PeripheralArray (PeripheralHandlerPort (LocalTrans p)),
         localPeripheralMem :: PeripheralArray (PeripheralHandlerMem (LocalTrans p)),
         localIOQueue :: IOQueue,
+        localScheduler :: Scheduler (LocalTrans p),
         localPeripherals :: p
     }
 
@@ -53,6 +54,30 @@ instance RunPeripheralsM (PeripheralsLocal p) (LocalTransM (PeripheralsLocal p) 
 -}
 
 type LocalTrans p = LocalTransM (PeripheralsLocal p) IO
+
+-------------------------------------------------------------------------------
+
+localSchedulerAdd :: SchedId -> SchedTime -> SchedHandler (LocalTrans p) -> (LocalTrans p) ()
+localSchedulerAdd id time handler = do
+    scheduler <- localScheduler <$> get
+    let scheduler_ = schedEventAdd scheduler id time handler
+    modify $ \s -> s { localScheduler = scheduler_ }
+
+localSchedulerExpired :: Int -> (LocalTrans p) [(SchedHandlerOut (LocalTrans p))]
+localSchedulerExpired currentTime = do
+    scheduler <- localScheduler <$> get
+    let (_, events, scheduler_) = expireSched scheduler $ SchedTime currentTime
+    modify $ \s -> s { localScheduler = scheduler_ }
+    return events
+
+localSchedulerReschedule :: Int -> (LocalTrans p) Int
+localSchedulerReschedule currentTime = do
+    scheduler <- localScheduler <$> get
+    let (pTimeM, scheduler_) = reschedule scheduler $ SchedTime currentTime
+        pTime = (\(SchedTime t) -> SchedTime $ t - currentTime) <$> pTimeM
+        cyclesP = maybe 9999999999 (\(SchedTime t) -> t) pTime
+    modify $ \s -> s { localScheduler = scheduler_ }
+    return cyclesP
 
 -------------------------------------------------------------------------------
 

@@ -20,8 +20,7 @@ data PC = PC {
         pcCycles :: Int,
         pcNeedUpdate :: Bool,
         pcPicMaster :: Pic,
-        pcPicSlave :: Pic,
-        pcScheduler :: Scheduler PC
+        pcPicSlave :: Pic
     } deriving (Show)
 
 type PeripheralsPC' = PeripheralsLocal PC
@@ -65,40 +64,33 @@ instance PeripheralsMonad PeripheralsPC where
     runPeripherals = do
         pc <- localPeripherals <$> get
         let currentTime = pcCycles pc
-            (_, events, scheduler) = expireSched (pcScheduler pc) $ SchedTime currentTime
-            pc' = pc { pcScheduler = scheduler }
-        pc2 <- liftIO $ foldM (\p e -> e p) pc' events
-        modify (\s -> s { localPeripherals = pc2 })
+        events <- localSchedulerExpired currentTime
+        mapM_ id events
     nextInstrTime = return 0
 
 instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
-    runPeripheralsM ctx c = do
+    runPeripheralsM ctx actions = do
         cpuCtx <- get
-        (res, pcCtx) <- liftIO $ (runStateT . runLocal $ c) $ setCycles cpuCtx ctx
+        ((cyclesP, res), pcCtx) <- liftIO $ (runStateT . runLocal $ pcActions) $ setCycles cpuCtx ctx
         let c1 = ctxIO cpuCtx
-            (pTime, pcCtx1) = processScheduler pcCtx $ ctxCycles cpuCtx
-            (cpuCtx', pcCtx') = processInterrupts cpuCtx $ pcCtx1
+            (cpuCtx', pcCtx') = processInterrupts cpuCtx $ pcCtx
             ioCtx = IOCtx pcCtx'
                           (ioCtxMemRegion c1)
                           (ioCtxPortRegion c1)
-            cyclesP = maybe 9999999999 (\(SchedTime t) -> t) pTime
         put $ cpuCtx' { ctxIO = ioCtx, ctxCyclesP = cyclesP }
         return res
         where
+            pcActions = do
+                v <- actions
+                pc <- localPeripherals <$> get
+                pCycles <- localSchedulerReschedule $ pcCycles pc
+                return (pCycles, v)
             setCycles :: Ctx -> PeripheralsPC' -> PeripheralsPC'
             setCycles ctx pcCtx =
                 let pc = localPeripherals pcCtx
                     pc' = pc { pcCycles = ctxCycles ctx}
                     in
                 pcCtx { localPeripherals = pc' }
-            processScheduler :: PeripheralsPC' -> Int -> (Maybe SchedTime, PeripheralsPC')
-            processScheduler pcCtx cycles =
-                let pc = localPeripherals pcCtx
-                    (p, sched') = reschedule (pcScheduler pc) (SchedTime cycles)
-                    pc' = pc { pcScheduler = sched' }
-                    pTime = (\(SchedTime t) -> SchedTime $ t - cycles) <$> p
-                    in
-                    (pTime, pcCtx { localPeripherals = pc' })
             processInterrupts :: Ctx -> PeripheralsPC' -> (Ctx, PeripheralsPC')
             processInterrupts cpuCtx pcCtx =
                 let pc = localPeripherals pcCtx
@@ -229,6 +221,6 @@ pcPorts = [
     ]
 
 createPC :: PC
-createPC = PC 999 False defaultPIC defaultPIC emptyScheduler
+createPC = PC 999 False defaultPIC defaultPIC
 
 -------------------------------------------------------------------------------

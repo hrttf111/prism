@@ -23,8 +23,8 @@ import Prism.Peripherals.Types
 newtype SchedTime = SchedTime Int deriving (Show, Eq, Ord, Num)
 newtype SchedId = SchedId Int deriving (Show, Eq, Ord)
 
-type SchedHandler p = SchedId -> p -> IO p
-type SchedHandlerOut p = p -> IO p
+type SchedHandler m = SchedId -> m ()
+type SchedHandlerOut m = m ()
 
 instance Show (SchedHandler p) where
     show _ = "SchedHandler"
@@ -40,33 +40,33 @@ instance Eq (SchedHandlerOut p) where
     _ == _ = True
     _ /= _ = False
 
-data SchedCommand p = SchedEventAdd SchedId SchedTime (SchedHandler p)
+data SchedCommand m = SchedEventAdd SchedId SchedTime (SchedHandler m)
                     | SchedEventRemove SchedId
                     deriving (Show, Eq)
 
-data Event p = Event {
+data Event m = Event {
         evId :: SchedId,
         evStart :: SchedTime,
         evExpires :: SchedTime,
-        evHandler :: SchedHandler p
+        evHandler :: SchedHandler m
     } deriving (Show, Eq)
 
-data Scheduler p = Scheduler {
-        schEvents :: [Event p],
-        schCommands :: [SchedCommand p]
+data Scheduler m = Scheduler {
+        schEvents :: [Event m],
+        schCommands :: [SchedCommand m]
     } deriving (Show, Eq)
 
 emptyScheduler = Scheduler [] []
 
 -------------------------------------------------------------------------------
 
-schedEventAdd :: Scheduler p -> SchedId -> SchedTime -> SchedHandler p -> Scheduler p
+schedEventAdd :: (Monad m) => Scheduler m -> SchedId -> SchedTime -> SchedHandler m -> Scheduler m 
 schedEventAdd scheduler id timeout handler =
     scheduler { schCommands = commands }
     where
         commands = ((SchedEventAdd id timeout handler) : schCommands scheduler)
 
-schedEventRemove :: Scheduler p -> SchedId -> Scheduler p
+schedEventRemove :: (Monad m) => Scheduler m -> SchedId -> Scheduler m
 schedEventRemove scheduler id =
     scheduler { schCommands = commands }
     where
@@ -74,7 +74,7 @@ schedEventRemove scheduler id =
 
 -------------------------------------------------------------------------------
 
-execCommands :: Scheduler p -> SchedTime -> [Event p]
+execCommands :: (Monad m) => Scheduler m -> SchedTime -> [Event m]
 execCommands scheduler currentTime =
     sortOn evExpires $
     foldr execCommand (schEvents scheduler) (schCommands scheduler)
@@ -84,7 +84,7 @@ execCommands scheduler currentTime =
         execCommand (SchedEventRemove id) events =
             filter ((/=id) . evId) events
 
-reschedule :: Scheduler p -> SchedTime -> (Maybe SchedTime, Scheduler p)
+reschedule :: (Monad m) => Scheduler m -> SchedTime -> (Maybe SchedTime, Scheduler m)
 reschedule scheduler currentTime =
     (newTime, Scheduler newEvents [])
     where
@@ -92,7 +92,7 @@ reschedule scheduler currentTime =
         newId = uncons $ newEvents
         newTime = (evExpires . fst) <$> newId
 
-expireSched :: Scheduler p -> SchedTime -> (Maybe SchedTime, [SchedHandlerOut p], Scheduler p)
+expireSched :: (Monad m) => Scheduler m -> SchedTime -> (Maybe SchedTime, [SchedHandlerOut m], Scheduler m)
 expireSched scheduler currentTime =
     (newTime, expiredHandlers, Scheduler newEvents [])
     where

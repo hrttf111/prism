@@ -61,7 +61,7 @@ class PeripheralsTestCreator m p | p -> m where
 
 instance PeripheralsTestCreator PeripheralsTest TestDev where
     createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
-        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
 ------------------------------------------------------------------------------
 

@@ -24,7 +24,7 @@ import NeatInterpolation
 
 instance PeripheralsTestCreator PeripheralsPC PC where
     createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
-        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue devices) memRegion portRegion
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
 type TestInterruptHandler = Uint8 -> Uint8 -> Uint8
 
@@ -42,11 +42,9 @@ testSendIRQDown queue irq _ =
 
 testScheduleWrite :: Uint16 -> Uint8 -> PeripheralsPC ()
 testScheduleWrite _ val = do
-    pc <- getPC
-    let scheduler = schedEventAdd (pcScheduler pc) (SchedId 1) (SchedTime $ fromIntegral val) handler
-        handler _ pc = putStrLn "Sched event" >> return pc
+    let handler _ = liftIO $ putStrLn "Sched event"
+    localSchedulerAdd (SchedId 1) (SchedTime $ fromIntegral val) handler
     liftIO $ putStrLn $ "Do scheduling " ++ (show val)
-    putPC $ pc { pcScheduler = scheduler }
 
 -------------------------------------------------------------------------------
 
