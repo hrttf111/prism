@@ -66,7 +66,6 @@ instance PeripheralsMonad PeripheralsPC where
         let currentTime = pcCycles pc
         events <- localSchedulerExpired currentTime
         mapM_ id events
-    nextInstrTime = return 0
 
 instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
     runPeripheralsM ctx actions = do

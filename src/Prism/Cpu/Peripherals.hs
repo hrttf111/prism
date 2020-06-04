@@ -82,7 +82,6 @@ class ( Monad m
       , Operand MMIOInternal16 m Uint16
       , InterruptDispatcher m
       ) => PeripheralsMonad m where
-      nextInstrTime :: m Int
       runPeripherals :: m ()
 
 class ( Monad mc

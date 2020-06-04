@@ -41,18 +41,6 @@ instance MonadTrans (LocalTransM s) where
 instance MonadIO m => MonadIO (LocalTransM s m) where
     liftIO = lift . liftIO
 
-{-
-instance RunPeripheralsM (PeripheralsLocal p) (LocalTransM (PeripheralsLocal p) IO) PrismM where
-    runPeripheralsM ctx c = do
-        c1 <- ctxIO <$> get
-        (res, iCtx) <- liftIO $ ((runStateT . runLocal $ c) ctx)
-        let ioCtx = IOCtx iCtx
-                          (ioCtxMemRegion c1)
-                          (ioCtxPortRegion c1)
-        modify $ (\s -> s { ctxIO = ioCtx } )
-        return res
--}
-
 type LocalTrans p = LocalTransM (PeripheralsLocal p) IO
 
 -------------------------------------------------------------------------------

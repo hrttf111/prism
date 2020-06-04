@@ -43,7 +43,6 @@ instance InterruptDispatcher PeripheralsTest where
     ackIrq = return $ PrismInt 7
 
 instance PeripheralsMonad PeripheralsTest where
-    nextInstrTime = return 0
     runPeripherals = return ()
 
 instance RunPeripheralsM PeripheralsTest1 PeripheralsTest PrismM where

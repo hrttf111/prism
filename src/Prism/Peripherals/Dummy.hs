@@ -74,12 +74,10 @@ instance InterruptDispatcher DummyTrans where
 -------------------------------------------------------------------------------
 
 instance PeripheralsMonad DummyTrans where
-    nextInstrTime = return 0
     runPeripherals = return ()
 
 -------------------------------------------------------------------------------
 
---makeDummyIO :: (Monad m) => Int -> p -> IO (IOCtx, Peripheral m p)
 makeDummyIO :: Int -> p -> IO (IOCtx, Peripheral IO p)
 makeDummyIO memSize devices = do
     let peripheral = makeEmptyPeripherals memSize devices
