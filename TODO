@@ -16,33 +16,6 @@
 
 -------------------------------------------------------
 
-newtype SchedUnits = SchedUnits Int
-newtype SchedId = SchedId Int
-type SchedHandler = SchedId -> IO ()
-
-data SchedCommand = SchedAdd { 
-        saId :: SchedId,
-        saTimeout :: SchedUnits,
-        saHandler :: SchedHandler
-    } |  SchedRemove SchedId
-
-data Event = Event {
-        evId :: SchedId,
-        evStart :: SchedUnits,
-        evExpires :: SchedUnits,
-        evHandler :: SchedHandler
-    }
-
-data EventScheduler = EventScheduler {
-        schEvents :: [Event],
-        schCommands :: [SchedCommand]
-    }
-
-schedCommand :: EventScheduler -> SchedCommand -> EventScheduler
-schedUpdate :: EventScheduler -> SchedUnits -> (Maybe SchedUnits, [SchedHandler], EventScheduler)
-
--------------------------------------------------------
-
 PIC
 
  - IRR - input interrupts which are active
@@ -110,31 +83,6 @@ PIC
   - ESMM
     - 11 - set special mask
     - 01 - reset special mask
-
--------------------------------------------------------
-
- - local timers(based on cycle counter)
-   - timers which call handler when cycles counter expires
-   - multiple independent cycles counters should be supported
-   - each handler should have an ability to be canceled
-
-
-type TimerHandler = Int -> ... -> IO ...
-
-data CycleTimer = CycleTimer {
-        ctCycles :: Int, -- timeout in cycles
-        ctStart :: Int, -- when timer was started
-        ctExpires :: Int, -- ctStart + ctCycles
-        ctHandler :: TimerHandler
-    }
-
-data PCTimer = PCTimer {
-        pcTimerList :: [CycleTimer]
-    }
-
-addTimer :: CycleTimer -> PCTimer -> PCTimer
-addTimer timer pcTimer =
-    ...
 
 -------------------------------------------------------
 
