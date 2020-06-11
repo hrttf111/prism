@@ -86,23 +86,102 @@ PIC
 
 -------------------------------------------------------
 
+read-write
+ - totally independent state and buffers for read and write
+ - for multi bytes write it must be accumulated before set to CR
+
+latch is held until
+ - it is read
+ - counter is reprogrammed
+ latch is per-counter
+ second latch command is ignored, first is held until it is read
+
+read-back generates special output
+ - 
+ can latch multiple counters, same action as latch command
+ when status and count latched, then first read value is status
+
+counter components:
+ - preset (Uint16), value written to counter (CR)
+ - CR state
+    - null count
+ - CPU cycles when counting started
+    - will be used when counter is read to emulate pulses
+ - latch for status
+ - read state
+    - read latch
+ - write state
+    - write latch
+ - mode (0-5)
+ - count format (BIN/BCD)
+ - out pin (1/0)
+
+operations:
+ command :: PITCommand -> PIT -> PIT
+ command CWCommand = ...
+ command LatchCommand = ...
+ command ReadBack = ...
+ command RW = ...
+ read :: PIT -> (PIT, val)
+ write :: PIT -> val -> PIT
+
+output:
+ - val for read (Uint8)
+ - event to raise/lower interrupt for all (Bool)
+ - timeout time when it changes (Maybe Uint64)
+
+0x40 - timer 0
+0x41 - timer 1
+0x42 - timer 2
+0x43 - code word
+    - only write
+    - no read
+0x61 - speaker (out pin?)
+
 data RWMode = RLatch | RWLeast | RWMost | RWBoth
 data PITMode = PITMode0 | PITMode1 ... | PITMode5
 data SelectCounter = SelectCounter0 | ... | ReadBack
 data CounterMode = BinCounter | BCDCounter
 
 data ControlWord = ControlWord {
-        ctrLRWMode :: RWMode,
+        ctrlLRWMode :: RWMode,
         ctrlPitMode :: PITMode,
         ctrlSC :: SelectCounter,
         ctrlCM :: CounterMode
     }
 
-data PITCommand = CWCommand | LatchCommand | ReadBack
+data PITCommand = CWCommand CounterNum ControlWord
+                | LatchCommand Bool Bool (Bool, Bool, Bool)
+                | ReadBack LatchStatus LatchCount CounterNum
+                | ReadCommand
 
 newtype PitMode = PitMode Uint8
 
 MVar or IORef
+
+data Latch = LatchLSB Uint8
+           | LatchMSB Uint8
+           | LatchBoth Uint8 Uint8
+
+data WriteState = WriteLSB
+                | WriteMSB
+                | WriteBoth Uint8
+
+data ReadState = ReadLSB | WriteMSB
+
+data Counter = Counter {
+        counterCR :: Uint16, -- preset
+        counterNullCount :: Bool,
+        counterLatchStatus :: Maybe Uint8, -- set when latch is requested
+        counterLatchRead :: Maybe Latch,
+        counterWrite :: Maybe WriteState,
+        counterRead :: ReadState,
+        counterMode :: Mode,
+        counterFormat :: Format,
+        counterOut :: Bool,
+        ---
+        counterCyclesCPU :: Uint64
+}
 
 data PitCounter = PitCounter {
         pitCW :: ControlWord,
@@ -121,5 +200,16 @@ data PIT = PIT {
 data PeripheralDevices = PeripheralDevices {
         peripheralPIT :: PIT,
     }
+
+parseCW :: Uint8 -> PITCommand
+parseCW v | (d7 && d6) == 1 && d0 == 0 = ReadBack
+parseCW v | (d5 && d4) == 0 = LatchCommand (counter v)
+
+writeCW :: PIT -> Uint8 -> PIT
+writeCW pit val =
+    where
+        cw = parseCW val
+
+
 
 -------------------------------------------------------
