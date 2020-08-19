@@ -1,7 +1,7 @@
 module Prism.Cpu (
         ------------------------------------------------------
           Imm8, Imm16
-        , Uint8, Uint16, Uint32
+        , Uint8, Uint16, Uint32, Uint64
         , EA, Disp, MemOffset, MemSegType
         ------------------------------------------------------
         , OperandVal, Operand (..)

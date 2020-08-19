@@ -8,7 +8,7 @@ module Prism.Cpu.Types where
 
 import Control.Monad.Trans (MonadIO)
 
-import Data.Word (Word8, Word16, Word32)
+import Data.Word (Word8, Word16, Word32, Word64)
 import Data.Bits (FiniteBits, Bits)
 
 import Foreign.Storable
@@ -40,6 +40,7 @@ type Imm16 = Uint16
 type Uint8 = Word8
 type Uint16 = Word16
 type Uint32 = Word32
+type Uint64 = Word64
 
 -------------------------------------------------------------------------------
 

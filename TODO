@@ -87,12 +87,21 @@ PIC
 -------------------------------------------------------
 
 read-write
- - totally independent state and buffers for read and write
- - for multi bytes write it must be accumulated before set to CR
+ - totally independent state and buffers for read (OL) and write (CR)
+ - for multi bytes write it must be accumulated before set to CE
 
-latch is held until
+read commands
+ - direct read from latches, latches follow CE
+    - counter will be read directly according RW mode configured with controll command
+    - second latch may go increment while first one is read
+ - latch counter and then read latches
+ - read back command
+
+latch (OL) is held until
  - it is read
  - counter is reprogrammed
+    - writing new counter values does not cause clear of OL
+    - only control word applied to counter causes it
  latch is per-counter
  second latch command is ignored, first is held until it is read
 
@@ -109,26 +118,12 @@ counter components:
     - will be used when counter is read to emulate pulses
  - latch for status
  - read state
-    - read latch
+    - read latch (OL)
  - write state
-    - write latch
+    - write latch (CR)
  - mode (0-5)
  - count format (BIN/BCD)
  - out pin (1/0)
-
-operations:
- command :: PITCommand -> PIT -> PIT
- command CWCommand = ...
- command LatchCommand = ...
- command ReadBack = ...
- command RW = ...
- read :: PIT -> (PIT, val)
- write :: PIT -> val -> PIT
-
-output:
- - val for read (Uint8)
- - event to raise/lower interrupt for all (Bool)
- - timeout time when it changes (Maybe Uint64)
 
 0x40 - timer 0
 0x41 - timer 1
@@ -137,79 +132,76 @@ output:
     - only write
     - no read
 0x61 - speaker (out pin?)
+ 
+ - separate PIT in two parts
+    - external part which will maintain read/write latches + convert between external format and internal format messages
+    - internal part with logic, it will do actual counting
+ - 8254 will be another entity containing list of PIT timers
 
-data RWMode = RLatch | RWLeast | RWMost | RWBoth
-data PITMode = PITMode0 | PITMode1 ... | PITMode5
-data SelectCounter = SelectCounter0 | ... | ReadBack
-data CounterMode = BinCounter | BCDCounter
-
-data ControlWord = ControlWord {
-        ctrlLRWMode :: RWMode,
-        ctrlPitMode :: PITMode,
-        ctrlSC :: SelectCounter,
-        ctrlCM :: CounterMode
-    }
-
-data PITCommand = CWCommand CounterNum ControlWord
-                | LatchCommand Bool Bool (Bool, Bool, Bool)
-                | ReadBack LatchStatus LatchCount CounterNum
-                | ReadCommand
+data PitModeRW = PitRWLeast | PitRWMost | PitRWBoth
 
 newtype PitMode = PitMode Uint8
 
-MVar or IORef
-
-data Latch = LatchLSB Uint8
-           | LatchMSB Uint8
-           | LatchBoth Uint8 Uint8
-
-data WriteState = WriteLSB
-                | WriteMSB
-                | WriteBoth Uint8
-
-data ReadState = ReadLSB | WriteMSB
-
-data Counter = Counter {
-        counterCR :: Uint16, -- preset
-        counterNullCount :: Bool,
-        counterLatchStatus :: Maybe Uint8, -- set when latch is requested
-        counterLatchRead :: Maybe Latch,
-        counterWrite :: Maybe WriteState,
-        counterRead :: ReadState,
-        counterMode :: Mode,
-        counterFormat :: Format,
-        counterOut :: Bool,
-        ---
-        counterCyclesCPU :: Uint64
-}
-
-data PitCounter = PitCounter {
-        pitCW :: ControlWord,
+data PitCounter {
         pitMode :: PitMode,
-        pitCounter :: MVar Word64,
-        pitTimeout :: Int, -- timeout in us
-        pitScale :: Uint16, -- mapping between system time and counter
-        pitPreset :: Uint16, -- value which is loaded into counter
-        pitThreadId :: Maybe ThreadId
+        pitFormat :: PitFormat, -- BCD or hex
+        pitPreset :: Uint16, -- CR
+        pitGate :: Bool,
+        pitNull :: Bool,
+        pitCounter :: Uint16, -- actual counter, CE
+        pitStart :: Uint64, -- steady time when counting started
+        pitStartCpu :: Uint64, -- CPU cycles when counter started
+        pitScale :: Uint16, -- mapping between steady time and counter
     }
 
-data PIT = PIT {
-        pitCounters :: [PitCounter]
+data PitReadQueueItem = PitReadMost
+                      | PitReadLeast
+                      | PitLatchValue Uint16
+                      | PitLatchStats PitStatus
+
+data PitWriteQueueItem = PitWriteLeast | PitWriteMost
+
+data PitExternal {
+        pitExtEnabled :: Bool, -- enables counting
+        pitExtRW :: PitModeRW, -- in which order to read/write registers
+        pitExtReadQueue :: [PitReadQueueItem], -- latched values for read
+        pitExtWriteQueue :: [PitWriteQueueItem], -- latched values for write
+        pitExtToWrite :: Uint16, -- value ready to be written to CR
+        pitExtCounter :: PitCounter,
+    }
+
+data Pit8254 = Pit8254 {
+        pit8254Counters :: [PitExternal],
     }
 
 data PeripheralDevices = PeripheralDevices {
-        peripheralPIT :: PIT,
+        peripheralPit8254 :: Pit8254,
     }
 
-parseCW :: Uint8 -> PITCommand
-parseCW v | (d7 && d6) == 1 && d0 == 0 = ReadBack
-parseCW v | (d5 && d4) == 0 = LatchCommand (counter v)
+latchCE :: PitExternal -> PitExternal
+latchCE pit = ...
 
-writeCW :: PIT -> Uint8 -> PIT
-writeCW pit val =
-    where
-        cw = parseCW val
+latchAll :: PitExternal -> PitExternal
+latchAll pit = ...
 
+readPit :: PitExternal -> (PitExternal, Uint8)
+readPit pit = case pitExtReadQueue pit of
+                (PitReadMost : tail) -> 
+                ...
+                [] -> ...
 
+configurePit :: PitExternal -> PitModeRW -> PitMode -> PitFormat -> PitExternal
+configurePit pit modeRw mode format = ...
+
+processWriteCommand :: (Monad m) => Pit8254 -> Uint8 -> m Pit8254
+processWriteCommand pit val | (val .&&. 0xC0) == 0xC0 = readBack ...
+processWriteCommand pit val | (val .&&. 0x30) == 0x00 = latch ...
+processWriteCommand pit val = configurePit ...
+
+processReadData :: (Monad m) => Pit8254 -> Uint8 -> m (Pit8254, Uint8)
+processReadData pit 0 = readPit (pit8254Counters pit) 0
+processReadData pit 1 = ...
+processReadData pit 2 = ...
+processReadData pit _ = ...
 
 -------------------------------------------------------
