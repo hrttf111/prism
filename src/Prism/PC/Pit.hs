@@ -1,4 +1,5 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Prism.PC.Pit where
 
@@ -38,25 +39,25 @@ data PitWriteQueueItem = PitWriteLeast
 
 data PitCounter = PitCounter {
         pitMode :: PitMode,
-        pitFormat :: PitFormat, -- BCD or hex
+        pitFormat :: PitFormat, -- BCD or hex, move it to PitExternal ???
         pitPreset :: Uint16, -- CR
         pitGate :: Bool,
         pitNull :: Bool,
         pitOut :: Bool,
-        pitCounter :: Uint16, -- actual counter, CE
-        pitStart :: Uint64, -- steady time when counting started
-        pitStartCpu :: Uint64, -- CPU cycles when counter started
-        pitScale :: Uint16 -- mapping between steady time and counter
+        pitCounter :: Uint16, -- actual counter, CE, used by stats machines
+        pitStart :: Uint64, -- CPU cycles when counter started iteration
+        pitNext :: Uint64 -- time when next event occur
     } deriving (Show)
 
-data PitExternal = PitExternal {
+data PitExternal = forall h. (Show h, PitModeHandler h) => PitExternal {
         pitExtEnabled :: Bool, -- enables counting
         pitExtRW :: PitModeRW, -- in which order to read/write registers
         pitExtReadQueue :: [PitReadQueueItem], -- latched values for read
         pitExtWriteQueue :: [PitWriteQueueItem], -- latched values for write
         pitExtToWrite :: Uint16, -- value ready to be written to CR
+        pitExtModeHandler :: h,
         pitExtCounter :: PitCounter
-    } deriving (Show)
+    }-- deriving (Show)
 
 -------------------------------------------------------------------------------
 
@@ -98,24 +99,75 @@ pitWriteCommand pit command = pitConfigure
 
 -------------------------------------------------------------------------------
 
+class PitModeHandler h where
+    pitModeConfigureCommand :: h -> PitCounter -> Uint64 -> PitCounter
+    pitModeConfigureCounter :: h -> PitCounter -> Uint64 -> Uint16 -> PitCounter
+    pitModeSetGate :: h -> PitCounter -> Uint64 -> Bool -> PitCounter
+    pitModeEvent :: h -> PitCounter -> Uint64 -> PitCounter
+
+data PitMode0 = PitMode0 deriving (Show, Eq)
+
+instance PitModeHandler PitMode0 where
+    pitModeConfigureCommand h pit time = pit { pitOut = False }
+    pitModeConfigureCounter h pit time preset =
+        pit { pitNull = True, pitStart = time, pitNext = (time + fromIntegral preset), pitPreset = preset, pitCounter = 0 }
+    pitModeSetGate h pit time gate = pit
+    pitModeEvent h pit time = pit { pitOut = True, pitStart = 0 }
+
+pitSetModeHandler :: PitMode -> PitExternal -> PitExternal
+pitSetModeHandler mode pit = PitExternal (pitExtEnabled pit)
+                                         (pitExtRW pit)
+                                         (pitExtReadQueue pit)
+                                         (pitExtWriteQueue pit)
+                                         (pitExtToWrite pit)
+                                         PitMode0
+                                         (pitExtCounter pit)
+
+pitModeConfigureCommand_ :: PitExternal -> Uint64 -> PitExternal
+pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ h counter) time =
+    pit { pitExtCounter = pitModeConfigureCommand h counter time }
+
+-------------------------------------------------------------------------------
+
 pitReset :: PitExternal -> PitExternal
 pitReset pit =  newPit
     where
         oldPitI = pitExtCounter pit
-        newPitI = oldPitI { pitNull = False, pitOut = False, pitCounter = 0, pitStart = 0, pitStartCpu = 0, pitScale = 0, pitPreset = 0}
+        newPitI = oldPitI { pitNull = False, pitOut = False, pitCounter = 0, pitStart = 0, pitNext = 0, pitPreset = 0}
         newPit = pit { pitExtReadQueue = [], pitExtWriteQueue = [], pitExtToWrite = 0, pitExtCounter = newPitI }
 
 pitConfigure :: PitExternal -> PitModeRW -> PitMode -> PitFormat -> PitExternal
 pitConfigure pit modeRw mode format = newPit { pitExtCounter = newPitI, pitExtRW = modeRw }
     where
-        newPit = (pitReset pit) 
+        newPit = pitModeConfigureCommand_ (pitSetModeHandler mode $ (pitReset pit)) 0
         newPitI = (pitExtCounter newPit) { pitMode = mode, pitFormat = format }
-{-
-pitWriteCounter :: PitExternal -> Uint8 -> PitExternal
-pitWriteCounter pit val = 
+
+pitConfigureCounter :: PitCounter -> Uint64 -> Uint16 -> PitCounter
+pitConfigureCounter pit cpuTime preset = pit'
+    where
+        pit' = pit { pitNull = True, pitStart = cpuTime, pitPreset = preset }
+
+pitUpdateToWrite :: PitWriteQueueItem -> Uint8 -> Uint16 -> Uint16
+pitUpdateToWrite PitWriteLeast newVal val = (val .&. 0xFF00) .|. (fromIntegral newVal)
+pitUpdateToWrite PitWriteMost newVal val = (val .&. 0x00FF) .|. (shiftL (fromIntegral newVal) 8)
+
+pitFillWriteQueue :: PitModeRW -> [PitWriteQueueItem]
+pitFillWriteQueue PitRWLeast = [PitWriteLeast]
+pitFillWriteQueue PitRWMost = [PitWriteMost]
+pitFillWriteQueue PitRWBoth = [PitWriteLeast, PitWriteMost]
+
+pitWriteCounter :: PitExternal -> Uint64 -> Uint8 -> PitExternal
+pitWriteCounter pit cpuTime val = 
     case (pitExtWriteQueue pit) of
-        case h:t -> 
-        case [] -> 
-        -}
+        (h:t) ->
+            let preset = pitUpdateToWrite h val $ pitExtToWrite pit
+            in
+            if null t then
+                    let pitI = pitConfigureCounter (pitExtCounter pit) cpuTime preset
+                    in
+                    pit { pitExtToWrite = 0, pitExtWriteQueue = pitFillWriteQueue $ pitExtRW pit, pitExtCounter = pitI }
+                else
+                    pit { pitExtToWrite = preset, pitExtWriteQueue = t }
+        [] -> pit
 
 -------------------------------------------------------------------------------

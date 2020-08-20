@@ -86,6 +86,25 @@ PIC
 
 -------------------------------------------------------
 
+actions
+ - config
+    - can trigger interrupt and scheduling actions
+ - raise/lower interrupt
+    - out pin status will be used to set PIC
+ - schedule update
+    - may trigger rescheduling
+    - may trigger interrupt
+ - write status/counter
+    - may cause interrupts or scheduling
+ - read status/counter
+    - read does not cause actions
+ - set gate
+    - can trigger interrupt and scheduling
+
+ - all actions require actual CPU cycles
+ - CPU cycles always increment
+ - CPU cycles never goes backwards
+
 read-write
  - totally independent state and buffers for read (OL) and write (CR)
  - for multi bytes write it must be accumulated before set to CE
