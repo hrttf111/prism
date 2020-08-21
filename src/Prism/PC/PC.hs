@@ -13,6 +13,7 @@ import Data.Bits
 import Prism.Cpu
 import Prism.Peripherals
 import Prism.PC.Pic
+import Prism.PC.Pit
 
 -------------------------------------------------------------------------------
 
@@ -207,6 +208,33 @@ pcPortWrite8PicControlSlave port val = do
         (pic, update) = picWriteCommands (pcPicSlave pc) commands
     putPC $ pcPicUpdateSlave pc pic update
 
+-------------------------------------------------------------------------------
+
+pcPortWrite8PitCommand :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PitCommand port val = return ()
+
+pcPortWrite8PitTimer0 :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PitTimer0 port val = return ()
+
+pcPortRead8PitTimer0 :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PitTimer0 port = return 0
+
+pcPortWrite8PitTimer1 :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PitTimer1 port val = return ()
+
+pcPortRead8PitTimer1 :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PitTimer1 port = return 0
+
+pcPortWrite8PitTimer2 :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWrite8PitTimer2 port val = return ()
+
+pcPortRead8PitTimer2 :: Uint16 -> PeripheralsPC Uint8
+pcPortRead8PitTimer2 port = return 0
+
+pcEventHandlerPit :: SchedHandler PeripheralsPC
+pcEventHandlerPit schedId = return ()
+
+-------------------------------------------------------------------------------
 
 pcPorts = [
         PeripheralPort 0x20
@@ -216,7 +244,15 @@ pcPorts = [
         PeripheralPort 0xA0
             (PeripheralHandlerPort pcPortWrite8PicControlSlave emptyWriteH pcPortRead8PicControlSlave emptyReadH),
         PeripheralPort 0xA1
-            (PeripheralHandlerPort pcPortWrite8PicDataSlave emptyWriteH pcPortRead8PicDataSlave emptyReadH)
+            (PeripheralHandlerPort pcPortWrite8PicDataSlave emptyWriteH pcPortRead8PicDataSlave emptyReadH),
+        PeripheralPort 0x40
+            (PeripheralHandlerPort pcPortWrite8PitTimer0 emptyWriteH pcPortRead8PitTimer0 emptyReadH),
+        PeripheralPort 0x41
+            (PeripheralHandlerPort pcPortWrite8PitTimer1 emptyWriteH pcPortRead8PitTimer1 emptyReadH),
+        PeripheralPort 0x42
+            (PeripheralHandlerPort pcPortWrite8PitTimer2 emptyWriteH pcPortRead8PitTimer2 emptyReadH),
+        PeripheralPort 0x43
+            (PeripheralHandlerPort pcPortWrite8PitCommand emptyWriteH emptyReadH emptyReadH)
     ]
 
 createPC :: PC
