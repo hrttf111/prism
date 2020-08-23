@@ -21,7 +21,8 @@ data PC = PC {
         pcCycles :: Int,
         pcNeedUpdate :: Bool,
         pcPicMaster :: Pic,
-        pcPicSlave :: Pic
+        pcPicSlave :: Pic,
+        pcPit :: Pit
     } deriving (Show)
 
 type PeripheralsPC' = PeripheralsLocal PC
@@ -210,14 +211,53 @@ pcPortWrite8PicControlSlave port val = do
 
 -------------------------------------------------------------------------------
 
+pcPitUpdate :: Pit -> PeripheralsPC ()
+pcPitUpdate pit = do
+    pc <- getPC
+    let next = fromIntegral . pitNext . pitExtCounter . pit0 $ pit
+        lastOut = pit0Level pit
+        out = pitOut . pitExtCounter . pit0 $ pit
+        time = pcCycles pc
+        schedId = SchedId 0
+        irq = PrismIRQ 0
+        pit' = pit { pit0Scheduled = fromIntegral next, pit0Level = out }
+        schedTime = SchedTime $ next - time
+    localSchedulerRemove schedId
+    if time < next then do
+        localSchedulerAdd schedId schedTime pcEventHandlerPit
+        else
+            return ()
+    if lastOut /= out then
+        if out then
+            dispatchIrqUp irq
+            else
+                dispatchIrqDown irq
+        else
+            return False
+    pc' <- getPC
+    putPC $ pc' { pcPit = pit', pcNeedUpdate = True }
+
 pcPortWrite8PitCommand :: Uint16 -> Uint8 -> PeripheralsPC ()
-pcPortWrite8PitCommand port val = return ()
+pcPortWrite8PitCommand port val = do
+    pc <- getPC
+    let time = fromIntegral $ pcCycles pc
+        pit = pitControlCommand (pcPit pc) time val
+    pcPitUpdate pit
 
 pcPortWrite8PitTimer0 :: Uint16 -> Uint8 -> PeripheralsPC ()
-pcPortWrite8PitTimer0 port val = return ()
+pcPortWrite8PitTimer0 port val = do
+    pc <- getPC
+    let time = fromIntegral $ pcCycles pc
+        pit = pitWrite (pcPit pc) time val
+    pcPitUpdate pit
 
 pcPortRead8PitTimer0 :: Uint16 -> PeripheralsPC Uint8
-pcPortRead8PitTimer0 port = return 0
+pcPortRead8PitTimer0 port = do
+    pc <- getPC
+    let time = fromIntegral $ pcCycles pc
+        (val, pit) = pitRead (pcPit pc) time
+    pcPitUpdate pit
+    return val
 
 pcPortWrite8PitTimer1 :: Uint16 -> Uint8 -> PeripheralsPC ()
 pcPortWrite8PitTimer1 port val = return ()
@@ -232,7 +272,11 @@ pcPortRead8PitTimer2 :: Uint16 -> PeripheralsPC Uint8
 pcPortRead8PitTimer2 port = return 0
 
 pcEventHandlerPit :: SchedHandler PeripheralsPC
-pcEventHandlerPit schedId = return ()
+pcEventHandlerPit schedId = do
+    pc <- getPC
+    let time = fromIntegral $ pcCycles pc
+        pit = pitSEvent (pcPit pc) time
+    pcPitUpdate pit
 
 -------------------------------------------------------------------------------
 
@@ -256,6 +300,6 @@ pcPorts = [
     ]
 
 createPC :: PC
-createPC = PC 999 False defaultPIC defaultPIC
+createPC = PC 999 False defaultPIC defaultPIC defaultPIT
 
 -------------------------------------------------------------------------------

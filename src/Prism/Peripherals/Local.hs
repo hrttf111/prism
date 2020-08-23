@@ -51,6 +51,12 @@ localSchedulerAdd id time handler = do
     let scheduler_ = schedEventAdd scheduler id time handler
     modify $ \s -> s { localScheduler = scheduler_ }
 
+localSchedulerRemove :: SchedId -> (LocalTrans p) ()
+localSchedulerRemove id = do
+    scheduler <- localScheduler <$> get
+    let scheduler_ = schedEventRemove scheduler id
+    modify $ \s -> s { localScheduler = scheduler_ }
+
 localSchedulerExpired :: Int -> (LocalTrans p) [(SchedHandlerOut (LocalTrans p))]
 localSchedulerExpired currentTime = do
     scheduler <- localScheduler <$> get

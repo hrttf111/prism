@@ -20,7 +20,7 @@ module Prism.Peripherals (
         , LocalTransM (..)
         , PeripheralsLocal (..), LocalTrans (..)
         , localSchedulerExpired, localSchedulerReschedule
-        , localSchedulerAdd
+        , localSchedulerAdd, localSchedulerRemove
         ------------------------------------------------------
         , RemoteTrans (..)
         , runRemotePeripherals, execPeripheralsOnce

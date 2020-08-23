@@ -180,4 +180,57 @@ testPC instrList = do
                 loop LOOP1
                 hlt
             |]
+    describe "Test PC PIT" $ do
+        let devR = 0
+        it "Write and read Timer 0" $ do
+            comm <- newPrismComm False
+            let devices = createPC
+                testHandler int val = 89
+                intList = [
+                    (PrismInt 0x20, testInterruptHandler testHandler)
+                    ]
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(al `shouldEq` 89), (bl `shouldEq` 45)] env comm $ [text|
+                PIC1  equ  0x20
+                PIC1D equ  0x21
+                ICW1  equ  0x17
+                ICW2  equ  0x20 ; Map IRQ 0 to INT 0x20
+                ICW3  equ  0x00
+                ICW4  equ  0x03
+                OCW1  equ  0x00
+                ;;;;
+                PIT_REG_COMMAND  equ 0x43
+                PIT_REG_COUNTER0 equ 0x40
+                PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
+                ;Init Master PIC
+                mov al, ICW1
+                out PIC1, al
+                mov al, ICW2
+                out PIC1D, al
+                mov al, ICW3
+                out PIC1D, al
+                mov al, ICW4
+                out PIC1D, al
+                mov al, OCW1
+                out PIC1D, al
+                ;Init PIT
+                mov al, PIT_COMMAND
+                out PIT_REG_COMMAND, al
+                mov al, 10 ; 10 timer cycles = 40 cpu cycles
+                out PIT_REG_COUNTER0, al
+                mov al, 0 ; Second byte is 0
+                out PIT_REG_COUNTER0, al
+                ;Start test
+                sti
+                mov bl, 0
+                mov cx, 45
+                LOOP1:
+                inc bl
+                loop LOOP1
+                mov dl, al
+                in al, PIT_REG_COUNTER0
+                mov cl, al
+                mov al, dl
+                hlt
+            |]
 -------------------------------------------------------------------------------
