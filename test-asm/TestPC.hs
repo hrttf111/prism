@@ -185,12 +185,13 @@ testPC instrList = do
         it "Write and read Timer 0" $ do
             comm <- newPrismComm False
             let devices = createPC
+                expectedStatus = 0xF0
                 testHandler int val = 89
                 intList = [
                     (PrismInt 0x20, testInterruptHandler testHandler)
                     ]
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 89), (bl `shouldEq` 45)] env comm $ [text|
+            execPrismHalt [(al `shouldEq` 89), (bl `shouldEq` 45), (cl `shouldEq` expectedStatus)] env comm $ [text|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 ICW1  equ  0x17
@@ -201,6 +202,7 @@ testPC instrList = do
                 ;;;;
                 PIT_REG_COMMAND  equ 0x43
                 PIT_REG_COUNTER0 equ 0x40
+                PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
                 ;Init Master PIC
                 mov al, ICW1
@@ -228,6 +230,9 @@ testPC instrList = do
                 inc bl
                 loop LOOP1
                 mov dl, al
+                ;Read status
+                mov al, PIT_READ_STATUS
+                out PIT_REG_COMMAND, al
                 in al, PIT_REG_COUNTER0
                 mov cl, al
                 mov al, dl

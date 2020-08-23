@@ -220,9 +220,24 @@ pitLatchCounter pit time =
                                  , PitLatchMost $ pitGetCurrentMost pit time]
         rlist = (pitExtReadQueue pit) ++ llist
 
+pitLatchStatus :: PitExternal -> PitExternal
+pitLatchStatus pit =
+    pit { pitExtReadQueue = rlist }
+    where
+        pitI = pitExtCounter pit
+        rlist = (pitExtReadQueue pit) ++ [PitLatchStats status]
+        status = PitStatus (pitOut pitI)
+                           (pitNull pitI)
+                           (pitExtRW pit)
+                           (pitMode pitI)
+                           (pitFormat pitI)
+
 pitLatch :: PitExternal -> Uint64 -> Bool -> Bool -> PitExternal
 pitLatch pit time latchCount latchStatus =
-    pitLatchCounter pit time
+    pit''
+    where
+        pit' = if latchCount then pitLatchCounter pit time else pit
+        pit'' = if latchStatus then pitLatchStatus pit' else pit'
 
 pitUpdateToWrite :: PitWriteQueueItem -> Uint8 -> Uint16 -> Uint16
 pitUpdateToWrite PitWriteLeast newVal val = (val .&. 0xFF00) .|. (fromIntegral newVal)
