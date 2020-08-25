@@ -39,8 +39,6 @@ data PitWriteQueueItem = PitWriteLeast
 -------------------------------------------------------------------------------
 
 data PitCounter = PitCounter {
-        pitMode :: PitMode,
-        pitFormat :: PitFormat, -- BCD or hex, move it to PitExternal ???
         pitPreset :: Uint16, -- CR
         pitGate :: Bool,
         pitNull :: Bool,
@@ -52,6 +50,8 @@ data PitCounter = PitCounter {
 
 data PitExternal = forall h. (Show h, PitModeHandler h) => PitExternal {
         pitExtEnabled :: Bool, -- enables counting
+        pitExtMode :: PitMode,
+        pitExtFormat :: PitFormat, -- BCD or hex, move it to PitExternal ???
         pitExtRW :: PitModeRW, -- in which order to read/write registers
         pitExtReadQueue :: [PitReadQueueItem], -- latched values for read
         pitExtWriteQueue :: [PitWriteQueueItem], -- latched values for write
@@ -151,6 +151,8 @@ instance PitModeHandler PitMode0 where
 
 pitSetModeHandler :: PitMode -> PitExternal -> PitExternal
 pitSetModeHandler mode pit = PitExternal (pitExtEnabled pit)
+                                         (pitExtMode pit)
+                                         (pitExtFormat pit)
                                          (pitExtRW pit)
                                          (pitExtReadQueue pit)
                                          (pitExtWriteQueue pit)
@@ -159,19 +161,19 @@ pitSetModeHandler mode pit = PitExternal (pitExtEnabled pit)
                                          (pitExtCounter pit)
 
 pitModeConfigureCommand_ :: PitExternal -> CpuCycles -> PitExternal
-pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ h counter) time =
+pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time =
     pit { pitExtCounter = pitModeConfigureCommand h counter time }
 
 pitModeConfigureCounter_ :: PitExternal -> CpuCycles -> Uint16 -> PitExternal
-pitModeConfigureCounter_ pit@(PitExternal _ _ _ _ _ h counter) time preset =
+pitModeConfigureCounter_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time preset =
     pit { pitExtCounter = pitModeConfigureCounter h counter time preset }
 
 pitModeSetGate_ :: PitExternal -> CpuCycles -> Bool -> PitExternal
-pitModeSetGate_ pit@(PitExternal _ _ _ _ _ h counter) time gate =
+pitModeSetGate_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time gate =
     pit { pitExtCounter = pitModeSetGate h counter time gate }
 
 pitModeEvent_ :: PitExternal -> CpuCycles -> PitExternal
-pitModeEvent_ pit@(PitExternal _ _ _ _ _ h counter) time =
+pitModeEvent_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time =
     pit { pitExtCounter = pitModeEvent h counter time }
 
 -------------------------------------------------------------------------------
@@ -203,10 +205,10 @@ pitReset pit =  newPit
         newPit = pit { pitExtReadQueue = [], pitExtWriteQueue = [], pitExtToWrite = 0, pitExtCounter = newPitI }
 
 pitConfigure :: PitExternal -> CpuCycles -> PitModeRW -> PitMode -> PitFormat -> PitExternal
-pitConfigure pit time modeRw mode format = newPit { pitExtCounter = newPitI, pitExtRW = modeRw, pitExtWriteQueue = pitFillWriteQueue $ modeRw  }
+pitConfigure pit time modeRw mode format =
+    newPit { pitExtMode = mode, pitExtFormat = format, pitExtRW = modeRw, pitExtWriteQueue = pitFillWriteQueue $ modeRw  }
     where
         newPit = pitModeConfigureCommand_ (pitSetModeHandler mode $ (pitReset pit)) time
-        newPitI = (pitExtCounter newPit) { pitMode = mode, pitFormat = format }
 
 pitLatchCounter :: PitExternal -> CpuCycles -> PitExternal
 pitLatchCounter pit time =
@@ -229,8 +231,8 @@ pitLatchStatus pit =
         status = PitStatus (pitOut pitI)
                            (pitNull pitI)
                            (pitExtRW pit)
-                           (pitMode pitI)
-                           (pitFormat pitI)
+                           (pitExtMode pit)
+                           (pitExtFormat pit)
 
 pitLatch :: PitExternal -> CpuCycles -> Bool -> Bool -> PitExternal
 pitLatch pit time latchCount latchStatus =
@@ -285,8 +287,8 @@ pitReadCounter pit time =
 
 pitEmpty :: PitExternal
 pitEmpty =
-    PitExternal True PitRWLeast [] [PitWriteLeast] 0 PitMode0
-                (PitCounter (PitMode 0) (PitFormat False) 0 False False False 0 0 0)
+    PitExternal True (PitMode 0) (PitFormat False) PitRWLeast [] [PitWriteLeast] 0 PitMode0
+                (PitCounter 0 False False False 0 0 0)
 
 data Pit = Pit {
         pit0 :: PitExternal,
