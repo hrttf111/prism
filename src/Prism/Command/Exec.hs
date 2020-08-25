@@ -31,7 +31,7 @@ processPrismCommand comm offset = do
         else
             return comm
 
-needUpdateComm :: PrismComm -> Int -> Bool
+needUpdateComm :: PrismComm -> CpuCycles -> Bool
 needUpdateComm comm cycles =
     (commBreakpointsEnabled comm) || (cycles > commCycles comm)
 
@@ -68,7 +68,7 @@ processComm comm = do
             if commWaitResponse comm then processComm comm
                 else do
                     c <- ctxCycles <$> get
-                    return $ comm { commCycles = (c + 10) }
+                    return $ comm { commCycles = (c + CpuCycles 10) }
 
 cpuInterruptUp :: PrismComm -> PrismIRQ -> PrismM PrismComm
 cpuInterruptUp comm irq =

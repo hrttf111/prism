@@ -51,3 +51,11 @@ signedOpS :: (OperandVal a, OperandVal b) => (b -> b) -> a -> a
 signedOpS func val1 = toUnsignedComp2 $ func $ toSignedCompl2 val1
 
 -------------------------------------------------------------------------------
+
+maxCpuCyclesDelta = maxBound :: CpuCyclesDelta
+
+calcCpuCyclesDelta :: CpuCycles -> CpuCycles -> CpuCyclesDelta
+calcCpuCyclesDelta (CpuCycles t1) (CpuCycles t2) =
+    CpuCyclesDelta $ (fromIntegral t2) - (fromIntegral t1)
+
+-------------------------------------------------------------------------------

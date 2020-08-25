@@ -45,10 +45,11 @@ type LocalTrans p = LocalTransM (PeripheralsLocal p) IO
 
 -------------------------------------------------------------------------------
 
-localSchedulerAdd :: SchedId -> SchedTime -> SchedHandler (LocalTrans p) -> (LocalTrans p) ()
-localSchedulerAdd id time handler = do
+localSchedulerAdd :: SchedId -> CpuCycles -> SchedHandler (LocalTrans p) -> (LocalTrans p) ()
+localSchedulerAdd id cpuCycles handler = do
     scheduler <- localScheduler <$> get
-    let scheduler_ = schedEventAdd scheduler id time handler
+    let time = convertToSchedTime cpuCycles
+        scheduler_ = schedEventAdd scheduler id time handler
     modify $ \s -> s { localScheduler = scheduler_ }
 
 localSchedulerRemove :: SchedId -> (LocalTrans p) ()
@@ -57,19 +58,21 @@ localSchedulerRemove id = do
     let scheduler_ = schedEventRemove scheduler id
     modify $ \s -> s { localScheduler = scheduler_ }
 
-localSchedulerExpired :: Int -> (LocalTrans p) [(SchedHandlerOut (LocalTrans p))]
-localSchedulerExpired currentTime = do
+localSchedulerExpired :: CpuCycles -> (LocalTrans p) [(SchedHandlerOut (LocalTrans p))]
+localSchedulerExpired cpuCycles = do
     scheduler <- localScheduler <$> get
-    let (_, events, scheduler_) = expireSched scheduler $ SchedTime currentTime
+    let currentTime = convertToSchedTime cpuCycles
+        (_, events, scheduler_) = expireSched scheduler currentTime
     modify $ \s -> s { localScheduler = scheduler_ }
     return events
 
-localSchedulerReschedule :: Int -> (LocalTrans p) Int
-localSchedulerReschedule currentTime = do
+localSchedulerReschedule :: CpuCycles -> (LocalTrans p) CpuCyclesDelta
+localSchedulerReschedule cpuCycles = do
     scheduler <- localScheduler <$> get
-    let (pTimeM, scheduler_) = reschedule scheduler $ SchedTime currentTime
-        pTime = (\(SchedTime t) -> SchedTime $ t - currentTime) <$> pTimeM
-        cyclesP = maybe 9999999999 (\(SchedTime t) -> t) pTime
+    let currentTime = convertToSchedTime cpuCycles
+        (nextSchedTime, scheduler_) = reschedule scheduler currentTime
+        nextSchedCycle = convertFromSchedTime <$> nextSchedTime
+        cyclesP = maybe maxCpuCyclesDelta (calcCpuCyclesDelta cpuCycles) nextSchedCycle
     modify $ \s -> s { localScheduler = scheduler_ }
     return cyclesP
 

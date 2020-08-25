@@ -11,16 +11,18 @@ module Prism.Peripherals.Scheduler (
         , schedEventAdd, schedEventRemove
         , expireSched, reschedule
         , emptyScheduler
+        , convertToSchedTime, convertFromSchedTime
         ------------------------------------------------------
     ) where
 
 import Data.List (uncons, sortOn, partition)
 
+import Prism.Cpu (Uint64, CpuCycles (..))
 import Prism.Peripherals.Types
 
 -------------------------------------------------------------------------------
 
-newtype SchedTime = SchedTime Int deriving (Show, Eq, Ord, Num)
+newtype SchedTime = SchedTime Uint64 deriving (Show, Eq, Ord, Num)
 newtype SchedId = SchedId Int deriving (Show, Eq, Ord)
 
 type SchedHandler m = SchedId -> m ()
@@ -57,6 +59,12 @@ data Scheduler m = Scheduler {
     } deriving (Show, Eq)
 
 emptyScheduler = Scheduler [] []
+
+convertToSchedTime :: CpuCycles -> SchedTime
+convertToSchedTime (CpuCycles cycles) = SchedTime cycles
+
+convertFromSchedTime :: SchedTime -> CpuCycles
+convertFromSchedTime (SchedTime time) = CpuCycles time
 
 -------------------------------------------------------------------------------
 

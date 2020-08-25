@@ -70,7 +70,7 @@ data PrismComm = PrismComm {
         commBreakpoints :: Set MemOffset,
         commBreakpointsEnabled :: Bool,
         commWaitResponse :: Bool,
-        commCycles :: Int
+        commCycles :: CpuCycles
     }
 
 instance PrismMsgQueue PrismCmdQueue PrismCpuCommand where

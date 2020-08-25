@@ -43,7 +43,7 @@ testSendIRQDown queue irq _ =
 testScheduleWrite :: Uint16 -> Uint8 -> PeripheralsPC ()
 testScheduleWrite _ val = do
     let handler _ = liftIO $ putStrLn "Sched event"
-    localSchedulerAdd (SchedId 1) (SchedTime $ fromIntegral val) handler
+    localSchedulerAdd (SchedId 1) (CpuCycles $ fromIntegral val) handler
     liftIO $ putStrLn $ "Do scheduling " ++ (show val)
 
 -------------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import Control.Monad.Trans (MonadIO)
 
 import Data.Word (Word8, Word16, Word32, Word64)
 import Data.Bits (FiniteBits, Bits)
+import Data.Int (Int64)
 
 import Foreign.Storable
 
@@ -41,6 +42,11 @@ type Uint8 = Word8
 type Uint16 = Word16
 type Uint32 = Word32
 type Uint64 = Word64
+
+-------------------------------------------------------------------------------
+
+newtype CpuCycles = CpuCycles Uint64 deriving (Show, Eq, Ord, Num, Bounded)
+newtype CpuCyclesDelta = CpuCyclesDelta Int64 deriving (Show, Eq, Ord, Num, Bounded)
 
 -------------------------------------------------------------------------------
 

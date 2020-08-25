@@ -18,7 +18,7 @@ import Prism.PC.Pit
 -------------------------------------------------------------------------------
 
 data PC = PC {
-        pcCycles :: Int,
+        pcCycles :: CpuCycles,
         pcNeedUpdate :: Bool,
         pcPicMaster :: Pic,
         pcPicSlave :: Pic,
@@ -214,14 +214,14 @@ pcPortWrite8PicControlSlave port val = do
 pcPitUpdate :: Pit -> PeripheralsPC ()
 pcPitUpdate pit = do
     pc <- getPC
-    let next = fromIntegral . pitNext . pitExtCounter . pit0 $ pit
+    let next = pitNext . pitExtCounter . pit0 $ pit
         lastOut = pit0Level pit
         out = pitOut . pitExtCounter . pit0 $ pit
         time = pcCycles pc
         schedId = SchedId 0
         irq = PrismIRQ 0
-        pit' = pit { pit0Scheduled = fromIntegral next, pit0Level = out }
-        schedTime = SchedTime $ next - time
+        pit' = pit { pit0Scheduled = next, pit0Level = out }
+        schedTime = next - time
     localSchedulerRemove schedId
     if time < next then do
         localSchedulerAdd schedId schedTime pcEventHandlerPit
@@ -240,21 +240,21 @@ pcPitUpdate pit = do
 pcPortWrite8PitCommand :: Uint16 -> Uint8 -> PeripheralsPC ()
 pcPortWrite8PitCommand port val = do
     pc <- getPC
-    let time = fromIntegral $ pcCycles pc
+    let time = pcCycles pc
         pit = pitControlCommand (pcPit pc) time val
     pcPitUpdate pit
 
 pcPortWrite8PitTimer0 :: Uint16 -> Uint8 -> PeripheralsPC ()
 pcPortWrite8PitTimer0 port val = do
     pc <- getPC
-    let time = fromIntegral $ pcCycles pc
+    let time = pcCycles pc
         pit = pitWrite (pcPit pc) time val
     pcPitUpdate pit
 
 pcPortRead8PitTimer0 :: Uint16 -> PeripheralsPC Uint8
 pcPortRead8PitTimer0 port = do
     pc <- getPC
-    let time = fromIntegral $ pcCycles pc
+    let time = pcCycles pc
         (val, pit) = pitRead (pcPit pc) time
     pcPitUpdate pit
     return val
@@ -274,7 +274,7 @@ pcPortRead8PitTimer2 port = return 0
 pcEventHandlerPit :: SchedHandler PeripheralsPC
 pcEventHandlerPit schedId = do
     pc <- getPC
-    let time = fromIntegral $ pcCycles pc
+    let time = pcCycles pc
         pit = pitSEvent (pcPit pc) time
     pcPitUpdate pit
 
