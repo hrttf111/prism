@@ -43,7 +43,7 @@ data PitCounter = PitCounter {
         pitGate :: Bool,
         pitNull :: Bool,
         pitOut :: Bool,
-        pitCounter :: Uint16, -- actual counter, CE, used by stats machines
+        pitCounter :: Uint16, -- actual counter, CE, used by state machines
         pitStart :: CpuCycles, -- CPU cycles when counter started iteration
         pitNext :: CpuCycles -- time when next event occur
     } deriving (Show)
@@ -198,11 +198,10 @@ pitGetCurrentMost pit time = most
         most = fromIntegral $ shiftR counter 8
 
 pitReset :: PitExternal -> PitExternal
-pitReset pit =  newPit
+pitReset pit =
+    pit { pitExtReadQueue = [], pitExtWriteQueue = [], pitExtToWrite = 0, pitExtCounter = newCounter }
     where
-        oldPitI = pitExtCounter pit
-        newPitI = oldPitI { pitNull = False, pitOut = False, pitCounter = 0, pitStart = 0, pitNext = 0, pitPreset = 0}
-        newPit = pit { pitExtReadQueue = [], pitExtWriteQueue = [], pitExtToWrite = 0, pitExtCounter = newPitI }
+        newCounter = pitEmpty { pitGate = (pitGate . pitExtCounter $ pit) }
 
 pitConfigure :: PitExternal -> CpuCycles -> PitModeRW -> PitMode -> PitFormat -> PitExternal
 pitConfigure pit time modeRw mode format =
@@ -285,10 +284,13 @@ pitReadCounter pit time =
             PitRWMost -> (pitGetCurrentMost pit time, pit)
             PitRWBoth -> (pitGetCurrentLeast pit time, pit { pitExtReadQueue = [PitReadMost] } )
 
-pitEmpty :: PitExternal
+pitEmpty :: PitCounter
 pitEmpty =
-    PitExternal True (PitMode 0) (PitFormat False) PitRWLeast [] [PitWriteLeast] 0 PitMode0
-                (PitCounter 0 False False False 0 0 0)
+    PitCounter 0 False False False 0 0 0
+
+pitExtEmpty :: PitExternal
+pitExtEmpty =
+    PitExternal True (PitMode 0) (PitFormat False) PitRWLeast [] [PitWriteLeast] 0 PitMode0 pitEmpty
 
 data Pit = Pit {
         pit0 :: PitExternal,
@@ -296,7 +298,7 @@ data Pit = Pit {
         pit0Level :: Bool
     } deriving (Show)
 
-defaultPIT = Pit pitEmpty 0 False
+defaultPIT = Pit pitExtEmpty 0 False
 
 -------------------------------------------------------------------------------
 
