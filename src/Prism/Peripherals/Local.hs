@@ -52,6 +52,13 @@ localSchedulerAdd id cpuCycles handler = do
         scheduler_ = schedEventAdd scheduler id time handler
     modify $ \s -> s { localScheduler = scheduler_ }
 
+localSchedulerAddDelta :: SchedId -> CpuCycles -> CpuCyclesDelta -> SchedHandler (LocalTrans p) -> (LocalTrans p) ()
+localSchedulerAddDelta id cpuCycles delta handler = do
+    scheduler <- localScheduler <$> get
+    let time = convertToSchedTime $ addCpuCyclesDelta cpuCycles delta
+        scheduler_ = schedEventAdd scheduler id time handler
+    modify $ \s -> s { localScheduler = scheduler_ }
+
 localSchedulerRemove :: SchedId -> (LocalTrans p) ()
 localSchedulerRemove id = do
     scheduler <- localScheduler <$> get

@@ -5,6 +5,7 @@ module Prism.Cpu (
         , EA, Disp, MemOffset, MemSegType
         , CpuCycles (..), CpuCyclesDelta (..)
         , maxCpuCyclesDelta, calcCpuCyclesDelta
+        , addCpuCyclesDelta
         ------------------------------------------------------
         , OperandVal, Operand (..)
         , OperandReg, OperandMem

@@ -58,7 +58,7 @@ data PitExternal = forall h. (Show h, PitModeHandler h) => PitExternal {
         pitExtToWrite :: Uint16, -- value ready to be written to CR
         pitExtModeHandler :: h,
         pitExtCounter :: PitCounter
-    }-- deriving (Show)
+    }
 
 instance Show PitExternal where
     show pit = show $ pitExtCounter pit

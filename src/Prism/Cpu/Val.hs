@@ -58,4 +58,8 @@ calcCpuCyclesDelta :: CpuCycles -> CpuCycles -> CpuCyclesDelta
 calcCpuCyclesDelta (CpuCycles t1) (CpuCycles t2) =
     CpuCyclesDelta $ (fromIntegral t2) - (fromIntegral t1)
 
+addCpuCyclesDelta :: CpuCycles -> CpuCyclesDelta -> CpuCycles
+addCpuCyclesDelta (CpuCycles cycles) (CpuCyclesDelta delta) =
+    CpuCycles $ cycles + (fromIntegral delta)
+
 -------------------------------------------------------------------------------
