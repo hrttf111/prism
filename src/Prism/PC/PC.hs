@@ -268,7 +268,7 @@ pcPortRead8PitTimer2 port = return 0
 pcEventHandlerPit :: SchedHandler PeripheralsPC
 pcEventHandlerPit schedId = do
     pc <- getPC
-    pcPitUpdate $ pitSEvent (pcPit pc) (pcCycles pc)
+    pcPitUpdate $ pitSetEvent (pcPit pc) (pcCycles pc)
 
 -------------------------------------------------------------------------------
 

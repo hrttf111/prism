@@ -203,6 +203,8 @@ pitReset pit =
     where
         newCounter = pitEmpty { pitGate = (pitGate . pitExtCounter $ pit) }
 
+-------------------------------------------------------------------------------
+
 pitConfigure :: PitExternal -> CpuCycles -> PitModeRW -> PitMode -> PitFormat -> PitExternal
 pitConfigure pit time modeRw mode format =
     newPit { pitExtMode = mode, pitExtFormat = format, pitExtRW = modeRw, pitExtWriteQueue = pitFillWriteQueue $ modeRw  }
@@ -249,14 +251,6 @@ pitFillWriteQueue PitRWLeast = [PitWriteLeast]
 pitFillWriteQueue PitRWMost = [PitWriteMost]
 pitFillWriteQueue PitRWBoth = [PitWriteLeast, PitWriteMost]
 
-pitEvent :: PitExternal -> CpuCycles -> PitExternal
-pitEvent pit time =
-    pitModeEvent_ pit time
-
-pitSetGate :: PitExternal -> CpuCycles -> Bool -> PitExternal
-pitSetGate pit time gate =
-    pitModeSetGate_ pit time gate
-
 pitWriteCounter :: PitExternal -> CpuCycles -> Uint8 -> PitExternal
 pitWriteCounter pit cpuTime val = 
     case (pitExtWriteQueue pit) of
@@ -292,6 +286,8 @@ pitExtEmpty :: PitExternal
 pitExtEmpty =
     PitExternal True (PitMode 0) (PitFormat False) PitRWLeast [] [PitWriteLeast] 0 PitMode0 pitEmpty
 
+-------------------------------------------------------------------------------
+
 data Pit = Pit {
         pit0 :: PitExternal,
         pit0Scheduled :: CpuCycles,
@@ -299,8 +295,6 @@ data Pit = Pit {
     } deriving (Show)
 
 defaultPIT = Pit pitExtEmpty 0 False
-
--------------------------------------------------------------------------------
 
 pitControlCommand :: Pit -> CpuCycles -> Uint8 -> Pit
 pitControlCommand pit time command | isReadBackCommand command =
@@ -331,16 +325,16 @@ pitRead pit time =
     where
         (val, pitE) = pitReadCounter (pit0 pit) time
 
-pitSGate :: Pit -> CpuCycles -> Bool -> Pit
-pitSGate pit time gate =
+pitSetGate :: Pit -> CpuCycles -> Bool -> Pit
+pitSetGate pit time gate =
     pit { pit0 = pitE }
     where
-        pitE = pitSetGate (pit0 pit) time gate
+        pitE = pitModeSetGate_ (pit0 pit) time gate
 
-pitSEvent :: Pit -> CpuCycles -> Pit
-pitSEvent pit time =
+pitSetEvent :: Pit -> CpuCycles -> Pit
+pitSetEvent pit time =
     pit { pit0 = pitE }
     where
-        pitE = pitEvent (pit0 pit) time
+        pitE = pitModeEvent_ (pit0 pit) time
 
 -------------------------------------------------------------------------------
