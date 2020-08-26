@@ -13,18 +13,6 @@ import Prism.Command
 
 -------------------------------------------------------------------------------
 
-cpuTick :: PrismM (Bool, Bool)
-cpuTick = do
-    ctx <- get
-    let newCycles = (ctxCycles ctx) + 1
-        newCyclesP = (ctxCyclesP ctx) - 1
-        updatePeripherals = (newCyclesP <= 0)
-        intActive = intInterruptUp . ctxInterrupts $ ctx
-    put $ ctx { ctxCycles = newCycles, ctxCyclesP = newCyclesP }
-    return (updatePeripherals, intActive)
-
-{-# INLINE cpuTick #-}
-
 runPeripherals' :: Bool -> PrismM ()
 runPeripherals' updatePeripherals =
     if updatePeripherals then
@@ -49,8 +37,8 @@ runCpuInstruction dec offset = do
 
 runPrism :: PrismDecoder -> MemOffset -> PrismM Bool
 runPrism dec offset = do
-    (updatePeripherals, intActive) <- cpuTick
-    if intActive then
+    (updatePeripherals, interruptActive) <- cpuTick
+    if interruptActive then
         processInterrupts
         >> runPeripherals' updatePeripherals
         >> return False

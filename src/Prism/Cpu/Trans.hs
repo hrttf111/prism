@@ -30,5 +30,13 @@ instance CpuMonad CpuTrans where
     cpuNextInstrByte = do
         ctx <- get
         peekFirstByte (ctxMem ctx) =<< cpuInstrAddress
+    cpuTick = do
+        ctx <- get
+        let newCycles = (ctxCycles ctx) + 1
+            newCyclesP = (ctxCyclesP ctx) - 1
+            updatePeripherals = (newCyclesP <= 0)
+            interruptActive = intInterruptUp . ctxInterrupts $ ctx
+        put $ ctx { ctxCycles = newCycles, ctxCyclesP = newCyclesP }
+        return (updatePeripherals, interruptActive)
 
 -------------------------------------------------------------------------------

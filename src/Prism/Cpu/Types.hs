@@ -191,5 +191,6 @@ class ( Monad m
     cpuUpdateIP :: Uint16 -> m ()
     cpuInstrAddress :: m MemOffset
     cpuNextInstrByte :: m Uint8
+    cpuTick :: m (Bool, Bool) -- m (updatePeripherals, interruptActive)
 
 -------------------------------------------------------------------------------
