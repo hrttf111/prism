@@ -151,76 +151,26 @@ counter components:
     - only write
     - no read
 0x61 - speaker (out pin?)
- 
- - separate PIT in two parts
-    - external part which will maintain read/write latches + convert between external format and internal format messages
-    - internal part with logic, it will do actual counting
- - 8254 will be another entity containing list of PIT timers
 
-data PitModeRW = PitRWLeast | PitRWMost | PitRWBoth
+TODO:
+ - implement multiple counters
+ - implement all modes
+ - BCD counting
+ - implement backwards counting
+ - add ASM interrupt handler into unit tests to save CX value
+ - process many counters in scope of command handler
 
-newtype PitMode = PitMode Uint8
+data PitCounter = ... {
+}
 
-data PitCounter {
-        pitMode :: PitMode,
-        pitFormat :: PitFormat, -- BCD or hex
-        pitPreset :: Uint16, -- CR
-        pitGate :: Bool,
-        pitNull :: Bool,
-        pitCounter :: Uint16, -- actual counter, CE
-        pitStart :: Uint64, -- steady time when counting started
-        pitStartCpu :: Uint64, -- CPU cycles when counter started
-        pitScale :: Uint16, -- mapping between steady time and counter
-    }
+data PitExternal = ... {
+    pitEnabled :: Bool,
+    pitScheduled :: CpuCycles,
+    pitOut :: Bool
+    ...
+}
 
-data PitReadQueueItem = PitReadMost
-                      | PitReadLeast
-                      | PitLatchValue Uint16
-                      | PitLatchStats PitStatus
-
-data PitWriteQueueItem = PitWriteLeast | PitWriteMost
-
-data PitExternal {
-        pitExtEnabled :: Bool, -- enables counting
-        pitExtRW :: PitModeRW, -- in which order to read/write registers
-        pitExtReadQueue :: [PitReadQueueItem], -- latched values for read
-        pitExtWriteQueue :: [PitWriteQueueItem], -- latched values for write
-        pitExtToWrite :: Uint16, -- value ready to be written to CR
-        pitExtCounter :: PitCounter,
-    }
-
-data Pit8254 = Pit8254 {
-        pit8254Counters :: [PitExternal],
-    }
-
-data PeripheralDevices = PeripheralDevices {
-        peripheralPit8254 :: Pit8254,
-    }
-
-latchCE :: PitExternal -> PitExternal
-latchCE pit = ...
-
-latchAll :: PitExternal -> PitExternal
-latchAll pit = ...
-
-readPit :: PitExternal -> (PitExternal, Uint8)
-readPit pit = case pitExtReadQueue pit of
-                (PitReadMost : tail) -> 
-                ...
-                [] -> ...
-
-configurePit :: PitExternal -> PitModeRW -> PitMode -> PitFormat -> PitExternal
-configurePit pit modeRw mode format = ...
-
-processWriteCommand :: (Monad m) => Pit8254 -> Uint8 -> m Pit8254
-processWriteCommand pit val | (val .&&. 0xC0) == 0xC0 = readBack ...
-processWriteCommand pit val | (val .&&. 0x30) == 0x00 = latch ...
-processWriteCommand pit val = configurePit ...
-
-processReadData :: (Monad m) => Pit8254 -> Uint8 -> m (Pit8254, Uint8)
-processReadData pit 0 = readPit (pit8254Counters pit) 0
-processReadData pit 1 = ...
-processReadData pit 2 = ...
-processReadData pit _ = ...
+data Pit = ... {
+}
 
 -------------------------------------------------------

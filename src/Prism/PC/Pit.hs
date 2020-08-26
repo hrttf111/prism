@@ -51,7 +51,7 @@ data PitCounter = PitCounter {
 data PitExternal = forall h. (Show h, PitModeHandler h) => PitExternal {
         pitExtEnabled :: Bool, -- enables counting
         pitExtMode :: PitMode,
-        pitExtFormat :: PitFormat, -- BCD or hex, move it to PitExternal ???
+        pitExtFormat :: PitFormat, -- BCD or hex
         pitExtRW :: PitModeRW, -- in which order to read/write registers
         pitExtReadQueue :: [PitReadQueueItem], -- latched values for read
         pitExtWriteQueue :: [PitWriteQueueItem], -- latched values for write
