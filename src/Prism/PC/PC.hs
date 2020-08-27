@@ -232,34 +232,46 @@ pcPitUpdate pit = do
     pc <- getPC
     putPC $ pc { pcPit = pit' }
 
+pcPortWritePit :: Uint8 -> PitCounterNum -> PeripheralsPC ()
+pcPortWritePit val counter = do
+    pc <- getPC
+    pcPitUpdate $ pitWrite (pcPit pc) counter (pcCycles pc) val
+
+pcPortReadPit :: PitCounterNum -> PeripheralsPC Uint8
+pcPortReadPit counter = do
+    pc <- getPC
+    let (val, pit) = pitRead (pcPit pc) counter (pcCycles pc)
+    putPC $ pc { pcPit = pit }
+    return val
+
 pcPortWrite8PitCommand :: Uint16 -> Uint8 -> PeripheralsPC ()
 pcPortWrite8PitCommand port val = do
     pc <- getPC
     pcPitUpdate $ pitControlCommand (pcPit pc) (pcCycles pc) val
 
 pcPortWrite8PitTimer0 :: Uint16 -> Uint8 -> PeripheralsPC ()
-pcPortWrite8PitTimer0 port val = do
-    pc <- getPC
-    pcPitUpdate $ pitWrite (pcPit pc) PitCounterNum0 (pcCycles pc) val
+pcPortWrite8PitTimer0 port val =
+    pcPortWritePit val PitCounterNum0
 
 pcPortRead8PitTimer0 :: Uint16 -> PeripheralsPC Uint8
-pcPortRead8PitTimer0 port = do
-    pc <- getPC
-    let (val, pit) = pitRead (pcPit pc) PitCounterNum0 (pcCycles pc)
-    putPC $ pc { pcPit = pit }
-    return val
+pcPortRead8PitTimer0 port =
+    pcPortReadPit PitCounterNum0
 
 pcPortWrite8PitTimer1 :: Uint16 -> Uint8 -> PeripheralsPC ()
-pcPortWrite8PitTimer1 port val = return ()
+pcPortWrite8PitTimer1 port val =
+    pcPortWritePit val PitCounterNum1
 
 pcPortRead8PitTimer1 :: Uint16 -> PeripheralsPC Uint8
-pcPortRead8PitTimer1 port = return 0
+pcPortRead8PitTimer1 port =
+    pcPortReadPit PitCounterNum1
 
 pcPortWrite8PitTimer2 :: Uint16 -> Uint8 -> PeripheralsPC ()
-pcPortWrite8PitTimer2 port val = return ()
+pcPortWrite8PitTimer2 port val =
+    pcPortWritePit val PitCounterNum2
 
 pcPortRead8PitTimer2 :: Uint16 -> PeripheralsPC Uint8
-pcPortRead8PitTimer2 port = return 0
+pcPortRead8PitTimer2 port =
+    pcPortReadPit PitCounterNum2
 
 pcEventHandlerPit :: SchedHandler PeripheralsPC
 pcEventHandlerPit schedId = do
