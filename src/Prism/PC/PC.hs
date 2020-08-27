@@ -223,7 +223,8 @@ pcPitUpdate pit = do
                 PitActionIrq False irq -> do
                     dispatchIrqDown irq
                     return ()
-                PitActionScheduleAdd schedId cycles ->
+                PitActionScheduleAdd schedId cycles -> do
+                    localSchedulerRemove schedId
                     localSchedulerAdd schedId cycles pcEventHandlerPit
                 PitActionScheduleRemove schedId ->
                     localSchedulerRemove schedId
