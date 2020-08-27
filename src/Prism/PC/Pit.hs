@@ -5,7 +5,8 @@ module Prism.PC.Pit where
 
 import Data.Bits
 
-import Prism.Cpu (Uint8, Uint16, Uint64, PrismInt(..), CpuCycles(..))
+import Prism.Cpu (Uint8, Uint16, Uint64, PrismInt(..), CpuCycles(..), PrismIRQ(..))
+import Prism.Peripherals (SchedId(..))
 
 -------------------------------------------------------------------------------
 
@@ -38,6 +39,11 @@ data PitWriteQueueItem = PitWriteLeast
 
 -------------------------------------------------------------------------------
 
+data PitCounterNum = PitCounterNum0
+                   | PitCounterNum1
+                   | PitCounterNum2
+                   deriving (Show)
+
 data PitCounter = PitCounter {
         pitPreset :: Uint16, -- CR
         pitGate :: Bool,
@@ -57,6 +63,8 @@ data PitExternal = forall h. (Show h, PitModeHandler h) => PitExternal {
         pitExtWriteQueue :: [PitWriteQueueItem], -- latched values for write
         pitExtToWrite :: Uint16, -- value ready to be written to CR
         pitExtModeHandler :: h,
+        pitExtScheduled :: CpuCycles, -- next scheduled timeout
+        pitExtCurrentOut :: Bool,
         pitExtCounter :: PitCounter
     }
 
@@ -71,32 +79,34 @@ isReadBackCommand val = (val .&. 0xC0) == 0xC0
 isLatchCommand :: Uint8 -> Bool
 isLatchCommand val = (val .&. 0x30) == 0
 
-parseCounterNum :: Uint8 -> Uint8
-parseCounterNum command = shiftR (command .&. 0xC0) 4
-
 parseRw :: Uint8 -> PitModeRW
 parseRw 0x30 = PitRWBoth
 parseRw 0x10 = PitRWLeast
 parseRw 0x20 = PitRWMost
 parseRw _ = PitRWBoth
 
-parseConfigureCommand :: Uint8 -> (Uint8, PitModeRW, PitMode, PitFormat)
+parseConfigureCommand :: Uint8 -> (PitCounterNum, PitModeRW, PitMode, PitFormat)
 parseConfigureCommand val = (counter, modeRw, mode, format)
     where
-        counter = parseCounterNum val
+        counter = parseLatchCommand val
         modeRw = parseRw $ val .&. 0x30
         mode = PitMode $ shiftR (val .&. 0x0E) 1
         format = PitFormat $ (val .&. 0x01) == 1
 
-parseReadBackCommand :: Uint8 -> (Bool, Bool, [Uint8])
+parseReadBackCommand :: Uint8 -> (Bool, Bool, [PitCounterNum])
 parseReadBackCommand command = (count, status, counters)
     where
         count = (command .&. 0x20) == 0
         status = (command .&. 0x10) == 0
-        counters = []
+        counters = foldl (\l (ctr, bit) -> if (bit .&. command) /= 0 then (ctr:l) else l) []
+                        [(PitCounterNum0, 0x2), (PitCounterNum1, 0x4), (PitCounterNum2, 0x8)]
 
-parseLatchCommand :: Uint8 -> Uint8
-parseLatchCommand val = shiftR val 6
+parseLatchCommand :: Uint8 -> PitCounterNum
+parseLatchCommand val =
+    case val .&. 0xC0 of
+        0 -> PitCounterNum0
+        1 -> PitCounterNum1
+        _ -> PitCounterNum2
 
 serializeRW :: PitModeRW -> Uint8
 serializeRW PitRWLeast = 0x10
@@ -158,22 +168,24 @@ pitSetModeHandler mode pit = PitExternal (pitExtEnabled pit)
                                          (pitExtWriteQueue pit)
                                          (pitExtToWrite pit)
                                          PitMode0
+                                         (pitExtScheduled pit)
+                                         (pitExtCurrentOut pit)
                                          (pitExtCounter pit)
 
 pitModeConfigureCommand_ :: PitExternal -> CpuCycles -> PitExternal
-pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time =
+pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time =
     pit { pitExtCounter = pitModeConfigureCommand h counter time }
 
 pitModeConfigureCounter_ :: PitExternal -> CpuCycles -> Uint16 -> PitExternal
-pitModeConfigureCounter_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time preset =
+pitModeConfigureCounter_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time preset =
     pit { pitExtCounter = pitModeConfigureCounter h counter time preset }
 
 pitModeSetGate_ :: PitExternal -> CpuCycles -> Bool -> PitExternal
-pitModeSetGate_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time gate =
+pitModeSetGate_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time gate =
     pit { pitExtCounter = pitModeSetGate h counter time gate }
 
 pitModeEvent_ :: PitExternal -> CpuCycles -> PitExternal
-pitModeEvent_ pit@(PitExternal _ _ _ _ _ _ _ h counter) time =
+pitModeEvent_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time =
     pit { pitExtCounter = pitModeEvent h counter time }
 
 -------------------------------------------------------------------------------
@@ -284,57 +296,91 @@ pitEmpty =
 
 pitExtEmpty :: PitExternal
 pitExtEmpty =
-    PitExternal True (PitMode 0) (PitFormat False) PitRWLeast [] [PitWriteLeast] 0 PitMode0 pitEmpty
+    PitExternal True (PitMode 0) (PitFormat False) PitRWLeast [] [PitWriteLeast] 0 PitMode0 (CpuCycles 0) False pitEmpty
+
+setPitCounter :: Pit -> PitCounterNum -> PitExternal -> Pit
+setPitCounter pit PitCounterNum0 counter =
+    pit { pitCounter0 = counter }
+setPitCounter pit PitCounterNum1 counter =
+    pit { pitCounter1 = counter }
+setPitCounter pit PitCounterNum2 counter =
+    pit { pitCounter2 = counter }
+
+getPitCounter :: Pit -> PitCounterNum -> PitExternal
+getPitCounter pit PitCounterNum0 = pitCounter0 pit
+getPitCounter pit PitCounterNum1 = pitCounter1 pit
+getPitCounter pit PitCounterNum2 = pitCounter2 pit
 
 -------------------------------------------------------------------------------
 
 data Pit = Pit {
-        pit0 :: PitExternal,
-        pit0Scheduled :: CpuCycles,
-        pit0Level :: Bool
+        pitCounter0 :: PitExternal,
+        pitCounter1 :: PitExternal,
+        pitCounter2 :: PitExternal
     } deriving (Show)
 
-defaultPIT = Pit pitExtEmpty 0 False
+defaultPIT = Pit pitExtEmpty pitExtEmpty pitExtEmpty
 
 pitControlCommand :: Pit -> CpuCycles -> Uint8 -> Pit
 pitControlCommand pit time command | isReadBackCommand command =
-    pit { pit0 = pitE }
+    foldl process pit counters
     where
         (count, status, counters) = parseReadBackCommand command
-        pitE = pitLatch (pit0 pit) time count status
+        process p ctr =
+            setPitCounter p ctr $ pitLatch (getPitCounter p ctr) time count status
 pitControlCommand pit time command | isLatchCommand command =
-    pit { pit0 = pitE }
-    where
-        counter = parseLatchCommand command
-        pitE = pitLatchCounter (pit0 pit) time
+    let counter = parseLatchCommand command
+    in
+    setPitCounter pit counter $ pitLatchCounter (getPitCounter pit counter) time
 pitControlCommand pit time command =
-    pit { pit0 = pitE }
+    setPitCounter pit counter $ pitConfigure (getPitCounter pit counter) time modeRw mode format
     where
         (counter, modeRw, mode, format) = parseConfigureCommand command
-        pitE = pitConfigure (pit0 pit) time modeRw mode format
 
-pitWrite :: Pit -> CpuCycles -> Uint8 -> Pit
-pitWrite pit time val =
-    pit { pit0 = pitE }
-    where
-        pitE = pitWriteCounter (pit0 pit) time val
+pitWrite :: Pit -> PitCounterNum -> CpuCycles -> Uint8 -> Pit
+pitWrite pit counter time val =
+    setPitCounter pit counter $ pitWriteCounter (getPitCounter pit counter) time val
 
-pitRead :: Pit -> CpuCycles -> (Uint8, Pit)
-pitRead pit time =
-    (val, pit { pit0 = pitE })
-    where
-        (val, pitE) = pitReadCounter (pit0 pit) time
+pitRead :: Pit -> PitCounterNum -> CpuCycles -> (Uint8, Pit)
+pitRead pit counter time =
+    let (val, pitE) = pitReadCounter (getPitCounter pit counter) time
+    in
+    (val, setPitCounter pit counter pitE)
 
-pitSetGate :: Pit -> CpuCycles -> Bool -> Pit
-pitSetGate pit time gate =
-    pit { pit0 = pitE }
-    where
-        pitE = pitModeSetGate_ (pit0 pit) time gate
+pitSetGate :: Pit -> PitCounterNum -> CpuCycles -> Bool -> Pit
+pitSetGate pit counter time gate =
+    setPitCounter pit counter $ pitModeSetGate_ (getPitCounter pit counter) time gate
 
-pitSetEvent :: Pit -> CpuCycles -> Pit
-pitSetEvent pit time =
-    pit { pit0 = pitE }
+pitSetEvent :: Pit -> PitCounterNum -> CpuCycles -> Pit
+pitSetEvent pit counter time =
+    setPitCounter pit counter $ pitModeEvent_ (getPitCounter pit counter) time
+
+data PitAction = PitActionIrq Bool PrismIRQ
+               | PitActionScheduleAdd SchedId CpuCycles
+               | PitActionScheduleRemove SchedId
+               deriving (Show)
+
+pitDoUpdate :: Pit -> CpuCycles -> (Pit, [PitAction])
+pitDoUpdate pit time =
+    foldl doUpdate (pit, []) [PitCounterNum0, PitCounterNum1, PitCounterNum2]
     where
-        pitE = pitModeEvent_ (pit0 pit) time
+        doUpdate (p, result) ctr =
+            let counter = getPitCounter pit ctr
+                out = pitOut . pitExtCounter $ counter
+                lastOut = pitExtCurrentOut counter
+                schedId = SchedId 0
+                irq = PrismIRQ 0
+                timeoutCycles = pitNext . pitExtCounter $ counter
+                actions =
+                    (\l -> if lastOut /= out then
+                        (PitActionIrq out irq:l) else l) $
+                        (\l -> if time < timeoutCycles then
+                            if timeoutCycles == 0 then
+                                (PitActionScheduleRemove schedId:l) else
+                                    (PitActionScheduleAdd schedId timeoutCycles:l)
+                            else l) []
+                counter' = counter { pitExtCurrentOut = out, pitExtScheduled = timeoutCycles }
+            in
+            (setPitCounter p ctr counter', result ++ actions)
 
 -------------------------------------------------------------------------------

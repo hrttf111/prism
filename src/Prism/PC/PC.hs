@@ -213,28 +213,24 @@ pcPortWrite8PicControlSlave port val = do
 
 pcPitUpdate :: Pit -> PeripheralsPC ()
 pcPitUpdate pit = do
-    pc <- getPC
-    let timeoutCycles = pitNext . pitExtCounter . pit0 $ pit
-        currentCycles = pcCycles pc
-        out = pitOut . pitExtCounter . pit0 $ pit
-        lastOut = pit0Level pit
-        schedId = SchedId 0
-        irq = PrismIRQ 0
-        pit' = pit { pit0Scheduled = timeoutCycles, pit0Level = out }
-    localSchedulerRemove schedId
-    if currentCycles < timeoutCycles then do
-        localSchedulerAdd schedId timeoutCycles pcEventHandlerPit
-        else
+    currentCycles <- pcCycles <$> getPC
+    let (pit', actions) = pitDoUpdate pit currentCycles
+    foldM_ (\ _ action -> do
+            case action of
+                PitActionIrq True irq -> do
+                    dispatchIrqUp irq
+                    return ()
+                PitActionIrq False irq -> do
+                    dispatchIrqDown irq
+                    return ()
+                PitActionScheduleAdd schedId cycles ->
+                    localSchedulerAdd schedId cycles pcEventHandlerPit
+                PitActionScheduleRemove schedId ->
+                    localSchedulerRemove schedId
             return ()
-    if lastOut /= out then
-        if out then
-            dispatchIrqUp irq
-            else
-                dispatchIrqDown irq
-        else
-            return False
-    pc' <- getPC
-    putPC $ pc' { pcPit = pit' }
+           ) () actions
+    pc <- getPC
+    putPC $ pc { pcPit = pit' }
 
 pcPortWrite8PitCommand :: Uint16 -> Uint8 -> PeripheralsPC ()
 pcPortWrite8PitCommand port val = do
@@ -244,12 +240,12 @@ pcPortWrite8PitCommand port val = do
 pcPortWrite8PitTimer0 :: Uint16 -> Uint8 -> PeripheralsPC ()
 pcPortWrite8PitTimer0 port val = do
     pc <- getPC
-    pcPitUpdate $ pitWrite (pcPit pc) (pcCycles pc) val
+    pcPitUpdate $ pitWrite (pcPit pc) PitCounterNum0 (pcCycles pc) val
 
 pcPortRead8PitTimer0 :: Uint16 -> PeripheralsPC Uint8
 pcPortRead8PitTimer0 port = do
     pc <- getPC
-    let (val, pit) = pitRead (pcPit pc) (pcCycles pc)
+    let (val, pit) = pitRead (pcPit pc) PitCounterNum0 (pcCycles pc)
     putPC $ pc { pcPit = pit }
     return val
 
@@ -268,7 +264,7 @@ pcPortRead8PitTimer2 port = return 0
 pcEventHandlerPit :: SchedHandler PeripheralsPC
 pcEventHandlerPit schedId = do
     pc <- getPC
-    pcPitUpdate $ pitSetEvent (pcPit pc) (pcCycles pc)
+    pcPitUpdate $ pitSetEvent (pcPit pc) PitCounterNum0 (pcCycles pc)
 
 -------------------------------------------------------------------------------
 
