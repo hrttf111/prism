@@ -311,6 +311,11 @@ getPitCounter pit PitCounterNum0 = pitCounter0 pit
 getPitCounter pit PitCounterNum1 = pitCounter1 pit
 getPitCounter pit PitCounterNum2 = pitCounter2 pit
 
+getPitIrqAndSchedId :: PitCounterNum -> (PrismIRQ, SchedId)
+getPitIrqAndSchedId PitCounterNum0 = (PrismIRQ 0, SchedId 0)
+getPitIrqAndSchedId PitCounterNum1 = (PrismIRQ 100, SchedId 1)
+getPitIrqAndSchedId PitCounterNum2 = (PrismIRQ 100, SchedId 2)
+
 -------------------------------------------------------------------------------
 
 data Pit = Pit {
@@ -368,8 +373,7 @@ pitDoUpdate pit time =
             let counter = getPitCounter pit ctr
                 out = pitOut . pitExtCounter $ counter
                 lastOut = pitExtCurrentOut counter
-                schedId = SchedId 0
-                irq = PrismIRQ 0
+                (irq, schedId) = getPitIrqAndSchedId ctr
                 timeoutCycles = pitNext . pitExtCounter $ counter
                 actions =
                     (\l -> if lastOut /= out then
