@@ -186,12 +186,8 @@ testPC instrList = do
             comm <- newPrismComm False
             let devices = createPC
                 expectedStatus = 0xF0
-                testHandler int val = 89
-                intList = [
-                    (PrismInt 0x20, testInterruptHandler testHandler)
-                    ]
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 89), (bl `shouldEq` 45), (cl `shouldEq` expectedStatus)] env comm $ [text|
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
+            execPrismHalt [(al `shouldEq` 89), (bx `shouldEq` 43), (cl `shouldEq` expectedStatus)] env comm $ [text|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 ICW1  equ  0x17
@@ -222,13 +218,18 @@ testPC instrList = do
                 out PIT_REG_COUNTER0, al
                 mov al, 0 ; Second byte is 0
                 out PIT_REG_COUNTER0, al
+                ;Set interrupt
+                mov ax, ds
+                xor cx, cx
+                mov ds, cx
+                mov bx, cs
+                mov [0x80], WORD INTERRUPT1
+                mov [0x82], bx
+                mov ds, ax
                 ;Start test
                 sti
-                mov bl, 0
-                mov cx, 45
-                LOOP1:
-                inc bl
-                loop LOOP1
+                mov cx, 90
+                LOOP1: loop LOOP1
                 mov dl, al
                 ;Read status
                 mov al, PIT_READ_STATUS
@@ -237,5 +238,10 @@ testPC instrList = do
                 mov cl, al
                 mov al, dl
                 hlt
+
+                INTERRUPT1: 
+                mov ax, 89
+                mov bx, cx
+                iret
             |]
 -------------------------------------------------------------------------------

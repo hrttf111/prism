@@ -153,12 +153,9 @@ counter components:
 0x61 - speaker (out pin?)
 
 TODO:
- - implement multiple counters
  - implement all modes
  - BCD counting
  - implement backwards counting
- - add ASM interrupt handler into unit tests to save CX value
- - process many counters in scope of command handler
 
 data PitCounter = ... {
 }
