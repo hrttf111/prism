@@ -188,14 +188,20 @@ pitModeEvent_ :: PitExternal -> CpuCycles -> PitExternal
 pitModeEvent_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time =
     pit { pitExtCounter = pitModeEvent h counter time }
 
+pitCountBackwards :: CpuCycles -> CpuCycles -> Uint16 -> CpuCycles
+pitCountBackwards (CpuCycles current) (CpuCycles start) max =
+    CpuCycles $ mod (current - start) $ fromIntegral max
+
 -------------------------------------------------------------------------------
 
 pitGetCurrentCounter :: PitExternal -> CpuCycles -> Uint16
-pitGetCurrentCounter pit time = counter
+pitGetCurrentCounter pit time = ctr
     where
-        pitI = pitExtCounter pit
-        diff = time - pitStart pitI
-        counter = if pitCounter pitI > 0 then pitCounter pitI else convertCyclesToCounter diff
+        counter = pitExtCounter pit
+        (PitFormat bcd) = pitExtFormat pit
+        max = if pitExtFormat pit == PitFormat True then 9999 else 0xFFFF
+        diff = (pitPreset counter) - (convertCyclesToCounter $ pitCountBackwards time (pitStart counter) max)
+        ctr = if pitCounter counter > 0 then pitCounter counter else diff
 
 pitGetCurrentLeast :: PitExternal -> CpuCycles -> Uint8
 pitGetCurrentLeast pit time = least

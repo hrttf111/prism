@@ -155,19 +155,5 @@ counter components:
 TODO:
  - implement all modes
  - BCD counting
- - implement backwards counting
-
-data PitCounter = ... {
-}
-
-data PitExternal = ... {
-    pitEnabled :: Bool,
-    pitScheduled :: CpuCycles,
-    pitOut :: Bool
-    ...
-}
-
-data Pit = ... {
-}
 
 -------------------------------------------------------
