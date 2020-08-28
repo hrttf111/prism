@@ -149,28 +149,67 @@ instance PitModeHandler PitMode0 where
             next = if pitGate pit then 0 else (time + convertCounterToCycles preset)
             counter = if pitGate pit then preset else 0
     pitModeSetGate _ pit time gate =
-        if pitStart pit == 0 then
-            pit { pitGate = gate }
+        if pitNull pit then
+            pit { pitGate = gate, pitNext = next, pitCounter = counter }
             else
-                pit { pitGate = gate, pitNext = next, pitCounter = counter }
+                pit { pitGate = gate }
         where
             counter = if pitGate pit then convertCyclesToCounter(pitNext pit - time) else 0
             next = if pitGate pit then 0 else (time + convertCounterToCycles(pitCounter pit))
     pitModeEvent _ pit time =
-        pit { pitOut = True, pitStart = 0, pitNext = 0 }
+        pit { pitOut = True, pitNext = 0 }
 
-pitSetModeHandler :: PitMode -> PitExternal -> PitExternal
-pitSetModeHandler mode pit = PitExternal (pitExtEnabled pit)
+data PitMode1 = PitMode1 deriving (Show, Eq)
+
+instance PitModeHandler PitMode1 where
+    pitModeConfigureCommand _ pit time =
+        pit { pitOut = True }
+    pitModeConfigureCounter _ pit time preset =
+        pit { pitNull = True, pitStart = time, pitNext = 0, pitPreset = preset, pitCounter = preset }
+    pitModeSetGate _ pit time gate =
+        pit { pitGate = gate, pitNext = next, pitOut = False }
+        where
+            trigger = ((pitGate pit) == False) && (gate == True) -- rising edge of Gate
+            next = if trigger then (time + convertCounterToCycles (pitPreset pit)) else (pitNext pit)
+    pitModeEvent _ pit time =
+        pit { pitOut = True, pitNext = 0 }
+
+data PitMode2 = PitMode2 deriving (Show, Eq)
+
+instance PitModeHandler PitMode2 where
+    pitModeConfigureCommand _ pit time =
+        pit { pitOut = True }
+    pitModeConfigureCounter _ pit time preset =
+        pit { pitOut = True, pitNull = True, pitStart = time, pitNext = next, pitPreset = preset, pitCounter = counter }
+        where
+            next = if pitGate pit then 0 else (time + convertCounterToCycles (preset-1))
+            counter = if pitGate pit then preset else 0
+    pitModeSetGate _ pit time gate = pit
+    pitModeEvent m pit time =
+        if pitOut pit then
+            let next = time + convertCounterToCycles 1
+            in
+            pit { pitOut = False, pitNext = next }
+            else
+                pitModeConfigureCounter m pit time (pitPreset pit)
+
+pitCMode :: forall h. (Show h, PitModeHandler h) => h -> PitExternal -> PitExternal
+pitCMode h pit = PitExternal (pitExtEnabled pit)
                                          (pitExtMode pit)
                                          (pitExtFormat pit)
                                          (pitExtRW pit)
                                          (pitExtReadQueue pit)
                                          (pitExtWriteQueue pit)
                                          (pitExtToWrite pit)
-                                         PitMode0
+                                         h
                                          (pitExtScheduled pit)
                                          (pitExtCurrentOut pit)
                                          (pitExtCounter pit)
+
+pitSetModeHandler :: PitMode -> PitExternal -> PitExternal
+pitSetModeHandler (PitMode 0) pit = pitCMode PitMode0 pit
+pitSetModeHandler (PitMode 1) pit = pitCMode PitMode1 pit
+pitSetModeHandler (PitMode 2) pit = pitCMode PitMode2 pit
 
 pitModeConfigureCommand_ :: PitExternal -> CpuCycles -> PitExternal
 pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time =
