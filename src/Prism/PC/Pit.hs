@@ -163,14 +163,15 @@ data PitMode1 = PitMode1 deriving (Show, Eq)
 
 instance PitModeHandler PitMode1 where
     pitModeConfigureCommand _ pit time =
-        pit { pitOut = True }
+        pit { pitOut = True, pitNull = False }
     pitModeConfigureCounter _ pit time preset =
-        pit { pitNull = True, pitStart = time, pitNext = 0, pitPreset = preset, pitCounter = preset }
+        pit { pitNull = True, pitNext = 0, pitPreset = preset, pitCounter = 0 }
     pitModeSetGate _ pit time gate =
-        pit { pitGate = gate, pitNext = next, pitOut = False }
+        pit { pitGate = gate, pitStart = start, pitNext = next, pitOut = False }
         where
             trigger = ((pitGate pit) == False) && (gate == True) -- rising edge of Gate
             next = if trigger then (time + convertCounterToCycles (pitPreset pit)) else (pitNext pit)
+            start = if trigger then time else pitStart pit
     pitModeEvent _ pit time =
         pit { pitOut = True, pitNext = 0 }
 
