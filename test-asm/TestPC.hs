@@ -7,6 +7,7 @@ module TestPC where
 
 import Test.Hspec
 
+import Data.Text (append)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Concurrent
 
@@ -45,6 +46,67 @@ testScheduleWrite _ val = do
     let handler _ = liftIO $ putStrLn "Sched event"
     localSchedulerAdd (SchedId 1) (CpuCycles $ fromIntegral val) handler
     liftIO $ putStrLn $ "Do scheduling " ++ (show val)
+
+-------------------------------------------------------------------------------
+
+headerPit = [text|
+        %macro set_int 2
+            mov ax, 0
+            mov es, ax
+            mov bx, cs
+            mov [es:%1], WORD %2
+            mov [es:%1+2], bx
+        %endmacro
+        %macro set_cmd 1
+            push ax
+            mov al, %1
+            out PIT_REG_COMMAND, al
+            pop ax
+        %endmacro
+        %macro set_ctr 3
+            push ax
+            mov al, %2 ; least
+            out %1, al
+            mov al, %3 ; most
+            out %1, al
+            pop ax
+        %endmacro
+        %macro read_ctr 2
+            push ax
+            in al, %1
+            mov %2, al
+            pop ax
+        %endmacro
+        absolute 0x80
+            interrupt_1   resw    2
+        section .text
+        org 0
+            ;;;
+            PIC1  equ  0x20
+            PIC1D equ  0x21
+            ICW1  equ  0x17
+            ICW2  equ  0x20 ; Map IRQ 0 to INT 0x20
+            ICW3  equ  0x00
+            ICW4  equ  0x03
+            OCW1  equ  0x00
+            ;;;;
+            PIT_REG_COUNTER0 equ 0x40
+            PIT_REG_COUNTER1 equ 0x41
+            PIT_REG_COUNTER2 equ 0x42
+            PIT_REG_COMMAND  equ 0x43
+            PIT_INT_TIMER0   equ 0x80
+            ;Init Master PIC
+            mov al, ICW1
+            out PIC1, al
+            mov al, ICW2
+            out PIC1D, al
+            mov al, ICW3
+            out PIC1D, al
+            mov al, ICW4
+            out PIC1D, al
+            mov al, OCW1
+            out PIC1D, al
+    |]
 
 -------------------------------------------------------------------------------
 
@@ -182,61 +244,25 @@ testPC instrList = do
             |]
     describe "Test PC PIT" $ do
         let devR = 0
-        it "Write and read Timer 0" $ do
+        it "Write, read and interrupt Timer 0" $ do
             comm <- newPrismComm False
             let devices = createPC
                 expectedStatus = 0xF0
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(al `shouldEq` 89), (bx `shouldEq` 43), (cl `shouldEq` expectedStatus)] env comm $ [text|
-                PIC1  equ  0x20
-                PIC1D equ  0x21
-                ICW1  equ  0x17
-                ICW2  equ  0x20 ; Map IRQ 0 to INT 0x20
-                ICW3  equ  0x00
-                ICW4  equ  0x03
-                OCW1  equ  0x00
-                ;;;;
-                PIT_REG_COMMAND  equ 0x43
-                PIT_REG_COUNTER0 equ 0x40
+            execPrismHalt [(al `shouldEq` 89), (bx `shouldEq` 25), (cl `shouldEq` expectedStatus)] env comm $ append headerPit [text|
+                ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
-                ;Init Master PIC
-                mov al, ICW1
-                out PIC1, al
-                mov al, ICW2
-                out PIC1D, al
-                mov al, ICW3
-                out PIC1D, al
-                mov al, ICW4
-                out PIC1D, al
-                mov al, OCW1
-                out PIC1D, al
-                ;Init PIT
-                mov al, PIT_COMMAND
-                out PIT_REG_COMMAND, al
-                mov al, 10 ; 10 timer cycles = 40 cpu cycles
-                out PIT_REG_COUNTER0, al
-                mov al, 0 ; Second byte is 0
-                out PIT_REG_COUNTER0, al
-                ;Set interrupt
-                mov ax, ds
-                xor cx, cx
-                mov ds, cx
-                mov bx, cs
-                mov [0x80], WORD INTERRUPT1
-                mov [0x82], bx
-                mov ds, ax
-                ;Start test
+                set_int interrupt_1, INTERRUPT1
+                set_cmd PIT_COMMAND
                 sti
                 mov cx, 90
+                set_ctr PIT_REG_COUNTER0, 10, 0 ; 40 cycles
+                ;Start test
                 LOOP1: loop LOOP1
-                mov dl, al
                 ;Read status
-                mov al, PIT_READ_STATUS
-                out PIT_REG_COMMAND, al
-                in al, PIT_REG_COUNTER0
-                mov cl, al
-                mov al, dl
+                set_cmd PIT_READ_STATUS
+                read_ctr PIT_REG_COUNTER0, cl
                 hlt
 
                 INTERRUPT1: 
