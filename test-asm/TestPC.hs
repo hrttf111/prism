@@ -256,8 +256,9 @@ testPC instrList = do
                 set_int interrupt_1, INTERRUPT1
                 set_cmd PIT_COMMAND
                 sti
-                mov cx, 90
+                xor bx, bx
                 xor dx, dx
+                mov cx, 90
                 set_ctr PIT_REG_COUNTER0, 10, 0 ; 40 cycles
                 ;Start test
                 LOOP1: loop LOOP1
@@ -276,15 +277,15 @@ testPC instrList = do
             let devices = createPC
                 expectedStatus = 0xF4
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(bx `shouldEq` 13), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
+            execPrismHalt [(bx `shouldEq` 21), (cl `shouldEq` expectedStatus), (dx `shouldEq` 4)] env comm $ append headerPit [text|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x34 ; Timer0, Mode2, 2 Bytes, HEX
                 set_int interrupt_1, INTERRUPT1
                 sti
-                mov bx, 0
-                mov dx, 0
-                mov cx, 52
+                xor bx, bx
+                xor dx, dx
+                mov cx, 130
                 set_cmd PIT_COMMAND
                 set_ctr PIT_REG_COUNTER0, 10, 0 ; 40 cycles
                 ;Start test
