@@ -179,7 +179,7 @@ data PitMode2 = PitMode2 deriving (Show, Eq)
 
 instance PitModeHandler PitMode2 where
     pitModeConfigureCommand _ pit time =
-        pit { pitOut = True }
+        pit { pitOut = True, pitNull = False }
     pitModeConfigureCounter _ pit time preset =
         pit { pitOut = True, pitNull = True, pitStart = time, pitNext = next, pitPreset = preset, pitCounter = counter }
         where

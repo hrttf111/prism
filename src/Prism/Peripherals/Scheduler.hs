@@ -8,16 +8,16 @@ module Prism.Peripherals.Scheduler (
         , SchedId (..)
         , SchedHandler, SchedHandlerOut
         , Scheduler (..)
-        , schedEventAdd, schedEventRemove
+        , schedEventAdd, schedEventAddDelta, schedEventRemove
         , expireSched, reschedule
         , emptyScheduler
-        , convertToSchedTime, convertFromSchedTime
+        , convertToSchedTime, convertToSchedTimeDelta, convertFromSchedTime
         ------------------------------------------------------
     ) where
 
 import Data.List (uncons, sortOn, partition)
 
-import Prism.Cpu (Uint64, CpuCycles (..))
+import Prism.Cpu (Uint64, CpuCycles (..), CpuCyclesDelta (..))
 import Prism.Peripherals.Types
 
 -------------------------------------------------------------------------------
@@ -43,6 +43,7 @@ instance Eq (SchedHandlerOut p) where
     _ /= _ = False
 
 data SchedCommand m = SchedEventAdd SchedId SchedTime (SchedHandler m)
+                    | SchedEventAddDelta SchedId SchedTime (SchedHandler m)
                     | SchedEventRemove SchedId
                     deriving (Show, Eq)
 
@@ -63,6 +64,9 @@ emptyScheduler = Scheduler [] []
 convertToSchedTime :: CpuCycles -> SchedTime
 convertToSchedTime (CpuCycles cycles) = SchedTime cycles
 
+convertToSchedTimeDelta :: CpuCyclesDelta -> SchedTime
+convertToSchedTimeDelta (CpuCyclesDelta cycles) = SchedTime $ fromIntegral cycles
+
 convertFromSchedTime :: SchedTime -> CpuCycles
 convertFromSchedTime (SchedTime time) = CpuCycles time
 
@@ -73,6 +77,12 @@ schedEventAdd scheduler id timeout handler =
     scheduler { schCommands = commands }
     where
         commands = ((SchedEventAdd id timeout handler) : schCommands scheduler)
+
+schedEventAddDelta :: (Monad m) => Scheduler m -> SchedId -> SchedTime -> SchedHandler m -> Scheduler m 
+schedEventAddDelta scheduler id timeout handler =
+    scheduler { schCommands = commands }
+    where
+        commands = ((SchedEventAddDelta id timeout handler) : schCommands scheduler)
 
 schedEventRemove :: (Monad m) => Scheduler m -> SchedId -> Scheduler m
 schedEventRemove scheduler id =
@@ -88,6 +98,8 @@ execCommands scheduler currentTime =
     foldr execCommand (schEvents scheduler) (schCommands scheduler)
     where
         execCommand (SchedEventAdd id timeout handler) events =
+            (Event id currentTime timeout handler) : events
+        execCommand (SchedEventAddDelta id timeout handler) events =
             (Event id currentTime (currentTime + timeout) handler) : events
         execCommand (SchedEventRemove id) events =
             filter ((/=id) . evId) events

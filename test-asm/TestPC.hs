@@ -249,7 +249,7 @@ testPC instrList = do
             let devices = createPC
                 expectedStatus = 0xF0
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(al `shouldEq` 89), (bx `shouldEq` 25), (cl `shouldEq` expectedStatus)] env comm $ append headerPit [text|
+            execPrismHalt [(bx `shouldEq` 51), (cl `shouldEq` expectedStatus), (dx `shouldEq` 1)] env comm $ append headerPit [text|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
@@ -257,6 +257,7 @@ testPC instrList = do
                 set_cmd PIT_COMMAND
                 sti
                 mov cx, 90
+                xor dx, dx
                 set_ctr PIT_REG_COUNTER0, 10, 0 ; 40 cycles
                 ;Start test
                 LOOP1: loop LOOP1
@@ -266,8 +267,36 @@ testPC instrList = do
                 hlt
 
                 INTERRUPT1: 
-                mov ax, 89
                 mov bx, cx
+                inc dx
+                iret
+            |]
+        it "Write, read and interrupt Timer 2" $ do
+            comm <- newPrismComm False
+            let devices = createPC
+                expectedStatus = 0xF4
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
+            execPrismHalt [(bx `shouldEq` 13), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
+                ;Init PIT
+                PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
+                PIT_COMMAND      equ 0x34 ; Timer0, Mode2, 2 Bytes, HEX
+                set_int interrupt_1, INTERRUPT1
+                sti
+                mov bx, 0
+                mov dx, 0
+                mov cx, 52
+                set_cmd PIT_COMMAND
+                set_ctr PIT_REG_COUNTER0, 10, 0 ; 40 cycles
+                ;Start test
+                LOOP1: loop LOOP1
+                ;Read status
+                set_cmd PIT_READ_STATUS
+                read_ctr PIT_REG_COUNTER0, cl
+                hlt
+
+                INTERRUPT1: 
+                mov bx, cx
+                inc dx
                 iret
             |]
 -------------------------------------------------------------------------------
