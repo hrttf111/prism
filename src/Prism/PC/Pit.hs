@@ -183,7 +183,10 @@ instance PitModeHandler PitMode2 where
     pitModeConfigureCounter _ pit time preset =
         pit { pitOut = True, pitNull = True, pitStart = time, pitNext = next, pitPreset = preset, pitCounter = counter }
         where
-            next = if pitGate pit then 0 else (time + convertCounterToCycles (preset-1))
+            next = if pitNull pit == False then -- will be loaded in two cases: after command and on next event
+                if pitGate pit then 0 else (time + convertCounterToCycles (preset-1))
+                    else
+                        pitNext pit
             counter = if pitGate pit then preset else 0
     pitModeSetGate _ pit time gate = pit
     pitModeEvent m pit time =
@@ -192,7 +195,7 @@ instance PitModeHandler PitMode2 where
             in
             pit { pitOut = False, pitNext = next }
             else
-                pitModeConfigureCounter m pit time (pitPreset pit)
+                pitModeConfigureCounter m (pit {pitNull = False}) time (pitPreset pit)
 
 pitCMode :: forall h. (Show h, PitModeHandler h) => h -> PitExternal -> PitExternal
 pitCMode h pit = PitExternal (pitExtEnabled pit)
