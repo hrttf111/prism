@@ -197,6 +197,25 @@ instance PitModeHandler PitMode2 where
             else
                 pitModeConfigureCounter m (pit {pitNull = False}) time (pitPreset pit)
 
+data PitMode4 = PitMode4 deriving (Show, Eq)
+
+instance PitModeHandler PitMode4 where
+    pitModeConfigureCommand _ pit time =
+        pit { pitOut = True, pitNull = False }
+    pitModeConfigureCounter _ pit time preset =
+        pit { pitOut = True, pitNull = True, pitStart = time, pitNext = next, pitPreset = preset, pitCounter = counter }
+        where
+            next = if pitGate pit then 0 else (time + convertCounterToCycles (preset-1))
+            counter = if pitGate pit then preset else 0
+    pitModeSetGate _ pit time gate = pit
+    pitModeEvent m pit time =
+        if pitOut pit then
+            let next = time + convertCounterToCycles 1
+            in
+            pit { pitOut = False, pitNext = next }
+            else
+                pit { pitOut = True, pitNext = 0 }
+
 pitCMode :: forall h. (Show h, PitModeHandler h) => h -> PitExternal -> PitExternal
 pitCMode h pit = PitExternal (pitExtEnabled pit)
                                          (pitExtMode pit)
@@ -214,6 +233,7 @@ pitSetModeHandler :: PitMode -> PitExternal -> PitExternal
 pitSetModeHandler (PitMode 0) pit = pitCMode PitMode0 pit
 pitSetModeHandler (PitMode 1) pit = pitCMode PitMode1 pit
 pitSetModeHandler (PitMode 2) pit = pitCMode PitMode2 pit
+pitSetModeHandler (PitMode 4) pit = pitCMode PitMode4 pit
 
 pitModeConfigureCommand_ :: PitExternal -> CpuCycles -> PitExternal
 pitModeConfigureCommand_ pit@(PitExternal _ _ _ _ _ _ _ h _ _ counter) time =

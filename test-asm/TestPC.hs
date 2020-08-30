@@ -300,4 +300,32 @@ testPC instrList = do
                 inc dx
                 iret
             |]
+        it "Write, read and interrupt Timer 4" $ do
+            comm <- newPrismComm False
+            let devices = createPC
+                expectedStatus = 0xF8
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
+            execPrismHalt [(bx `shouldEq` 91), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
+                ;Init PIT
+                PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
+                PIT_COMMAND      equ 0x38 ; Timer0, Mode4, 2 Bytes, HEX
+                set_int interrupt_1, INTERRUPT1
+                sti
+                xor bx, bx
+                xor dx, dx
+                mov cx, 130
+                set_cmd PIT_COMMAND
+                set_ctr PIT_REG_COUNTER0, 10, 0 ; 40 cycles
+                ;Start test
+                LOOP1: loop LOOP1
+                ;Read status
+                set_cmd PIT_READ_STATUS
+                read_ctr PIT_REG_COUNTER0, cl
+                hlt
+
+                INTERRUPT1: 
+                mov bx, cx
+                inc dx
+                iret
+            |]
 -------------------------------------------------------------------------------
