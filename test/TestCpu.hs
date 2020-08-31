@@ -53,4 +53,19 @@ testSign = do
             (signedOp op (0x08 :: Uint16) (0x08 :: Uint16)) `shouldBe` (0x0040 :: Uint16)
             (signedOp op (0xFFFF :: Uint16) (0x000A :: Uint16)) `shouldBe` ((0xFFFF - 9) :: Uint16)
 
+testBcdConvertion = do
+    describe "Convert BCD" $ do
+        it "BCD to HEX" $ do
+            (bcdToHex16 0x0) `shouldBe` 0x0
+            (bcdToHex16 0x9) `shouldBe` 0x9
+            (bcdToHex16 0x99) `shouldBe` 0x63
+            (bcdToHex16 0x999) `shouldBe` 0x3e7
+            (bcdToHex16 0x9999) `shouldBe` 0x270F
+        it "HEX to BCD" $ do
+            (hexToBcd16 0x0) `shouldBe` 0x0
+            (hexToBcd16 0x9) `shouldBe` 0x9
+            (hexToBcd16 0x63) `shouldBe` 0x99
+            (hexToBcd16 0x3e7) `shouldBe` 0x999
+        (hexToBcd16 0x270F) `shouldBe` 0x9999
+
 -------------------------------------------------------------------------------

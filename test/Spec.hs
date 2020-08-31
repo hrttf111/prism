@@ -21,3 +21,4 @@ main = hspec $ do
     testPeripherals
     testPic
     testScheduler
+    testBcdConvertion

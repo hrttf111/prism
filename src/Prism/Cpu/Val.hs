@@ -1,6 +1,6 @@
 module Prism.Cpu.Val where
 
-import Data.Bits (bit, clearBit, testBit, finiteBitSize)
+import Data.Bits (bit, clearBit, testBit, finiteBitSize, (.&.), shiftR, shiftL)
 
 import Prism.Cpu.Types
 
@@ -49,6 +49,21 @@ signedOp1 func val1 val2 = func sVal1 sVal2
 
 signedOpS :: (OperandVal a, OperandVal b) => (b -> b) -> a -> a
 signedOpS func val1 = toUnsignedComp2 $ func $ toSignedCompl2 val1
+
+-------------------------------------------------------------------------------
+
+bcdToHex16 :: Uint16 -> Uint16
+bcdToHex16 val = (cv val 0xF000 12 1000)
+                 + (cv val 0x0F00 8 100)
+                 + (cv val 0x00F0 4 10)
+                 + (val .&. 0x000F)
+    where
+        cv v m s b = b * (shiftR (v .&. m) s)
+
+hexToBcd16 :: Uint16 -> Uint16
+hexToBcd16 val = fst . cv 1 0 . cv 10 4 . cv 100 8 . cv 1000 12 $ (0, val)
+    where
+        cv d s (a, v) = (a + shiftL (div v d) s, v - div v d)
 
 -------------------------------------------------------------------------------
 
