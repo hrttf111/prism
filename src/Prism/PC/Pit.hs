@@ -181,13 +181,14 @@ instance PitModeHandler PitMode2 where
     pitModeConfigureCommand _ pit time =
         pit { pitOut = True, pitNull = False }
     pitModeConfigureCounter _ pit time preset =
-        pit { pitOut = True, pitNull = True, pitStart = time, pitNext = next, pitPreset = preset, pitCounter = counter }
+        pit { pitOut = True, pitNull = True, pitStart = start, pitNext = next, pitPreset = preset, pitCounter = counter }
         where
             next = if pitNull pit == False then -- will be loaded in two cases: after command and on next event
                 if pitGate pit then 0 else (time + convertCounterToCycles (preset-1))
                     else
                         pitNext pit
             counter = if pitGate pit then preset else 0
+            start = if pitNull pit then pitStart pit else time
     pitModeSetGate _ pit time gate = pit
     pitModeEvent m pit time =
         if pitOut pit then
@@ -196,6 +197,32 @@ instance PitModeHandler PitMode2 where
             pit { pitOut = False, pitNext = next }
             else
                 pitModeConfigureCounter m (pit {pitNull = False}) time (pitPreset pit)
+
+data PitMode3 = PitMode3 deriving (Show, Eq)
+
+instance PitModeHandler PitMode3 where
+    pitModeConfigureCommand _ pit time =
+        pit { pitOut = True, pitNull = False }
+    pitModeConfigureCounter _ pit time preset =
+        pit { pitNull = True, pitStart = start, pitNext = next, pitPreset = preset, pitCounter = counter }
+        where
+            isOdd = (==1) $ mod preset 2
+            firstHalfNext = if isOdd then div (preset + 1) 2 else div preset 2
+            secondHalfNext = if isOdd then div (preset - 1) 2 else firstHalfNext
+            firstHalf = pitOut pit
+            mkNextCycles n = time + convertCounterToCycles n
+            next = if pitNull pit == False then -- will be loaded in two cases: after command and on next event
+                       if firstHalf then mkNextCycles firstHalfNext else mkNextCycles secondHalfNext
+                           else
+                               pitNext pit
+            counter = if pitGate pit then preset else 0
+            start = if pitNull pit then pitStart pit else time
+    pitModeSetGate _ pit time gate = pit
+    pitModeEvent m pit time =
+        if pitOut pit then -- is first half
+                pitModeConfigureCounter m (pit {pitNull = False, pitOut = False}) time (pitPreset pit)
+            else
+                pitModeConfigureCounter m (pit {pitNull = False, pitOut = True}) time (pitPreset pit)
 
 data PitMode4 = PitMode4 deriving (Show, Eq)
 
@@ -233,6 +260,7 @@ pitSetModeHandler :: PitMode -> PitExternal -> PitExternal
 pitSetModeHandler (PitMode 0) pit = pitCMode PitMode0 pit
 pitSetModeHandler (PitMode 1) pit = pitCMode PitMode1 pit
 pitSetModeHandler (PitMode 2) pit = pitCMode PitMode2 pit
+pitSetModeHandler (PitMode 3) pit = pitCMode PitMode3 pit
 pitSetModeHandler (PitMode 4) pit = pitCMode PitMode4 pit
 
 pitModeConfigureCommand_ :: PitExternal -> CpuCycles -> PitExternal

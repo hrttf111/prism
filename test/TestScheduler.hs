@@ -28,10 +28,10 @@ testScheduler = do
                 sched5 = schedEventAdd sched4 (SchedId 3) (SchedTime 8) testHandler
                 (nextTime6, sched6) = reschedule sched5 $ SchedTime 12
                 (nextTime7, events, _) = expireSched sched6 $ SchedTime 20
-            nextTime `shouldBe` (Just 22)
-            nextTime4 `shouldBe` (Just 22)
-            nextTime6 `shouldBe` (Just 20)
-            nextTime7 `shouldBe` (Just 22)
+            nextTime `shouldBe` (Just 10)
+            nextTime4 `shouldBe` (Just 10)
+            nextTime6 `shouldBe` (Just 8)
+            nextTime7 `shouldBe` Nothing
     describe "Removing event" $ do
         it "Remove empty" $ do
             let sched = schedEventRemove emptyTestScheduler (SchedId 1)
@@ -48,6 +48,6 @@ testScheduler = do
                 (nextTime4, sched4) = reschedule sched3 $ SchedTime 12
                 sched5 = schedEventRemove sched4 (SchedId 1)
                 (nextTime6, sched6) = reschedule sched5 $ SchedTime 12
-            nextTime6 `shouldBe` (Just 23)
+            nextTime6 `shouldBe` (Just 11)
 
 -------------------------------------------------------------------------------
