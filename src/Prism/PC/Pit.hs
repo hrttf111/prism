@@ -353,12 +353,14 @@ pitLatchCounter :: PitExternal -> CpuCycles -> PitExternal
 pitLatchCounter pit time =
     pit { pitExtReadQueue = rlist }
     where
-        canLatch = True -- todo check list content
-        llist = case pitExtRW pit of
-                    PitRWLeast -> [PitLatchLeast $ pitGetCurrentLeast pit time]
-                    PitRWMost -> [PitLatchMost $ pitGetCurrentMost pit time]
-                    PitRWBoth -> [PitLatchLeast $ pitGetCurrentLeast pit time
-                                 , PitLatchMost $ pitGetCurrentMost pit time]
+        canLatch = null $ pitExtReadQueue pit
+        llist = if canLatch then
+                    case pitExtRW pit of
+                        PitRWLeast -> [PitLatchLeast $ pitGetCurrentLeast pit time]
+                        PitRWMost -> [PitLatchMost $ pitGetCurrentMost pit time]
+                        PitRWBoth -> [PitLatchLeast $ pitGetCurrentLeast pit time
+                                     , PitLatchMost $ pitGetCurrentMost pit time]
+                    else []
         rlist = (pitExtReadQueue pit) ++ llist
 
 pitLatchStatus :: PitExternal -> PitExternal
