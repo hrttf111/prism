@@ -153,8 +153,6 @@ counter components:
 0x61 - speaker (out pin?)
 
 TODO:
- - implement all modes
- - BCD counting
  - minor fixes
 
 -------------------------------------------------------

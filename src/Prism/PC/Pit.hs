@@ -5,7 +5,7 @@ module Prism.PC.Pit where
 
 import Data.Bits
 
-import Prism.Cpu (Uint8, Uint16, Uint64, PrismInt(..), CpuCycles(..), PrismIRQ(..))
+import Prism.Cpu (Uint8, Uint16, Uint64, bcdToHex16, hexToBcd16, PrismInt(..), CpuCycles(..), PrismIRQ(..))
 import Prism.Peripherals (SchedId(..))
 
 -------------------------------------------------------------------------------
@@ -129,6 +129,14 @@ convertCounterToCycles val = CpuCycles $ (fromIntegral val) * 4
 
 convertCyclesToCounter :: CpuCycles -> Uint16
 convertCyclesToCounter (CpuCycles val) = fromIntegral $ div val 4
+
+pitConvertToHex :: PitFormat -> Uint16 -> Uint16
+pitConvertToHex (PitFormat True) val = bcdToHex16 val
+pitConvertToHex _ val = val
+
+pitConvertFromHex :: PitFormat -> Uint16 -> Uint16
+pitConvertFromHex (PitFormat True) val = hexToBcd16 val
+pitConvertFromHex _ val = val
 
 -------------------------------------------------------------------------------
 
@@ -307,7 +315,7 @@ pitCountBackwards (CpuCycles current) (CpuCycles start) max =
 -------------------------------------------------------------------------------
 
 pitGetCurrentCounter :: PitExternal -> CpuCycles -> Uint16
-pitGetCurrentCounter pit time = ctr
+pitGetCurrentCounter pit time = pitConvertFromHex (pitExtFormat pit) ctr
     where
         counter = pitExtCounter pit
         (PitFormat bcd) = pitExtFormat pit
@@ -388,7 +396,8 @@ pitWriteCounter pit cpuTime val =
             let preset = pitUpdateToWrite h val $ pitExtToWrite pit
             in
             if null t then
-                    let pit' = pitModeConfigureCounter_ pit cpuTime preset
+                    let presetHex = pitConvertToHex (pitExtFormat pit) preset
+                        pit' = pitModeConfigureCounter_ pit cpuTime presetHex
                     in
                     pit' { pitExtToWrite = 0, pitExtWriteQueue = pitFillWriteQueue $ pitExtRW pit' }
                 else
