@@ -63,7 +63,7 @@ bcdToHex16 val = (cv val 0xF000 12 1000)
 hexToBcd16 :: Uint16 -> Uint16
 hexToBcd16 val = fst . cv 1 0 . cv 10 4 . cv 100 8 . cv 1000 12 $ (0, val)
     where
-        cv d s (a, v) = (a + shiftL (div v d) s, v - div v d)
+        cv d s (a, v) = (a + shiftL (div v d) s, v - (d * div v d))
 
 -------------------------------------------------------------------------------
 

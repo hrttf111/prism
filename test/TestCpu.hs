@@ -66,6 +66,6 @@ testBcdConvertion = do
             (hexToBcd16 0x9) `shouldBe` 0x9
             (hexToBcd16 0x63) `shouldBe` 0x99
             (hexToBcd16 0x3e7) `shouldBe` 0x999
-        (hexToBcd16 0x270F) `shouldBe` 0x9999
+            (hexToBcd16 0x270F) `shouldBe` 0x9999
 
 -------------------------------------------------------------------------------
