@@ -7,12 +7,15 @@
     - initial CPU test
     - test timers/video/keyboard
  - peripheral
-    - PIT
-    - CMOS
-    - keyboard
+    - PPI (8255A)
+    - keyboard (XT style)
     - video
+    - DMA (intel 8237)
     - flopy
     - HDD
+    - CMOS
+ - later
+    - keyboard (8042)
 
 -------------------------------------------------------
 
