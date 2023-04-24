@@ -51,7 +51,7 @@ foreign import ccall "dynamic"
   mkFun :: FunPtr IntFunction -> IntFunction
 
 -------------------------------------------------------------------------------
-asmMacros = [text|
+asmMacros = [untrimming|
     BITS 64
 
     %macro save_regs 0
@@ -95,13 +95,13 @@ asmMacros = [text|
     %endmacro
 |]
 -------------------------------------------------------------------------------
-asmHeader = [text|
+asmHeader = [untrimming|
     save_regs
     push rdi
     mov rbp, rsp
 |]
 
-asmFooter = [text|
+asmFooter = [untrimming|
     pop rdi
     set_regs
     load_regs
