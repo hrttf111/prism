@@ -3,9 +3,12 @@
 with haskell.lib;
 
 let
-  blukOrigin = justStaticExecutables (callCabal2nix "prism" ./. {});
+  prismOrigin = justStaticExecutables (callCabal2nix "prism" ./. {});
 in
-  overrideCabal blukOrigin (old: {
+  (overrideCabal prismOrigin (old: {
     pname = "prism";
     buildDepends = [ cabal-install hpack zlib1 yasm ];
+  })).overrideAttrs (finalAttrs: previousAttrs: {
+    #propagatedBuildInputs = [ zlib1 ];
+    LD_LIBRARY_PATH = "${zlib1}/lib:$LD_LIBRARY_PATH";
   })
