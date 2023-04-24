@@ -10,7 +10,7 @@
     in rec {
       overlay = final: prev: let
       in {
-        prism = prev.haskellPackages.callPackage ./default.nix {};
+        prism = prev.haskellPackages.callPackage ./default.nix {zlib1 = pkgs.zlib;};
       };
 
       packages.x86_64-linux.prism = pkgs.prism;

@@ -1,4 +1,4 @@
-{ callCabal2nix, haskell, cabal-install, hpack, yasm }:
+{ callCabal2nix, haskell, cabal-install, hpack, zlib1, yasm }:
 
 with haskell.lib;
 
@@ -7,5 +7,5 @@ let
 in
   overrideCabal blukOrigin (old: {
     pname = "prism";
-    buildDepends = [ cabal-install hpack yasm ];
+    buildDepends = [ cabal-install hpack zlib1 yasm ];
   })

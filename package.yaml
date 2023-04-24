@@ -30,6 +30,7 @@ dependencies:
 - monad-control >= 1.0.2.3
 - transformers-base >= 0.4.5.2
 - network >= 2.6.3.2
+- ip
 - parsec >= 3.1.14.0
 - stm >= 2.5.0.0
 - text

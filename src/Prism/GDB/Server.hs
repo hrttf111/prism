@@ -12,7 +12,7 @@ import Control.Exception.Lifted (bracket)
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
-import Data.Maybe (maybe)
+import Data.Maybe (maybe, fromJust)
 import Data.Word (Word32, Word16, Word8)
 import Data.Bits (shiftL)
 import Numeric (showHex)
@@ -20,7 +20,8 @@ import Numeric (showHex)
 import Foreign.Marshal.Array
 import Foreign.Ptr
 
-import Network.Socket(Socket, close, bind, accept, listen, socket, defaultProtocol, Family(..), connect, inet_addr, SockAddr(..), SocketType(..))
+import Network.Socket(Socket, close, bind, accept, listen, socket, defaultProtocol, Family(..), connect, tupleToHostAddress, SockAddr(..), SocketType(..))
+import qualified Net.IPv4(toOctets, decodeString)
 import qualified Network.Socket.ByteString as SocketB
 import System.Timeout
 
@@ -263,10 +264,10 @@ runServer ipAddress port =
     bracket (liftIO $ socket AF_INET Stream defaultProtocol) (liftIO . close) (startServer)
     where
         numClients = 1
+        ipAddressOctets = tupleToHostAddress $ Net.IPv4.toOctets $ fromJust $ Net.IPv4.decodeString ipAddress
+        sockAddr = SockAddrInet (fromIntegral port) ipAddressOctets
         startServer sock = do
-            liftIO (SockAddrInet (fromIntegral port) <$> inet_addr ipAddress
-                >>= bind sock
-                >> listen sock numClients)
+            liftIO (bind sock sockAddr >> listen sock numClients)
             iterServer sock
 
 -------------------------------------------------------------------------------
