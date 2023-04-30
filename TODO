@@ -19,6 +19,13 @@
 
 -------------------------------------------------------
 
+HSBIOS
+ - Simple implementation of PC BIOS
+ - Completely in haskell
+ - Will not use "real" peripherals
+
+-------------------------------------------------------
+
 PIC
 
  - IRR - input interrupts which are active
