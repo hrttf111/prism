@@ -25,8 +25,8 @@ HSBIOS
  - Will not use "real" peripherals
 
 Functions
- - int 8 (Timer)
- - int 9 (Keyboard)
+ - int 8 (Timer) - BIOS internal
+ - int 9 (Keyboard) - BIOS internal
  - int 10 (Video)
    - ah 0 (Set video mode)
    - ah 1 (Set cursor shape)
@@ -66,6 +66,8 @@ Functions
    - ah 2 (Get time)
    - ah 4 (Get date)
    - ah f (Init)
+ - int 1d (Video params)
+ - int 1e (Disk params)
 
 -------------------------------------------------------
 
