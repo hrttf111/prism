@@ -11,4 +11,7 @@ in
   })).overrideAttrs (finalAttrs: previousAttrs: {
     #propagatedBuildInputs = [ zlib1 ];
     LD_LIBRARY_PATH = "${zlib1}/lib:$LD_LIBRARY_PATH";
+    shellHook = ''
+      alias test-cabal="cabal test --test-show-details=direct"
+    '';
   })
