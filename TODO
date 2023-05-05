@@ -69,6 +69,89 @@ Functions
  - int 1d (Video params)
  - int 1e (Disk params)
 
+Communication types:
+ - Peripheral -> CPU
+    - Keyboard
+        - Generates interrupts
+        - Sends key make-break
+        - Sends key code
+    - Serial
+    - Printer
+ - CPU -> Peripheral
+    - Video
+        - Set/Get cursor
+        - Set/Get video mode
+        - Write/Get char
+    - Disk
+    - Serial
+    - Printer
+ - CPU -> CPU
+    - Timer
+    - Clock
+    - Reboot
+ - Static return
+    - Memory size
+    - Equipment
+    - Video params
+    - Disk params
+
+Keyboard implementation
+ - Set interrupt for keyboard IRQs
+ - Make thread-safe keyboard state
+ - Share state between CPU and peripheral thread
+ - Upon receiving interrupt read keyboard shared state
+ - Generate internal interrupts
+
+Video implementation
+ - Spawn peripheral thread
+ - Create shared video state
+ - Each 30ms draw video frame
+ - Check shared state before drawing
+ - Shared state will have info about video updates (if video memory was updated since last screen draw)
+ - CPU will update shared state when it touches video memory
+
+Disk implementation
+ - Read/Write file in CPU context
+ - Hardcode default disk parameters
+ - Use raw disk image of a default size
+
+Timer implementation
+ - Use CPU scheduler or PIT to create timer
+ - Call BIOS function for each timer event
+ - From BIOS call corresponding user interrupt
+
+Clock implementation
+ - Use base lib to read and convert current date
+ - Ticks could be read from run-time
+
+Static parameters
+ - Will be hardcoded or defined via arguments
+
+HW ports
+ - Need PIC/PIT
+ - Video cursor
+ - Video resolution
+ - Video scancode/refresh
+
+TODO:
+ - Implement BIOS structs
+ - Create keyboard infra
+ - Implement basic keyboard functions
+    - Internal interrupt
+    - Char conversion
+    - 0, 1, 2, 12
+ - Implement BIOS tests (part of test-asm)
+    - Send keyboard interrupts + update shared state
+ - Implement BIOS timer
+ - Static parameters
+    - Hardcode default
+    - Create unit tests
+ - Implement basic video functions
+    - No thread sync is needed initially
+    - It is acceptable if CPU writes when peripheral thread draws image
+ - Implement simple application which uses BIOS
+    - Key echo (read key, write key)
+
 -------------------------------------------------------
 
 PIC
