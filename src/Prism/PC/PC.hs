@@ -317,7 +317,9 @@ pcPorts = [
             (PeripheralHandlerPort pcPortWrite8PitCommand emptyWriteH emptyReadH emptyReadH)
     ]
 
-createPC :: PC
-createPC = PC 999 False defaultPIC defaultPIC defaultPIT (mkBios)
+createPC :: (MonadIO m) => m PC
+createPC = do
+    bios <- mkBios
+    return $ PC 999 False defaultPIC defaultPIC defaultPIT bios
 
 -------------------------------------------------------------------------------

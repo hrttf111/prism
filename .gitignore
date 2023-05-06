@@ -5,3 +5,4 @@ stack.yaml.lock
 data/test_1
 prism.cabal
 *.cabal
+**.swp

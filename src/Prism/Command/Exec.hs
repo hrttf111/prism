@@ -2,7 +2,6 @@ module Prism.Command.Exec where
 
 import Control.Monad.State.Strict
 import Control.Monad.Trans (MonadIO, liftIO)
-import Control.Concurrent.STM
 
 import Data.ByteString.Internal (createUptoN)
 import Data.Word (Word32, Word16, Word8)

@@ -121,8 +121,8 @@ testPC instrList = do
         let devR = 0
         it "Interrupt test infra" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                testHandler int val = 89
+            devices <- createPC
+            let testHandler int val = 89
                 intList = [
                     (PrismInt 0x10, testInterruptHandler testHandler)
                     ]
@@ -134,8 +134,8 @@ testPC instrList = do
             |]
         it "Basic test Master PIC IRQ0" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                testHandler int val = 89
+            devices <- createPC
+            let testHandler int val = 89
                 intList = [
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 0)),
                     (PrismInt 0x20, testInterruptHandler testHandler)
@@ -172,8 +172,8 @@ testPC instrList = do
             |]
         it "Basic test Slave PIC IRQ8" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                testHandler int val = 89
+            devices <- createPC
+            let testHandler int val = 89
                 intList = [
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 8)),
                     (PrismInt 0x28, testInterruptHandler testHandler)
@@ -225,8 +225,8 @@ testPC instrList = do
     describe "Test PC Scheduler" $ do
         it "Sched" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                devR = 0
+            devices <- createPC
+            let devR = 0
                 pcPortsExt = pcPorts ++ [
                         PeripheralPort 0x89
                             (PeripheralHandlerPort testScheduleWrite emptyWriteH emptyReadH emptyReadH)
@@ -246,8 +246,8 @@ testPC instrList = do
         let devR = 0
         it "Write, read and interrupt Timer 0" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                expectedStatus = 0xF0
+            devices <- createPC
+            let expectedStatus = 0xF0
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
             execPrismHalt [(bx `shouldEq` 51), (cl `shouldEq` expectedStatus), (dx `shouldEq` 1)] env comm $ append headerPit [text|
                 ;Init PIT
@@ -274,8 +274,8 @@ testPC instrList = do
             |]
         it "Write, read and interrupt Timer 2" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                expectedStatus = 0xF4
+            devices <- createPC
+            let expectedStatus = 0xF4
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
             execPrismHalt [(bx `shouldEq` 21), (cl `shouldEq` expectedStatus), (dx `shouldEq` 4)] env comm $ append headerPit [text|
                 ;Init PIT
@@ -302,8 +302,8 @@ testPC instrList = do
             |]
         it "Write, read and interrupt Timer 3" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                expectedStatus = 0xF6
+            devices <- createPC
+            let expectedStatus = 0xF6
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
             execPrismHalt [(bx `shouldEq` 6), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
                 ;Init PIT
@@ -330,8 +330,8 @@ testPC instrList = do
             |]
         it "Write, read and interrupt Timer 4" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                expectedStatus = 0xF8
+            devices <- createPC
+            let expectedStatus = 0xF8
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
             execPrismHalt [(bx `shouldEq` 91), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
                 ;Init PIT
@@ -360,14 +360,14 @@ testPC instrList = do
         let devR = 0
         it "BIOS interrupt infra" $ do
             comm <- newPrismComm False
-            let devices = createPC
-                testHandler int val = 89
+            devices <- createPC
+            let testHandler int val = 89
                 intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
                 mov al, 134
                 mov ah, 76
-                int 0x10
+                int 0x1f
                 hlt
             |]
 -------------------------------------------------------------------------------
