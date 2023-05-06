@@ -14,6 +14,7 @@ import Prism.Cpu
 import Prism.Peripherals
 import Prism.PC.Pic
 import Prism.PC.Pit
+import Prism.PC.Bios
 
 -------------------------------------------------------------------------------
 
@@ -22,7 +23,8 @@ data PC = PC {
         pcNeedUpdate :: Bool,
         pcPicMaster :: Pic,
         pcPicSlave :: Pic,
-        pcPit :: Pit
+        pcPit :: Pit,
+        pcBios :: PcBios
     } deriving (Show)
 
 type PeripheralsPC' = PeripheralsLocal PC
@@ -108,6 +110,20 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
                         (cpuCtx', pcCtx')
                     else
                         (cpuCtx, pcCtx)
+
+instance RunPeripheralsDirect PeripheralsPC' PrismM where
+    runPeripheralsDirect ctx (DirectCommandU8 int) = do
+        let pcCtx = localPeripherals ctx
+            bios = pcBios pcCtx
+        bios' <- processBios bios int
+        cpuCtx <- get
+        let pCtx' = ctx { localPeripherals = (pcCtx { pcBios = bios' }) }
+            c1 = ctxIO cpuCtx
+            ioCtx = IOCtx pCtx'
+                          (ioCtxMemRegion c1)
+                          (ioCtxPortRegion c1)
+        put $ cpuCtx { ctxIO = ioCtx }
+        return ()
 
 -------------------------------------------------------------------------------
 
@@ -302,6 +318,6 @@ pcPorts = [
     ]
 
 createPC :: PC
-createPC = PC 999 False defaultPIC defaultPIC defaultPIT
+createPC = PC 999 False defaultPIC defaultPIC defaultPIT (mkBios)
 
 -------------------------------------------------------------------------------

@@ -55,6 +55,9 @@ instance RunPeripheralsM PeripheralsTest1 PeripheralsTest PrismM where
         modify $ (\s -> s { ctxIO = ioCtx } )
         return res
 
+instance RunPeripheralsDirect PeripheralsTest1 PrismM where
+    runPeripheralsDirect ctx command = return ()
+
 class PeripheralsTestCreator m p | p -> m where
     createTestPeripherals :: PeripheralLocal m p -> IOQueue -> IOCtx
 
@@ -74,7 +77,7 @@ createTestEnv1 ioCtx threadId instrList intList = liftIO $ do
     ptrA <- allocMemRegRaw
     memReg <- allocMemReg
     memMain <- allocMemMain memSize
-    intM <- configureInterrups memMain intHandlersOffset intList
+    intM <- configureInterrupts memMain intHandlersOffset intList
     let decoder = makeDecoderList (instrList ++ (internalInstrList intM))
     asmTest <- makeAsmTest
     return $ TestEnv 

@@ -58,11 +58,11 @@ setInterruptsToMemory (MemMain ptr) intList =
             in
             poke ptrCs cs_ >> poke ptrIp ip_
 
-configureInterrups :: (MonadIO m) => MemMain 
+configureInterrupts :: (MonadIO m) => MemMain
                                      -> Int
                                      -> [InterruptHandlerLocation]
                                      -> m InterruptMap
-configureInterrups mem address handlers = do
+configureInterrupts mem address handlers = do
     (mapHandlersToInts <$> writeInternalInterruptHandlers mem address intInternalList)
         >>= setInterruptsToMemory mem
     return . Data.Map.Strict.fromList

@@ -89,4 +89,7 @@ class ( Monad mc
       ) => RunPeripheralsM a mp mc | a -> mp mc where
     runPeripheralsM :: a -> mp b -> mc b
 
+class (Monad m) => RunPeripheralsDirect a m | a -> m where
+    runPeripheralsDirect :: a -> DirectCommand -> m ()
+
 -------------------------------------------------------------------------------

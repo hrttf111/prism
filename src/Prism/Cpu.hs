@@ -25,6 +25,8 @@ module Prism.Cpu (
         , InterruptDispatcher (..)
         , InterruptRun (..)
         , CpuMonad (..)
+        , DirectCommand (..)
+        , RunPeripheralsDirect (..)
         ------------------------------------------------------
         , IOHandlerIndex, IOPageIndex, IOPageOffset
         , MemLocation (..), IOPage (..)

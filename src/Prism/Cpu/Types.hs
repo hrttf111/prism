@@ -153,6 +153,8 @@ class (Monad m) => InterruptDispatcher m where
     dispatchIrqDown :: PrismIRQ -> m Bool
     ackIrq :: m PrismInt
 
+data DirectCommand = DirectCommandU8 Uint8 deriving (Eq, Show)
+
 -------------------------------------------------------------------------------
 
 class (Monad m) => CpuDebug m where
@@ -192,5 +194,6 @@ class ( Monad m
     cpuInstrAddress :: m MemOffset
     cpuNextInstrByte :: m Uint8
     cpuTick :: m (Bool, Bool) -- m (updatePeripherals, interruptActive)
+    cpuRunDirect :: DirectCommand -> m ()
 
 -------------------------------------------------------------------------------

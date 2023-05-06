@@ -15,7 +15,7 @@ module Prism.Peripherals (
         , IOQueue (..)
         , createIOQueue
         ------------------------------------------------------
-        , configureInterrups
+        , configureInterrupts
         ------------------------------------------------------
         , LocalTransM (..)
         , PeripheralsLocal (..), LocalTrans (..)

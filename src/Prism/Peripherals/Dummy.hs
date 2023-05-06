@@ -42,6 +42,9 @@ instance RunPeripheralsM DummyCtx (DummyTransM DummyCtx IO) PrismM where
         modify $ (\s -> s { ctxIO = ioCtx } )
         return res
 
+instance RunPeripheralsDirect DummyCtx PrismM where
+    runPeripheralsDirect _ _ = return ()
+
 type DummyTrans = DummyTransM DummyCtx IO
 
 -------------------------------------------------------------------------------

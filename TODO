@@ -154,6 +154,25 @@ TODO:
 
 -------------------------------------------------------
 
+BIOS
+
+data Key = Key {
+}
+
+data BiosKeyboard = BiosKeyboard {
+    remoteKeyboardState :: SharedKeyboardState,
+    keyList :: [Key],
+}
+
+data BiosState = BiosState {
+    biosKeyboard :: BiosKeyboard,
+}
+
+class DirectCommandPeripheral m where
+    directCommand :: DirectCommand -> m ()
+
+-------------------------------------------------------
+
 PIC
 
  - IRR - input interrupts which are active

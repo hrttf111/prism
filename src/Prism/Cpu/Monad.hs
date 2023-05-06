@@ -55,6 +55,7 @@ instance Show PrismIRQ where
 
 data IOCtx = forall a m . ( PeripheralsMonad m
                           , RunPeripheralsM a m CpuTrans
+                          , RunPeripheralsDirect a CpuTrans
                           ) => IOCtx {
         ioCtxInternal :: a,
         ioCtxMemRegion :: MemIORegion,

@@ -75,7 +75,7 @@ runBinary binPath_  enableGDB_ = do
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     (ioCtx, peripheral) <- makeDummyIO maxMemorySize PeripheralDevices
     let ctx = makeCtx memReg memMain ioCtx
-    intM <- configureInterrups memMain 0xFF000 [(PrismInt 0x10, videoInterrupt)]
+    intM <- configureInterrupts memMain 0xFF000 [(PrismInt 0x10, videoInterrupt)]
     ctxNew <- runPrismM ctx $ do
         clearRegs
         writeOp ip bootloaderStart

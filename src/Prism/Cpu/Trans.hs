@@ -38,5 +38,9 @@ instance CpuMonad CpuTrans where
             interruptActive = intInterruptUp . ctxInterrupts $ ctx
         put $ ctx { ctxCycles = newCycles, ctxCyclesP = newCyclesP }
         return (updatePeripherals, interruptActive)
+    cpuRunDirect command = do
+        ctxIO <$> get >>= f
+        where
+            f (IOCtx s _ _) = runPeripheralsDirect s command
 
 -------------------------------------------------------------------------------

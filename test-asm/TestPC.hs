@@ -356,4 +356,18 @@ testPC instrList = do
                 inc dx
                 iret
             |]
+    describe "Test PC BIOS" $ do
+        let devR = 0
+        it "BIOS interrupt infra" $ do
+            comm <- newPrismComm False
+            let devices = createPC
+                testHandler int val = 89
+                intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+                mov al, 134
+                mov ah, 76
+                int 0x10
+                hlt
+            |]
 -------------------------------------------------------------------------------
