@@ -378,18 +378,20 @@ testPC instrList = do
                 sharedKeyboard = getPcBiosSharedState devices
                 intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            let keys = [(PcKey 1 2)]
+            let keys = [(PcKey 3 4)]
                 keyFlags = emptyKeyFlags { pcKeyFlagLeftShift = True }
                 keyboardState = SharedKeyboardState keyFlags keys
             liftIO $ atomically $ writeTVar sharedKeyboard keyboardState
-            execPrismHalt [(bl `shouldEq` 1), (bh `shouldEq` 2), (ax `shouldEq` 2)] env comm $ [text|
+            execPrismHalt [(bl `shouldEq` 3), (bh `shouldEq` 4), (cl `shouldEq` 2)] env comm $ [text|
                 int 9
-                ; Get key
-                mov al, 0
-                mov ah, 0
+                ; Check shift flags
+                mov ah, 2
                 int 0x16
-                mov bl, al
-                mov bh, ah
+                mov cl, al
+                ; Get key
+                mov ax, 0
+                int 0x16
+                mov bx, ax
                 ; Check key - empty buffer
                 mov ax, 0
                 push ax

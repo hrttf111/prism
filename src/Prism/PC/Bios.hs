@@ -36,29 +36,29 @@ data PcKeyFlags = PcKeyFlags {
 emptyKeyFlags = PcKeyFlags False False False False False False False False False False False False False
 
 boolToBit :: Int -> Bool -> Uint8
-boolToBit bitNum True = setBit 1 bitNum
+boolToBit bitNum True = bit bitNum
 boolToBit _ _ = 0
 
 toShiftFlags :: PcKeyFlags -> Uint8
 toShiftFlags flags =
-    (boolToBit 7 (pcKeyFlagInsert flags)) .&.
-    (boolToBit 6 (pcKeyFlagCapsLock flags)) .&.
-    (boolToBit 5 (pcKeyFlagNumLock flags)) .&.
-    (boolToBit 4 (pcKeyFlagScrollLock flags)) .&.
-    (boolToBit 3 (pcKeyFlagAlt flags)) .&.
-    (boolToBit 2 (pcKeyFlagCtrl flags)) .&.
-    (boolToBit 1 (pcKeyFlagLeftShift flags)) .&.
+    (boolToBit 7 (pcKeyFlagInsert flags)) .|.
+    (boolToBit 6 (pcKeyFlagCapsLock flags)) .|.
+    (boolToBit 5 (pcKeyFlagNumLock flags)) .|.
+    (boolToBit 4 (pcKeyFlagScrollLock flags)) .|.
+    (boolToBit 3 (pcKeyFlagAlt flags)) .|.
+    (boolToBit 2 (pcKeyFlagCtrl flags)) .|.
+    (boolToBit 1 (pcKeyFlagLeftShift flags)) .|.
     (boolToBit 0 (pcKeyFlagRightShift flags))
 
 toExtShiftFlags :: PcKeyFlags -> Uint8
 toExtShiftFlags flags =
-    (boolToBit 7 (pcKeyFlagSysReq flags)) .&.
-    (boolToBit 6 (pcKeyFlagCapsLock flags)) .&.
-    (boolToBit 5 (pcKeyFlagNumLock flags)) .&.
-    (boolToBit 4 (pcKeyFlagScrollLock flags)) .&.
-    (boolToBit 3 (pcKeyFlagRightAlt flags)) .&.
-    (boolToBit 2 (pcKeyFlagRightCtrl flags)) .&.
-    (boolToBit 1 (pcKeyFlagLeftAlt flags)) .&.
+    (boolToBit 7 (pcKeyFlagSysReq flags)) .|.
+    (boolToBit 6 (pcKeyFlagCapsLock flags)) .|.
+    (boolToBit 5 (pcKeyFlagNumLock flags)) .|.
+    (boolToBit 4 (pcKeyFlagScrollLock flags)) .|.
+    (boolToBit 3 (pcKeyFlagRightAlt flags)) .|.
+    (boolToBit 2 (pcKeyFlagRightCtrl flags)) .|.
+    (boolToBit 1 (pcKeyFlagLeftAlt flags)) .|.
     (boolToBit 0 (pcKeyFlagLeftCtrl flags))
 
 data SharedKeyboardState = SharedKeyboardState {
@@ -158,6 +158,8 @@ processBiosKeyboard bios = do
                     return bios
         2 -> do -- Check shift flags
             let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
+            liftIO $ putStrLn $ (show $ pcKeyboardFlags $ pcBiosKeyboard bios)
+            liftIO $ putStrLn $ "Flags = " ++ (show valAl)
             writeOp al valAl
             return bios
         0x12 -> do -- Check ext shift flags
