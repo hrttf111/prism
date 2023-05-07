@@ -153,13 +153,10 @@ processBiosKeyboard bios = do
                     writeOp ah $ pcKeyAux key
                     return bios
                 Nothing -> do
-                    liftIO $ putStrLn "Empty"
                     setFlag ZF True
                     return bios
         2 -> do -- Check shift flags
             let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
-            liftIO $ putStrLn $ (show $ pcKeyboardFlags $ pcBiosKeyboard bios)
-            liftIO $ putStrLn $ "Flags = " ++ (show valAl)
             writeOp al valAl
             return bios
         0x12 -> do -- Check ext shift flags
