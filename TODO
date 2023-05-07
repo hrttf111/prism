@@ -39,19 +39,58 @@ Functions
    - ah e (Write char)
    - ah f (Get video mode)
  - int 0x11 (Get equipment)
+   - Output to AX
+       - Bits 15 - 14 - number of printers
+       - Bits 13 - 12 - reserved
+       - Bits 11 - 9  - number of serial ports
+       - Bits 8 - reserved
+       - Bits 7 - 6 - number diskettes
+           - 00 - 1 diskette
+           - 01 - 2 diskettes
+       - Bits 5 - 4 - video mode
+           - 00 - VGA/EGA/PGA
+           - 01 - 40x25 color
+           - 10 - 80x25 color
+           - 11 - 80x25 mono
+       - Bit 3 - reserved
+       - Bit 2 - pointing device
+       - Bit 1 - math coprocessor
+       - Bit 0 - diskette for boot
  - int 0x12 (Get memory size)
+   - Output to AX
  - int 0x13 (Disk)
    - ah 0 (Reset disk)
-   - ah 1 (Get status)
-   - ah 2 (Read)
-   - ah 3 (Write)
-   - ah 4 (Verify)
+   - ah 1 (Read status)
+   - ah 2 (Read sectors)
+       - al - number of sectors
+       - ch - track number
+       - cl - sector number
+       - dh - head number
+       - dl - driver number
+       - es:bx - pointer to buffer
+       - out al - sectors read
+   - ah 3 (Write sectors)
+       - same as read
+   - ah 4 (Verify sectors)
    - ah 5 (Format track)
-   - ah 8 (Get params)
+   - ah 8 (Read params)
+       - dl - driver number
+       - out
+        - ax - 0
+        - bh - 0
+        - bl - 04 (3.5)
+        - ch - tracks
+        - cl - sectors
+        - dh - heads
+        - dl - drives
+        - es:di - pointer to param table
    - ah c (Seek)
    - ah 10 (Check ready)
-   - ah 15 (Get type)
-   - ah 16 (Detect)
+   - ah 15 (Read type)
+       - dl - driver number
+       - out
+        - ah - 03 fixed disk
+   - ah 16 (Detect media change)
  - int 0x14 (Serial)
  - int 0x15 (System services)
  - int 0x16 (Keyboard) (DSR)
@@ -89,6 +128,7 @@ Functions
             - Bit 0 - Left Ctrl
  - int 0x17 (Printer)
  - int 0x19 (Reboot)
+   - Loads 512 bytes from storage to 0x7C00 and transferres control
  - int 0x1a (Clock)
    - ah 0 (Read System Timer Time Counter)
      Ticks are 18.2 Hz
