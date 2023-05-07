@@ -5,6 +5,10 @@ module Prism.PC (
         , getPC, putPC
         ------------------------------------------------------
         , mkBiosInterrupts
+        , getPcBiosSharedState
+        , PcKey (..), PcKeyFlags (..)
+        , emptyKeyFlags
+        , SharedKeyboardState (..)
     ) where
 
 import Prism.PC.PC

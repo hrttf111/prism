@@ -7,6 +7,7 @@ module Prism.PC.PC where
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict
+import Control.Concurrent.STM (TVar)
 
 import Data.Bits
 
@@ -321,5 +322,8 @@ createPC :: (MonadIO m) => m PC
 createPC = do
     bios <- mkBios
     return $ PC 999 False defaultPIC defaultPIC defaultPIT bios
+
+getPcBiosSharedState :: PC -> TVar SharedKeyboardState
+getPcBiosSharedState = pcKeyboardShared . pcBiosKeyboard . pcBios
 
 -------------------------------------------------------------------------------

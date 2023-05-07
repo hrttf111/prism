@@ -64,8 +64,8 @@ Functions
    - ah 1 (Return keyboard status)
      - Return 2 byte key in AX
      - Key is not removed from buffer
-     - If buffer is empty ZF=0
-     - If buffer is not empty ZF!=0
+     - If buffer is empty ZF=1
+     - If buffer is not empty ZF=0
    - ah 2 (Return shift flag status)
      - AL contains flags
         - Bit 7 - Insert

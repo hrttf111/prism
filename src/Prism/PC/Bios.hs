@@ -118,7 +118,15 @@ mkBiosInterrupts = [ (PrismInt 9, biosInterruptKeyboardInternal)
 
 processBiosKeyboardInternal :: PcBios -> PrismM PcBios
 processBiosKeyboardInternal bios = do
-    return bios
+    liftIO $ putStrLn "Int 9 ISR"
+    let keyboard = pcBiosKeyboard bios
+        shared = pcKeyboardShared keyboard
+    res <- liftIO $ atomically $
+        swapTVar shared $ SharedKeyboardState emptyKeyFlags []
+    let keys' = (pcKeyboardList keyboard) ++ (sharedKeys res)
+        keys'' = drop ((length keys') - 16) keys'
+        keyboard' = PcKeyboard shared (sharedFlags res) keys''
+    return $ bios { pcBiosKeyboard = keyboard' }
 
 -------------------------------------------------------------------------------
 
@@ -134,18 +142,19 @@ processBiosKeyboard bios = do
                     writeOp ah $ pcKeyAux key
                     return $ bios { pcBiosKeyboard = (pcBiosKeyboard bios) {pcKeyboardList = keyList'} }
                 Nothing -> do
-                    -- TODO: suspend
+                    -- TODO: suspend, may check shared state periodically
                     return bios
         1 -> do -- Check key
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
             case keys' of
                 Just (key, keyList') -> do
-                    setFlag ZF True
+                    setFlag ZF False
                     writeOp al $ pcKeyMain key
                     writeOp ah $ pcKeyAux key
                     return bios
                 Nothing -> do
-                    setFlag ZF False
+                    liftIO $ putStrLn "Empty"
+                    setFlag ZF True
                     return bios
         2 -> do -- Check shift flags
             let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios

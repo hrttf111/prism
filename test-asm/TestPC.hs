@@ -10,6 +10,7 @@ import Test.Hspec
 import Data.Text (append)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Concurrent
+import Control.Concurrent.STM
 
 import Prism.Cpu
 import Prism.Command
@@ -368,6 +369,36 @@ testPC instrList = do
                 mov al, 134
                 mov ah, 76
                 int 0x1f
+                hlt
+            |]
+        it "BIOS keyboard - int 9" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let testHandler int val = 89
+                sharedKeyboard = getPcBiosSharedState devices
+                intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            let keys = [(PcKey 1 2)]
+                keyFlags = emptyKeyFlags { pcKeyFlagLeftShift = True }
+                keyboardState = SharedKeyboardState keyFlags keys
+            liftIO $ atomically $ writeTVar sharedKeyboard keyboardState
+            execPrismHalt [(bl `shouldEq` 1), (bh `shouldEq` 2), (ax `shouldEq` 2)] env comm $ [text|
+                int 9
+                ; Get key
+                mov al, 0
+                mov ah, 0
+                int 0x16
+                mov bl, al
+                mov bh, ah
+                ; Check key - empty buffer
+                mov ax, 0
+                push ax
+                popf
+                mov al, 0
+                mov ah, 1
+                int 0x16
+                pushf
+                pop ax
                 hlt
             |]
 -------------------------------------------------------------------------------
