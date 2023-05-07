@@ -26,8 +26,8 @@ HSBIOS
 
 Functions
  - int 8 (Timer) - BIOS internal
- - int 9 (Keyboard) - BIOS internal
- - int 10 (Video)
+ - int 9 (Keyboard) - BIOS internal (ISR)
+ - int 0x10 (Video)
    - ah 0 (Set video mode)
    - ah 1 (Set cursor shape)
    - ah 2 (Set cursor pos)
@@ -38,9 +38,9 @@ Functions
    - ah 9 (Write char + attr)
    - ah e (Write char)
    - ah f (Get video mode)
- - int 11 (Get equipment)
- - int 12 (Get memory size)
- - int 13 (Disk)
+ - int 0x11 (Get equipment)
+ - int 0x12 (Get memory size)
+ - int 0x13 (Disk)
    - ah 0 (Reset disk)
    - ah 1 (Get status)
    - ah 2 (Read)
@@ -52,22 +52,51 @@ Functions
    - ah 10 (Check ready)
    - ah 15 (Get type)
    - ah 16 (Detect)
- - int 14 (Serial)
- - int 15 (System config)
- - int 16 (Keyboard)
+ - int 0x14 (Serial)
+ - int 0x15 (System config)
+ - int 0x16 (Keyboard) (DSR)
    - ah 0 (Get key)
-   - ah 1 (Check key)
-   - ah 2 (Check shift)
-   - ah 12 (Check shift)
- - int 17 (Printer)
- - int 19 (Reboot)
- - int 1a (Clock)
+     - Return 2 byte key in AX
+        - AH contains Scan code
+        - AL contains ASCII code
+     - Remove key from buffer
+     - When buffer is empty - suspend
+   - ah 1 (Return keyboard status)
+     - Return 2 byte key in AX
+     - Key is not removed from buffer
+     - If buffer is empty ZF=0
+     - If buffer is not empty ZF!=0
+   - ah 2 (Return shift flag status)
+     - AL contains flags
+        - Bit 7 - Insert
+        - Bit 6 - Caps Lock
+        - Bit 5 - Num Lock
+        - Bit 4 - Scroll Lock
+        - Bit 3 - Alt pressed
+        - Bit 2 - Ctrl pressed
+        - Bit 1 - Left Shift pressed
+        - Bit 0 - Right Shift pressed
+   - ah 0x12 (Return extended shift flag status)
+        - AL contains same flags as AH 2
+        - AH contains flags
+            - Bit 7 - SysReq pressed
+            - Bit 6 - Caps Lock
+            - Bit 5 - Num Lock
+            - Bit 4 - Scroll Lock
+            - Bit 3 - Right Alt
+            - Bit 2 - Right Ctrl
+            - Bit 1 - Left Alt
+            - Bit 0 - Left Ctrl
+ - int 0x17 (Printer)
+ - int 0x19 (Reboot)
+ - int 0x1a (Clock)
    - ah 0 (Get ticks)
    - ah 2 (Get time)
    - ah 4 (Get date)
    - ah f (Init)
- - int 1d (Video params)
- - int 1e (Disk params)
+ - int 0x1b (Break code)
+ - int 0x1d (Video params)
+ - int 0x1e (Disk params)
 
 Communication types:
  - Peripheral -> CPU
@@ -101,6 +130,16 @@ Keyboard implementation
  - Share state between CPU and peripheral thread
  - Upon receiving interrupt read keyboard shared state
  - Generate internal interrupts
+
+Keyboard
+ - Shift/Toggle keys: Shift, Alt, Ctrl, Caps Lock, Num Lock, Scroll Lock
+ - Each "key" consists of two bytes: main and aux
+ - Some keys have special function:
+    - Ctrl-Alt-Del - System reset
+    - Ctrl-Break - Break
+    - Ctrl-NumLock - Pause
+    - Shift-PrintScreen - Print screen
+    - SysReq - System request
 
 Video implementation
  - Spawn peripheral thread

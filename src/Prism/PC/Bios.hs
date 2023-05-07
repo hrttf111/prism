@@ -12,6 +12,8 @@ import Prism.Peripherals
 -------------------------------------------------------------------------------
 
 data PcKey = PcKey {
+    pcKeyMain :: Uint8,
+    pcKeyAux :: Uint8
 } deriving (Show)
 
 data SharedKeyboardState = SharedKeyboardState {
