@@ -75,7 +75,7 @@ module Prism.Cpu (
         , signExtendDoubleword, signExtendDoubleword32
         , toSignedCompl2, toUnsignedComp2
         , signedOp, signedOp1, signedOpS
-        , bcdToHex16, hexToBcd16
+        , bcdToHex8, hexToBcd8, bcdToHex16, hexToBcd16
         ------------------------------------------------------
         , pushP, popP, pushV, popV
         , modifyFlag

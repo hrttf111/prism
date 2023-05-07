@@ -52,6 +52,12 @@ signedOpS func val1 = toUnsignedComp2 $ func $ toSignedCompl2 val1
 
 -------------------------------------------------------------------------------
 
+bcdToHex8 :: Uint8 -> Uint8
+bcdToHex8 val = (cv val 0x00F0 4 10)
+                 + (val .&. 0x000F)
+    where
+        cv v m s b = b * (shiftR (v .&. m) s)
+
 bcdToHex16 :: Uint16 -> Uint16
 bcdToHex16 val = (cv val 0xF000 12 1000)
                  + (cv val 0x0F00 8 100)
@@ -59,6 +65,11 @@ bcdToHex16 val = (cv val 0xF000 12 1000)
                  + (val .&. 0x000F)
     where
         cv v m s b = b * (shiftR (v .&. m) s)
+
+hexToBcd8 :: Uint8 -> Uint8
+hexToBcd8 val = fst . cv 1 0 . cv 10 4 $ (0, val)
+    where
+        cv d s (a, v) = (a + shiftL (div v d) s, v - (d * div v d))
 
 hexToBcd16 :: Uint16 -> Uint16
 hexToBcd16 val = fst . cv 1 0 . cv 10 4 . cv 100 8 . cv 1000 12 $ (0, val)

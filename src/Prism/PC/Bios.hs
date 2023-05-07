@@ -7,6 +7,8 @@ import Control.Concurrent.STM
 import Data.Bits
 import Data.List (uncons)
 
+import System.CPUTime (getCPUTime)
+
 import Prism.Cpu
 import Prism.Peripherals
 
@@ -75,14 +77,22 @@ data PcKeyboard = PcKeyboard {
 instance Show PcKeyboard where
     show _ = "PcKeyboard"
 
+data PcTimer = PcTimer {
+    pcTimerLastInt8 :: Uint64, -- in us
+    pcTimerTicks :: Uint64
+} deriving (Show)
+
+emptyTimer = PcTimer 0 0
+
 data PcBios = PcBios {
-    pcBiosKeyboard :: PcKeyboard
+    pcBiosKeyboard :: PcKeyboard,
+    pcTimer :: PcTimer
 } deriving (Show)
 
 mkBios :: (MonadIO m) => m PcBios
 mkBios = do
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
-    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags [])
+    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) emptyTimer
 
 -------------------------------------------------------------------------------
 
@@ -107,7 +117,8 @@ biosInterruptTest _ =
     cpuRunDirect $ DirectCommandU8 0xef
 
 mkBiosInterrupts :: [InterruptHandlerLocation]
-mkBiosInterrupts = [ (PrismInt 9, biosInterruptKeyboardInternal)
+mkBiosInterrupts = [ (PrismInt 8, \_ -> cpuRunDirect $ DirectCommandU8 8)
+                   , (PrismInt 9, biosInterruptKeyboardInternal)
                    , (PrismInt 0x10, biosInterruptVideo)
                    , (PrismInt 0x16, biosInterruptKeyboard)
                    , (PrismInt 0x1a, biosInterruptClock)
@@ -116,9 +127,26 @@ mkBiosInterrupts = [ (PrismInt 9, biosInterruptKeyboardInternal)
 
 -------------------------------------------------------------------------------
 
-processBiosKeyboardInternal :: PcBios -> PrismM PcBios
-processBiosKeyboardInternal bios = do
-    liftIO $ putStrLn "Int 9 ISR"
+processBiosTimerISR :: PcBios -> PrismM PcBios
+processBiosTimerISR bios = do
+    liftIO $ putStrLn "Int 8 ISR"
+    ticks <- liftIO getCPUTime
+    let timerPeriod = 54900 -- 54.9 ms ~ 18.2 Hz
+        ticksUs = fromIntegral $ div ticks 1000000 -- ps -> us
+        diff = ticksUs - (pcTimerLastInt8 $ pcTimer bios)
+        timerTicks = pcTimerTicks $ pcTimer bios
+        timerTicks' = timerTicks + 1
+    liftIO $ putStrLn $ "Ticks = " ++ (show timerTicks')
+    liftIO $ putStrLn $ "Diff = " ++ (show diff)
+    {-if diff > timerPeriod then
+        raiseInterrupt $ PrismInt 0x1c
+        else
+            return ()-}
+    return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
+
+processBiosKeyboardISR :: PcBios -> PrismM PcBios
+processBiosKeyboardISR bios = do
+    --liftIO $ putStrLn "Int 9 ISR"
     let keyboard = pcBiosKeyboard bios
         shared = pcKeyboardShared keyboard
     res <- liftIO $ atomically $
@@ -202,10 +230,34 @@ processBiosClock :: PcBios -> PrismM PcBios
 processBiosClock bios = do
     valAh <- readOp ah
     case valAh of
-        0 -> return () -- Get ticks
-        2 -> return () -- Get time
-        4 -> return () -- Get date
-        0xf -> return () -- Init
+        0 -> do -- Get ticks
+            let ticks = pcTimerTicks $ pcTimer bios
+                highTicks = fromIntegral $ shiftR (ticks .&. 0xFFFF0000) 16
+                lowTicks = fromIntegral $ ticks .&. 0xFFFF
+            writeOp al 0
+            writeOp cx highTicks
+            writeOp dx lowTicks
+            return ()
+        2 -> do -- Get time
+            let hours = hexToBcd8 0
+                minutes = hexToBcd8 0
+                seconds = hexToBcd8 0
+            writeOp al hours
+            writeOp ch hours
+            writeOp cl minutes
+            writeOp dh seconds
+            writeOp dl 0
+            return ()
+        4 -> do -- Get date
+            let century = hexToBcd8 20
+                year = hexToBcd8 0
+                month = hexToBcd8 0
+                day = hexToBcd8 0
+            writeOp ch century
+            writeOp cl year
+            writeOp dh month
+            writeOp dl day
+            return ()
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
 
@@ -218,7 +270,8 @@ processBiosTest bios = do
     return bios
 
 processBios :: PcBios -> Uint8 -> PrismM PcBios
-processBios bios 9 = processBiosKeyboardInternal bios
+processBios bios 8 = processBiosTimerISR bios
+processBios bios 9 = processBiosKeyboardISR bios
 processBios bios 0x10 = processBiosVideo bios
 processBios bios 0x16 = processBiosKeyboard bios
 processBios bios 0x1a = processBiosClock bios

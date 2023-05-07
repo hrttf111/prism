@@ -362,8 +362,7 @@ testPC instrList = do
         it "BIOS interrupt infra" $ do
             comm <- newPrismComm False
             devices <- createPC
-            let testHandler int val = 89
-                intList = mkBiosInterrupts
+            let intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
                 mov al, 134
@@ -374,8 +373,7 @@ testPC instrList = do
         it "BIOS keyboard - int 9" $ do
             comm <- newPrismComm False
             devices <- createPC
-            let testHandler int val = 89
-                sharedKeyboard = getPcBiosSharedState devices
+            let sharedKeyboard = getPcBiosSharedState devices
                 intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             let keys = [(PcKey 3 4)]
@@ -402,5 +400,35 @@ testPC instrList = do
                 pushf
                 pop dx
                 hlt
+            |]
+        it "BIOS timer - int 8" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(cx `shouldEq` 0), (dx `shouldEq` 3), (al `shouldEq` 0), (bx `shouldEq` 0)] env comm $ [text|
+                %macro set_int 2
+                    mov ax, 0
+                    mov es, ax
+                    mov bx, cs
+                    mov [es:%1], WORD %2
+                    mov [es:%1+2], bx
+                %endmacro
+                ;absolute 0x80
+                ;    interrupt_1   resw    0x1c
+                mov bx, 0
+                set_int 0x1c, INTERRUPT1
+                int 8
+                int 8
+                int 8
+                ; Get ticks
+                mov ah, 0
+                int 0x1a
+                mov bx, 0
+                hlt
+
+                INTERRUPT1:
+                inc bx
+                iret
             |]
 -------------------------------------------------------------------------------

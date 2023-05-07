@@ -25,7 +25,7 @@ HSBIOS
  - Will not use "real" peripherals
 
 Functions
- - int 8 (Timer) - BIOS internal
+ - int 8 (Timer) - BIOS internal (ISR)
  - int 9 (Keyboard) - BIOS internal (ISR)
  - int 0x10 (Video)
    - ah 0 (Set video mode)
@@ -53,7 +53,7 @@ Functions
    - ah 15 (Get type)
    - ah 16 (Detect)
  - int 0x14 (Serial)
- - int 0x15 (System config)
+ - int 0x15 (System services)
  - int 0x16 (Keyboard) (DSR)
    - ah 0 (Get key)
      - Return 2 byte key in AX
@@ -90,10 +90,25 @@ Functions
  - int 0x17 (Printer)
  - int 0x19 (Reboot)
  - int 0x1a (Clock)
-   - ah 0 (Get ticks)
-   - ah 2 (Get time)
-   - ah 4 (Get date)
-   - ah f (Init)
+   - ah 0 (Read System Timer Time Counter)
+     Ticks are 18.2 Hz
+        - al - Timer overflow (0 when < 24h since boot)
+        - CF (1 - error)
+        - CX - High word ticks
+        - DX - Low word ticks
+   - ah 2 (Read Real Time Clock Time)
+        - AL - Hours BCD
+        - CF - 0 = clock operating
+        - CH - Hours BCD
+        - CL - Minutes BCD
+        - DH - Seconds BCD
+        - DL - Daylight saving time
+   - ah 4 (Read Real Time Clock Date)
+        - CF - 1 = update in progress
+        - CH - Century in BCD (19 or 20)
+        - CL - Year in BCD
+        - DH - Month in BCD
+        - DL - Day in BCD
  - int 0x1b (Break code)
  - int 0x1d (Video params)
  - int 0x1e (Disk params)
