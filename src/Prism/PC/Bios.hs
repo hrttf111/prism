@@ -5,6 +5,7 @@ import Control.Monad.State.Strict
 import Control.Concurrent.STM
 
 import Data.Bits
+import Data.List (uncons)
 
 import Prism.Cpu
 import Prism.Peripherals
@@ -12,15 +13,62 @@ import Prism.Peripherals
 -------------------------------------------------------------------------------
 
 data PcKey = PcKey {
-    pcKeyMain :: Uint8,
-    pcKeyAux :: Uint8
+    pcKeyMain :: Uint8, -- ASCII code
+    pcKeyAux :: Uint8   -- Scan code
 } deriving (Show)
 
+data PcKeyFlags = PcKeyFlags {
+    pcKeyFlagInsert :: Bool,
+    pcKeyFlagCapsLock :: Bool,
+    pcKeyFlagNumLock :: Bool,
+    pcKeyFlagScrollLock :: Bool,
+    pcKeyFlagAlt :: Bool,
+    pcKeyFlagCtrl :: Bool,
+    pcKeyFlagLeftShift :: Bool,
+    pcKeyFlagRightShift :: Bool,
+    pcKeyFlagSysReq :: Bool,
+    pcKeyFlagRightAlt :: Bool,
+    pcKeyFlagLeftAlt :: Bool,
+    pcKeyFlagRightCtrl :: Bool,
+    pcKeyFlagLeftCtrl :: Bool
+} deriving (Show)
+
+emptyKeyFlags = PcKeyFlags False False False False False False False False False False False False False
+
+boolToBit :: Int -> Bool -> Uint8
+boolToBit bitNum True = setBit 1 bitNum
+boolToBit _ _ = 0
+
+toShiftFlags :: PcKeyFlags -> Uint8
+toShiftFlags flags =
+    (boolToBit 7 (pcKeyFlagInsert flags)) .&.
+    (boolToBit 6 (pcKeyFlagCapsLock flags)) .&.
+    (boolToBit 5 (pcKeyFlagNumLock flags)) .&.
+    (boolToBit 4 (pcKeyFlagScrollLock flags)) .&.
+    (boolToBit 3 (pcKeyFlagAlt flags)) .&.
+    (boolToBit 2 (pcKeyFlagCtrl flags)) .&.
+    (boolToBit 1 (pcKeyFlagLeftShift flags)) .&.
+    (boolToBit 0 (pcKeyFlagRightShift flags))
+
+toExtShiftFlags :: PcKeyFlags -> Uint8
+toExtShiftFlags flags =
+    (boolToBit 7 (pcKeyFlagSysReq flags)) .&.
+    (boolToBit 6 (pcKeyFlagCapsLock flags)) .&.
+    (boolToBit 5 (pcKeyFlagNumLock flags)) .&.
+    (boolToBit 4 (pcKeyFlagScrollLock flags)) .&.
+    (boolToBit 3 (pcKeyFlagRightAlt flags)) .&.
+    (boolToBit 2 (pcKeyFlagRightCtrl flags)) .&.
+    (boolToBit 1 (pcKeyFlagLeftAlt flags)) .&.
+    (boolToBit 0 (pcKeyFlagLeftCtrl flags))
+
 data SharedKeyboardState = SharedKeyboardState {
+    sharedFlags :: PcKeyFlags,
+    sharedKeys :: [PcKey]
 } deriving (Show)
 
 data PcKeyboard = PcKeyboard {
     pcKeyboardShared :: TVar SharedKeyboardState,
+    pcKeyboardFlags :: PcKeyFlags,
     pcKeyboardList :: [PcKey]
 }
 
@@ -33,8 +81,8 @@ data PcBios = PcBios {
 
 mkBios :: (MonadIO m) => m PcBios
 mkBios = do
-    keyboardState <- liftIO $ newTVarIO SharedKeyboardState
-    return $ PcBios (PcKeyboard keyboardState [])
+    keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
+    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags [])
 
 -------------------------------------------------------------------------------
 
@@ -78,12 +126,40 @@ processBiosKeyboard :: PcBios -> PrismM PcBios
 processBiosKeyboard bios = do
     valAh <- readOp ah
     case valAh of
-        0 -> return () -- Get key
-        1 -> return () -- Check key
-        2 -> return () -- Check shift
-        12 -> return () -- Check shift
-        _ -> liftIO $ putStrLn "Unsupported"
-    return bios
+        0 -> do -- Get key
+            let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
+            case keys' of
+                Just (key, keyList') -> do
+                    writeOp al $ pcKeyMain key
+                    writeOp ah $ pcKeyAux key
+                    return $ bios { pcBiosKeyboard = (pcBiosKeyboard bios) {pcKeyboardList = keyList'} }
+                Nothing -> do
+                    -- TODO: suspend
+                    return bios
+        1 -> do -- Check key
+            let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
+            case keys' of
+                Just (key, keyList') -> do
+                    setFlag ZF True
+                    writeOp al $ pcKeyMain key
+                    writeOp ah $ pcKeyAux key
+                    return bios
+                Nothing -> do
+                    setFlag ZF False
+                    return bios
+        2 -> do -- Check shift flags
+            let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
+            writeOp al valAl
+            return bios
+        0x12 -> do -- Check ext shift flags
+            let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
+                valAh = toExtShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
+            writeOp al valAl
+            writeOp ah valAh
+            return bios
+        _ -> do
+            liftIO $ putStrLn "Unsupported"
+            return bios
 
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
