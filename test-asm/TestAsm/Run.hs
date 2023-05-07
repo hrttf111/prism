@@ -158,15 +158,19 @@ execPrismHalt regs env comm cd = do
     let memRegP = ctxReg ctx
     mapM_ (\f -> f memRegP) regs
 
-execAndCmp :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> Text -> Expectation
-execAndCmp regs env cd = do
+execAndCmpFF :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> (Flags -> Flags) -> Text -> Expectation
+execAndCmpFF regs env fixFlags cd = do
     code <- (assembleNative env) cd
     code16 <- (assembleNative16 env) cd
     memRegN <- (executeNative env) code
     ctx <- (executePrism env) code16 decodeMemIp
     let memRegP = ctxReg ctx
     mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
-    (ctxFlags ctx) `flagsShouldEq` memRegN
+    (flagsN, _) <- readRegRaw memRegN flagsInternal
+    (fixFlags $ ctxFlags ctx) `shouldBe` (fixFlags flagsN)
+
+execAndCmp :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> Text -> Expectation
+execAndCmp regs env cd = execAndCmpFF regs env id cd
 
 execAndCmpNF :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> Text -> Expectation
 execAndCmpNF regs env cd = do

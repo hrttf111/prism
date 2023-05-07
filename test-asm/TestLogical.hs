@@ -13,6 +13,10 @@ import NeatInterpolation
 
 -------------------------------------------------------------------------------
 
+ignoreOF flags = flags { flagOF = False }
+ignoreAF flags = flags { flagAF = False }
+ignoreNonRotate flags = flags { flagPF = False, flagAF = False, flagZF = False, flagSF = False }
+
 testLog env = do
     describe "NOT" $ do
         it "8" $ do
@@ -50,12 +54,12 @@ testLog env = do
             |]
     describe "SHL" $ do
         it "8" $ do
-            execAndCmp [al] env $ [text|
+            execAndCmpFF [al] env ignoreAF $ [text|
                 mov al, 1
                 shl al, 1
             |]
         it "8 neg" $ do
-            execAndCmp [al, bl] env $ [text|
+            execAndCmpFF [al, bl] env ignoreAF $ [text|
                 mov al, 0xAF
                 mov cl, 1
                 shl al, cl
@@ -63,7 +67,7 @@ testLog env = do
                 shl bl, 1
             |]
         it "8 multi" $ do
-            execAndCmp [al, bl] env $ [text|
+            execAndCmpFF [al, bl] env (ignoreAF . ignoreOF) $ [text|
                 mov al, 0
                 shl al, 1
                 mov bl, 0x0F
@@ -71,8 +75,7 @@ testLog env = do
                 shl bl, cl
             |]
         it "8 multi2" $ do
-            --todo: OF is undefined need to cmp without OF in this case
-            execAndCmpNF [al, dl] env $ [text|
+            execAndCmpFF [al, dl] env (ignoreAF . ignoreOF) $ [text|
                 mov al, 0
                 shl al, 1
                 mov dl, 0xAF
@@ -81,13 +84,12 @@ testLog env = do
             |]
     describe "SHR" $ do
         it "8" $ do
-            execAndCmp [al] env $ [text|
+            execAndCmpFF [al] env ignoreAF $ [text|
                 mov al, 1
                 shr al, 1
             |]
         it "8 neg" $ do
-            --todo: OF is undefined need to cmp without OF in this case
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreAF $ [text|
                 mov al, 0
                 shl al, 1
                 mov al, 0xAF
@@ -96,35 +98,35 @@ testLog env = do
             |]
     describe "SAR" $ do
         it "8" $ do
-            execAndCmp [al] env $ [text|
+            execAndCmpFF [al] env ignoreAF $ [text|
                 mov al, 1
                 sar al, 1
             |]
         it "8 neg" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreAF $ [text|
                 mov al, 0xAF
                 mov cl, 2
                 sar al, cl
             |]
         it "16" $ do
-            execAndCmp [ax] env $ [text|
+            execAndCmpFF [ax] env ignoreAF $ [text|
                 mov ax, 0x101
                 sar ax, 1
             |]
         it "16 neg" $ do
-            execAndCmpNF [ax] env $ [text|
+            execAndCmpFF [ax] env ignoreAF $ [text|
                 mov ax, 0xAFFF
                 mov cl, 12
                 sar ax, cl
             |]
     describe "ROL" $ do
         it "8" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreNonRotate $ [text|
                 mov al, 0x81
                 rol al, 1
             |]
         it "8 multi" $ do
-            execAndCmpNF [al, bl] env $ [text|
+            execAndCmpFF [al, bl] env ignoreNonRotate $ [text|
                 mov al, 0x7F
                 mov cl, 2
                 rol al, cl
@@ -134,12 +136,12 @@ testLog env = do
             |]
     describe "ROR" $ do
         it "8" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreNonRotate $ [text|
                 mov al, 0x81
                 ror al, 1
             |]
         it "8 multi" $ do
-            execAndCmpNF [al, bl] env $ [text|
+            execAndCmpFF [al, bl] env ignoreNonRotate $ [text|
                 mov al, 0x7F
                 mov cl, 2
                 ror al, cl
@@ -149,19 +151,19 @@ testLog env = do
             |]
     describe "RCL" $ do
         it "8 CF=0" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreNonRotate $ [text|
                 clc
                 mov al, 0x81
                 rcl al, 1
             |]
         it "8 CF=1" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreNonRotate $ [text|
                 stc
                 mov al, 0x81
                 rcl al, 1
             |]
         it "8 multi" $ do
-            execAndCmpNF [al, bl] env $ [text|
+            execAndCmpFF [al, bl] env (ignoreNonRotate . ignoreOF) $ [text|
                 clc
                 mov al, 0x7F
                 mov cl, 2
@@ -172,19 +174,19 @@ testLog env = do
             |]
     describe "RCR" $ do
         it "8 CF=0" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreNonRotate $ [text|
                 clc
                 mov al, 0x81
                 rcr al, 1
             |]
         it "8 CF=1" $ do
-            execAndCmpNF [al] env $ [text|
+            execAndCmpFF [al] env ignoreNonRotate $ [text|
                 stc
                 mov al, 0x81
                 rcr al, 1
             |]
         it "8 multi" $ do
-            execAndCmpNF [al, bl] env $ [text|
+            execAndCmpFF [al, bl] env (ignoreNonRotate . ignoreOF) $ [text|
                 clc
                 mov al, 0xF7
                 mov cl, 2
