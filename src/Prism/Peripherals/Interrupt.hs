@@ -32,7 +32,8 @@ writeHandler :: MonadIO m => Ptr Word8 -> Uint8 -> Int -> m ()
 writeHandler ptr int addr = liftIO $ (
     pokeByteOff ptr addr (0xF1 :: Word8) >>
     pokeByteOff ptr (addr+1) int >>
-    pokeByteOff ptr (addr+2) (0xCF :: Word8) >>
+    pokeByteOff ptr (addr+2) (0xCF :: Word8) >> -- iret
+    --pokeByteOff ptr (addr+2) (0x90 :: Word8) >> -- nop
     pokeByteOff ptr (addr+3) (0x00 :: Word8) )
 
 --Write interrupts handler`s custom ASM instruction to specific memory location and

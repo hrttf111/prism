@@ -382,7 +382,7 @@ testPC instrList = do
                 keyFlags = emptyKeyFlags { pcKeyFlagLeftShift = True }
                 keyboardState = SharedKeyboardState keyFlags keys
             liftIO $ atomically $ writeTVar sharedKeyboard keyboardState
-            execPrismHalt [(bl `shouldEq` 3), (bh `shouldEq` 4), (cl `shouldEq` 2)] env comm $ [text|
+            execPrismHalt [(bl `shouldEq` 3), (bh `shouldEq` 4), (cl `shouldEq` 2), (dx `shouldEq` 0x40)] env comm $ [text|
                 int 9
                 ; Check shift flags
                 mov ah, 2
@@ -400,7 +400,7 @@ testPC instrList = do
                 mov ah, 1
                 int 0x16
                 pushf
-                pop ax
+                pop dx
                 hlt
             |]
 -------------------------------------------------------------------------------

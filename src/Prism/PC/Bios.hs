@@ -130,6 +130,14 @@ processBiosKeyboardInternal bios = do
 
 -------------------------------------------------------------------------------
 
+saveInterruptCtx :: PrismM ()
+saveInterruptCtx = do
+    flags <- getFlags
+    eflags <- getFlags
+    pushV $ flagsToVal flags $ eflagsToVal eflags 0
+    pushP cs
+    pushP ip
+
 processBiosKeyboard :: PcBios -> PrismM PcBios
 processBiosKeyboard bios = do
     valAh <- readOp ah
@@ -148,12 +156,16 @@ processBiosKeyboard bios = do
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
             case keys' of
                 Just (key, keyList') -> do
+                    retInterrupt
                     setFlag ZF False
                     writeOp al $ pcKeyMain key
                     writeOp ah $ pcKeyAux key
+                    saveInterruptCtx
                     return bios
                 Nothing -> do
+                    retInterrupt
                     setFlag ZF True
+                    saveInterruptCtx
                     return bios
         2 -> do -- Check shift flags
             let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
