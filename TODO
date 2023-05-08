@@ -29,15 +29,51 @@ Functions
  - int 9 (Keyboard) - BIOS internal (ISR)
  - int 0x10 (Video)
    - ah 0 (Set video mode)
+       - al 0-7, d-13
+       - out al
+        0x20 when mode > 7
+        0x30 when mode 0-5 or 7
+        0x3f when mode 6
    - ah 1 (Set cursor shape)
+       - ch - bit 5 disable cursor, 4-0 top scan line
+       - cl - bit 6-5 show cursor, 4-0 low scan line
    - ah 2 (Set cursor pos)
+       - bh - display page number
+       - dh - row
+       - dl - column
+       - out al = 0
    - ah 3 (Get cursor pos)
+       - bh page number
+       - out ax = 0
+       - ch starting cursor scan line
+       - cl ending cursor scan line
+       - dh row number
+       - dl column number
    - ah 6 (Scroll up)
+       - al scroll distance in rows
+       - bh attr for blank lines
+       - ch top row scroll window
+       - cl left column scroll window
+       - dh bottom row scroll window
+       - dl right column scroll window
    - ah 7 (Scroll down)
    - ah 8 (Get char)
+       - bh page
+       - out ah attr
+       - al char
    - ah 9 (Write char + attr)
+       - al ascii char
+       - bh page
+       - bl attr
+       - cx repeat count
    - ah e (Write char)
+       - al ascii char
+       - bl color fg
+       - bh page
    - ah f (Get video mode)
+       - out ah number of columns
+       - al mode
+       - bh active page
  - int 0x11 (Get equipment)
    - Output to AX
        - Bits 15 - 14 - number of printers
@@ -228,15 +264,15 @@ HW ports
  - Video scancode/refresh
 
 TODO:
- - Implement BIOS structs
- - Create keyboard infra
+ - Implement BIOS structs +
+ - Create keyboard infra +
  - Implement basic keyboard functions
-    - Internal interrupt
+    - Internal interrupt +
     - Char conversion
-    - 0, 1, 2, 12
- - Implement BIOS tests (part of test-asm)
-    - Send keyboard interrupts + update shared state
- - Implement BIOS timer
+    - 0, 1, 2, 12 +
+ - Implement BIOS tests (part of test-asm) +
+    - Send keyboard interrupts + update shared state +
+ - Implement BIOS timer +
  - Static parameters
     - Hardcode default
     - Create unit tests
