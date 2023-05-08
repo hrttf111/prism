@@ -7,10 +7,12 @@ module TestPC where
 
 import Test.Hspec
 
-import Data.Text (append)
 import Control.Monad.Trans (liftIO, MonadIO)
 import Control.Concurrent
 import Control.Concurrent.STM
+
+import Data.Text (append)
+import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
 
 import Prism.Cpu
 import Prism.Command
@@ -425,5 +427,20 @@ testPC instrList = do
                 INTERRUPT1:
                 inc bx
                 iret
+            |]
+        it "BIOS timer - time" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            utcTime <- liftIO getCurrentTime
+            let tm = timeToTimeOfDay $ utctDayTime utcTime
+                hours = fromIntegral $ hexToBcd8 $ fromIntegral $ todHour tm
+                minutes = fromIntegral $ hexToBcd8 $ fromIntegral $ todMin tm
+            execPrismHalt [(ch `shouldEq` hours), (cl `shouldEq` minutes), (al `shouldEq` hours)] env comm $ [text|
+                ; Get time
+                mov ah, 2
+                int 0x1a
+                hlt
             |]
 -------------------------------------------------------------------------------

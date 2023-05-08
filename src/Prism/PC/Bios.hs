@@ -6,6 +6,7 @@ import Control.Concurrent.STM
 
 import Data.Bits
 import Data.List (uncons)
+import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
 
 import System.CPUTime (getCPUTime)
 
@@ -241,9 +242,11 @@ processBiosClock bios = do
             writeOp dx lowTicks
             return ()
         2 -> do -- Get time
-            let hours = hexToBcd8 0
-                minutes = hexToBcd8 0
-                seconds = hexToBcd8 0
+            utcTime <- liftIO getCurrentTime
+            let tm = timeToTimeOfDay $ utctDayTime utcTime
+                hours = hexToBcd8 $ fromIntegral $ todHour tm
+                minutes = hexToBcd8 $ fromIntegral $ todMin tm
+                seconds = hexToBcd8 $ fromIntegral $ div (fromEnum $ todSec tm) 1000000000000
             writeOp al hours
             writeOp ch hours
             writeOp cl minutes
@@ -251,10 +254,10 @@ processBiosClock bios = do
             writeOp dl 0
             return ()
         4 -> do -- Get date
-            let century = hexToBcd8 20
-                year = hexToBcd8 0
-                month = hexToBcd8 0
-                day = hexToBcd8 0
+            let century = hexToBcd8 19
+                year = hexToBcd8 80
+                month = hexToBcd8 1
+                day = hexToBcd8 1
             writeOp ch century
             writeOp cl year
             writeOp dh month
