@@ -406,25 +406,20 @@ testPC instrList = do
             devices <- createPC
             let intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(cx `shouldEq` 0), (dx `shouldEq` 3), (al `shouldEq` 0), (bx `shouldEq` 0)] env comm $ [text|
-                %macro set_int 2
-                    mov ax, 0
-                    mov es, ax
-                    mov bx, cs
-                    mov [es:%1], WORD %2
-                    mov [es:%1+2], bx
-                %endmacro
-                ;absolute 0x80
-                ;    interrupt_1   resw    0x1c
+            execPrismHalt [(cx `shouldEq` 0), (dx `shouldEq` 1), (al `shouldEq` 0), (bx `shouldEq` 1)] env comm $ [text|
+                ; Set interrupt
+                %define INTER_1c 0x1c*4
+                mov ax, 0
+                mov es, ax
+                mov bx, cs
+                mov [es:INTER_1c], WORD INTERRUPT1
+                mov [es:INTER_1c+2], bx
+                ; Reset BX and call timer
                 mov bx, 0
-                set_int 0x1c, INTERRUPT1
-                int 8
-                int 8
                 int 8
                 ; Get ticks
                 mov ah, 0
                 int 0x1a
-                mov bx, 0
                 hlt
 
                 INTERRUPT1:

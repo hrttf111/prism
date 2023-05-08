@@ -136,12 +136,14 @@ processBiosTimerISR bios = do
         diff = ticksUs - (pcTimerLastInt8 $ pcTimer bios)
         timerTicks = pcTimerTicks $ pcTimer bios
         timerTicks' = timerTicks + 1
-    liftIO $ putStrLn $ "Ticks = " ++ (show timerTicks')
-    liftIO $ putStrLn $ "Diff = " ++ (show diff)
-    {-if diff > timerPeriod then
+    --liftIO $ putStrLn $ "Ticks = " ++ (show timerTicks')
+    --liftIO $ putStrLn $ "Diff = " ++ (show diff)
+    if diff > timerPeriod then do
+        --liftIO $ putStrLn "Raise interrupt 0x1c"
         raiseInterrupt $ PrismInt 0x1c
         else
-            return ()-}
+            return ()
+    --liftIO $ putStrLn "Continue"
     return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
 
 processBiosKeyboardISR :: PcBios -> PrismM PcBios
