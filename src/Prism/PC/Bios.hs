@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 module Prism.PC.Bios where
 
 import Control.Monad.Trans (MonadIO, liftIO)
@@ -7,6 +9,13 @@ import Control.Concurrent.STM
 import Data.Bits
 import Data.List (uncons)
 import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
+import qualified Data.ByteString as B
+
+import Foreign.Ptr
+import Foreign.Marshal.Alloc (callocBytes)
+import Foreign.Marshal.Utils (fillBytes)
+import Foreign.Marshal.Array (pokeArray)
+import Foreign.Storable (peekByteOff, pokeByteOff)
 
 import System.CPUTime (getCPUTime)
 
@@ -85,15 +94,34 @@ data PcTimer = PcTimer {
 
 emptyTimer = PcTimer 0 0
 
+data SharedVideoState = SharedVideoState {
+    --videoMemory :: B.ByteString,
+    videoMemory :: Ptr Uint8,
+    videoCursorEnabled :: Bool,
+    videoCursorPos :: (Int, Int),
+    videoScrollPos :: Int
+} deriving (Show)
+
+data PcVideo = PcVideo {
+    pcVideoShared :: TVar SharedVideoState
+}
+
+instance Show PcVideo where
+    show _ = "PcVideo"
+
 data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
+    pcVideoState :: PcVideo,
     pcTimer :: PcTimer
 } deriving (Show)
 
 mkBios :: (MonadIO m) => m PcBios
 mkBios = do
+    let memSize = 65536
+    videoMem <- liftIO $ callocBytes memSize
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
-    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) emptyTimer
+    videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem True (0, 0) 0
+    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer
 
 -------------------------------------------------------------------------------
 
@@ -216,18 +244,76 @@ processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
     case valAh of
-        0 -> return () -- Set video mode
-        1 -> return () -- Set cursor shape
-        2 -> return () -- Set cursor pos
-        3 -> return () -- Get cursor pos
-        6 -> return () -- Scroll up
-        7 -> return () -- Scroll down
-        8 -> return () -- Get char
-        9 -> return () -- Write char + attr
-        0xe -> return () -- Write char
-        0xf -> return () -- Get video mode
+        0 -> do -- Set video mode
+            writeOp al 0x30
+            return ()
+        1 -> do -- Set cursor shape
+            valCh <- readOp ch
+            valCl <- readOp cl
+            let enableCursor = ((valCh .&. 0x10) /= 0) && ((valCl .&. 0x30) /= 0)
+                vs = pcVideoShared $ pcVideoState bios
+            liftIO $ atomically $ do
+                s <- readTVar vs
+                writeTVar vs $ s { videoCursorEnabled = enableCursor }
+            return ()
+        2 -> do -- Set cursor pos
+            --valBh <- readOp bh
+            valDh <- fromIntegral <$> readOp dh -- row
+            valDl <- fromIntegral <$> readOp dl -- column
+            let vs = pcVideoShared $ pcVideoState bios
+            liftIO $ atomically $ do
+                s <- readTVar vs
+                writeTVar vs $ s { videoCursorPos = (valDh, valDl) }
+            writeOp al 0
+            return ()
+        3 -> do -- Get cursor pos
+            --valBh <- readOp bh
+            let vs = pcVideoShared $ pcVideoState bios
+            pos <- liftIO $ atomically $ videoCursorPos <$> readTVar vs
+            writeOp ch 0
+            writeOp cl 0
+            writeOp dh $ fromIntegral $ fst pos
+            writeOp dl $ fromIntegral $ snd pos
+            return ()
+        6 -> do -- Scroll up
+            doScroll True
+            return ()
+        7 -> do -- Scroll down
+            doScroll False
+            return ()
+        8 -> do -- Get char
+            --valBh <- readOp bh
+            writeOp al 0 -- ASCII char
+            writeOp ah 0 -- attr
+            return ()
+        9 -> do -- Write char + attr
+            valAl <- readOp al -- ASCII code
+            valBl <- readOp bl -- attr
+            --valBh <- readOp bh
+            valCx <- readOp cx -- repeat
+            return ()
+        0xe -> do -- Write char and update cursor
+            valAl <- readOp al -- ASCII code
+            valBl <- readOp bl -- FG color
+            --valBh <- readOp bh
+            return ()
+        0xf -> do -- Get video mode
+            writeOp al 0 -- mode
+            writeOp ah 0 -- number of columns
+            writeOp bh 0 -- page
+            return ()
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
+    where
+        doScroll doUp = do
+            valAl <- readOp al -- scroll distance in rows
+            valBh <- readOp bh -- attr for blank lines
+            valCh <- readOp ch -- top row scroll window
+            valCl <- readOp cl -- left column scroll window
+            valDh <- readOp dh -- bottom row scroll window
+            valDl <- readOp dl -- right column scroll window
+            --TODO
+            return ()
 
 processBiosClock :: PcBios -> PrismM PcBios
 processBiosClock bios = do
