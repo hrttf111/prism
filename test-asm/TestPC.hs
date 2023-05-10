@@ -443,4 +443,24 @@ testPC instrList = do
                 int 0x1a
                 hlt
             |]
+        it "BIOS video - write/read char" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(ah `shouldEq` 0x31), (al `shouldEq` 0x31)] env comm $ [text|
+                ; Write char
+                mov al, 0x31
+                mov bl, 7
+                mov ah, 9
+                int 0x10
+                ; Get cursor
+                mov ah, 3
+                int 0x10
+                ; Read char
+                mov al, 0
+                mov ah, 8
+                int 0x10
+                hlt
+            |]
 -------------------------------------------------------------------------------

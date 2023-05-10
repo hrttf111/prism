@@ -283,19 +283,39 @@ processBiosVideo bios = do
             return ()
         8 -> do -- Get char
             --valBh <- readOp bh
-            writeOp al 0 -- ASCII char
-            writeOp ah 0 -- attr
+            let vs = pcVideoShared $ pcVideoState bios
+            (ptr, offset) <- liftIO $ atomically $ do
+                s <- readTVar vs
+                let offset = videoOffset s
+                return (videoMemory s, offset)
+            (code, attr) <- liftIO $ readChar ptr offset
+            writeOp al code -- ASCII char
+            writeOp ah attr -- attr
             return ()
         9 -> do -- Write char + attr
             valAl <- readOp al -- ASCII code
             valBl <- readOp bl -- attr
             --valBh <- readOp bh
             valCx <- readOp cx -- repeat
+            let vs = pcVideoShared $ pcVideoState bios
+            (ptr, offset) <- liftIO $ atomically $ do
+                s <- readTVar vs
+                let offset = videoOffset s
+                return (videoMemory s, offset)
+            liftIO $ writeChar ptr offset valAl valBl
             return ()
         0xe -> do -- Write char and update cursor
             valAl <- readOp al -- ASCII code
             valBl <- readOp bl -- FG color
             --valBh <- readOp bh
+            let vs = pcVideoShared $ pcVideoState bios
+            (ptr, offset) <- liftIO $ atomically $ do
+                s <- readTVar vs
+                let offset = videoOffset s
+                    pos' = updateCursorPos $ videoCursorPos s
+                writeTVar vs $ s { videoCursorPos = pos' }
+                return (videoMemory s, offset)
+            liftIO $ writeChar ptr offset valAl valBl
             return ()
         0xf -> do -- Get video mode
             writeOp al 0 -- mode
@@ -305,6 +325,24 @@ processBiosVideo bios = do
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
     where
+        videoColumns = 80
+        videoRows = 100
+        updateCursorPos (v, h) = if (h+1) < videoColumns then
+            (v, h+1)
+            else if v < videoRows then
+                (v+1, 0)
+                else
+                    (v, videoColumns-1)
+        videoOffset state = ((sPos + v) * videoColumns + h) * 2
+            where
+                charSize = 2
+                (v, h) = videoCursorPos state
+                sPos = videoScrollPos state
+        writeChar ptr off code attr = do
+            pokeByteOff ptr off code
+            pokeByteOff ptr (off+1) code
+        readChar ptr off =
+            (,) <$> peekByteOff ptr off <*> peekByteOff ptr (off+1)
         doScroll doUp = do
             valAl <- readOp al -- scroll distance in rows
             valBh <- readOp bh -- attr for blank lines
