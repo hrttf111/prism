@@ -94,11 +94,16 @@ data PcTimer = PcTimer {
 
 emptyTimer = PcTimer 0 0
 
+data VideoCursor = VideoCursor {
+    videoCursorColumn :: Int, -- horizontal
+    videoCursorRow :: Int, -- vertical
+    videoCursorEnabled :: Bool
+} deriving (Show)
+
 data SharedVideoState = SharedVideoState {
     --videoMemory :: B.ByteString,
     videoMemory :: Ptr Uint8,
-    videoCursorEnabled :: Bool,
-    videoCursorPos :: (Int, Int),
+    videoCursor :: VideoCursor,
     videoScrollPos :: Int
 } deriving (Show)
 
@@ -120,7 +125,7 @@ mkBios = do
     let memSize = 65536
     videoMem <- liftIO $ callocBytes memSize
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
-    videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem True (0, 0) 0
+    videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0
     return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer
 
 -------------------------------------------------------------------------------
@@ -254,7 +259,8 @@ processBiosVideo bios = do
                 vs = pcVideoShared $ pcVideoState bios
             liftIO $ atomically $ do
                 s <- readTVar vs
-                writeTVar vs $ s { videoCursorEnabled = enableCursor }
+                let c = videoCursor s
+                writeTVar vs $ s { videoCursor = c { videoCursorEnabled = enableCursor } }
             return ()
         2 -> do -- Set cursor pos
             --valBh <- readOp bh
@@ -263,17 +269,18 @@ processBiosVideo bios = do
             let vs = pcVideoShared $ pcVideoState bios
             liftIO $ atomically $ do
                 s <- readTVar vs
-                writeTVar vs $ s { videoCursorPos = (valDh, valDl) }
+                let c = videoCursor s
+                writeTVar vs $ s { videoCursor = c { videoCursorColumn = valDl, videoCursorRow = valDh } }
             writeOp al 0
             return ()
         3 -> do -- Get cursor pos
             --valBh <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
-            pos <- liftIO $ atomically $ videoCursorPos <$> readTVar vs
+            cursor <- liftIO $ atomically $ videoCursor <$> readTVar vs
             writeOp ch 0
             writeOp cl 0
-            writeOp dh $ fromIntegral $ fst pos
-            writeOp dl $ fromIntegral $ snd pos
+            writeOp dh $ fromIntegral $ videoCursorColumn cursor
+            writeOp dl $ fromIntegral $ videoCursorRow cursor
             return ()
         6 -> do -- Scroll up
             doScroll True
@@ -312,14 +319,14 @@ processBiosVideo bios = do
             (ptr, offset) <- liftIO $ atomically $ do
                 s <- readTVar vs
                 let offset = videoOffset s
-                    pos' = updateCursorPos $ videoCursorPos s
-                writeTVar vs $ s { videoCursorPos = pos' }
+                    c' = updateCursorPos $ videoCursor s
+                writeTVar vs $ s { videoCursor = c' }
                 return (videoMemory s, offset)
             liftIO $ writeChar ptr offset valAl valBl
             return ()
         0xf -> do -- Get video mode
             writeOp al 0 -- mode
-            writeOp ah 0 -- number of columns
+            writeOp ah $ fromIntegral videoColumns -- number of columns
             writeOp bh 0 -- page
             return ()
         _ -> liftIO $ putStrLn "Unsupported"
@@ -327,20 +334,24 @@ processBiosVideo bios = do
     where
         videoColumns = 80
         videoRows = 100
-        updateCursorPos (v, h) = if (h+1) < videoColumns then
-            (v, h+1)
+        updateCursorPos c = if (h+1) < videoColumns then
+            c { videoCursorRow = v, videoCursorColumn = (h + 1) }
             else if v < videoRows then
-                (v+1, 0)
+                c { videoCursorRow = (v + 1), videoCursorColumn = 0 }
                 else
-                    (v, videoColumns-1)
+                    c { videoCursorRow = v, videoCursorColumn = (videoColumns - 1) }
+            where
+                v = videoCursorRow c
+                h = videoCursorColumn c
         videoOffset state = ((sPos + v) * videoColumns + h) * 2
             where
                 charSize = 2
-                (v, h) = videoCursorPos state
+                c = videoCursor state
+                (v, h) = (videoCursorRow c, videoCursorColumn c)
                 sPos = videoScrollPos state
         writeChar ptr off code attr = do
             pokeByteOff ptr off code
-            pokeByteOff ptr (off+1) code
+            pokeByteOff ptr (off+1) attr
         readChar ptr off =
             (,) <$> peekByteOff ptr off <*> peekByteOff ptr (off+1)
         doScroll doUp = do
