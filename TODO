@@ -24,6 +24,12 @@ HSBIOS
  - Completely in haskell
  - Will not use "real" peripherals
 
+Memory addresses
+ - 0 - 0x3ff - interrupt vectors
+ - 0x400 - 0x500 - BIOS DATA
+ - 0x7C00 - Boot sector (start for user code)
+ - 0xE0000 - 0xFFFFF - BIOS ROM
+
 Functions
  - int 8 (Timer) - BIOS internal (ISR)
  - int 9 (Keyboard) - BIOS internal (ISR)
