@@ -250,7 +250,7 @@ processBiosVideo bios = do
     valAh <- readOp ah
     case valAh of
         0 -> do -- Set video mode
-            writeOp al 0x30
+            writeOp al 0x30 -- text mode is set
             return ()
         1 -> do -- Set cursor shape
             valCh <- readOp ch
@@ -325,7 +325,7 @@ processBiosVideo bios = do
             liftIO $ writeChar ptr offset valAl valBl
             return ()
         0xf -> do -- Get video mode
-            writeOp al 0 -- mode
+            writeOp al 3 -- mode (CGA test)
             writeOp ah $ fromIntegral videoColumns -- number of columns
             writeOp bh 0 -- page
             return ()
