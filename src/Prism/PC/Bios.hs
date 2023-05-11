@@ -100,11 +100,16 @@ data VideoCursor = VideoCursor {
     videoCursorEnabled :: Bool
 } deriving (Show)
 
+data VideoCommand = VideoFullDraw
+                  | VideoDrawChar Uint8 Uint8
+                  | VideoUpdateCursor
+                  deriving (Show)
+
 data SharedVideoState = SharedVideoState {
-    --videoMemory :: B.ByteString,
     videoMemory :: Ptr Uint8,
     videoCursor :: VideoCursor,
-    videoScrollPos :: Int
+    videoScrollPos :: Int,
+    videoCommands :: [VideoCommand]
 } deriving (Show)
 
 data PcVideo = PcVideo {
@@ -125,7 +130,7 @@ mkBios = do
     let memSize = 65536
     videoMem <- liftIO $ callocBytes memSize
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
-    videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0
+    videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0 []
     return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer
 
 -------------------------------------------------------------------------------
@@ -272,15 +277,16 @@ processBiosVideo bios = do
             liftIO $ atomically $ do
                 s <- readTVar vs
                 let c = videoCursor s
-                writeTVar vs $ s { videoCursor = c { videoCursorColumn = valDl, videoCursorRow = valDh } }
+                    commands = (videoCommands s) ++ [VideoUpdateCursor]
+                writeTVar vs $ s { videoCursor = c { videoCursorColumn = valDl, videoCursorRow = valDh }, videoCommands = commands }
             writeOp al 0
             return ()
         3 -> do -- Get cursor pos
             --valBh <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
             cursor <- liftIO $ atomically $ videoCursor <$> readTVar vs
-            writeOp ch 0
-            writeOp cl 0
+            writeOp ch 0 -- starting cursor scan line
+            writeOp cl 0 -- ending cursor scan line
             writeOp dh $ fromIntegral $ videoCursorColumn cursor
             writeOp dl $ fromIntegral $ videoCursorRow cursor
             return ()
@@ -312,6 +318,7 @@ processBiosVideo bios = do
                 let offset = videoOffset s
                 return (videoMemory s, offset)
             liftIO $ writeChar ptr offset valAl valBl
+            liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar valAl valBl]
             return ()
         0xe -> do -- Write char and update cursor
             valAl <- readOp al -- ASCII code
@@ -325,6 +332,7 @@ processBiosVideo bios = do
                 writeTVar vs $ s { videoCursor = c' }
                 return (videoMemory s, offset)
             liftIO $ writeChar ptr offset valAl valBl
+            liftIO $ atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar valAl valBl), VideoUpdateCursor]
             return ()
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
@@ -351,6 +359,10 @@ processBiosVideo bios = do
                 c = videoCursor state
                 (v, h) = (videoCursorRow c, videoCursorColumn c)
                 sPos = videoScrollPos state
+        addVideoCommands commands s =
+            s { videoCommands = commands' }
+            where
+                commands' = (videoCommands s) ++ commands
         writeChar ptr off code attr = do
             pokeByteOff ptr off code
             pokeByteOff ptr (off+1) attr
