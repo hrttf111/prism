@@ -154,6 +154,8 @@ mkBiosInterrupts :: [InterruptHandlerLocation]
 mkBiosInterrupts = [ (PrismInt 8, \_ -> cpuRunDirect $ DirectCommandU8 8)
                    , (PrismInt 9, biosInterruptKeyboardInternal)
                    , (PrismInt 0x10, biosInterruptVideo)
+                   , (PrismInt 0x11, \_ -> cpuRunDirect $ DirectCommandU8 0x11)
+                   , (PrismInt 0x12, \_ -> cpuRunDirect $ DirectCommandU8 0x12)
                    , (PrismInt 0x16, biosInterruptKeyboard)
                    , (PrismInt 0x1a, biosInterruptClock)
                    , (PrismInt 0x1f, biosInterruptTest) -- todo: use higher interrupt vector
@@ -401,6 +403,17 @@ processBiosClock bios = do
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
 
+processBiosEquipment :: PcBios -> PrismM PcBios
+processBiosEquipment bios = do
+    let val = 0x0021 -- 80x25 color mode + 1 diskette
+    writeOp ax val
+    return bios
+
+processBiosGetMemorySize :: PcBios -> PrismM PcBios
+processBiosGetMemorySize bios = do
+    writeOp ax 0x280 -- 640K
+    return bios
+
 processBiosTest :: PcBios -> PrismM PcBios
 processBiosTest bios = do
     valAh <- readOp ah
@@ -413,6 +426,8 @@ processBios :: PcBios -> Uint8 -> PrismM PcBios
 processBios bios 8 = processBiosTimerISR bios
 processBios bios 9 = processBiosKeyboardISR bios
 processBios bios 0x10 = processBiosVideo bios
+processBios bios 0x11 = processBiosGetMemorySize bios
+processBios bios 0x12 = processBiosEquipment bios
 processBios bios 0x16 = processBiosKeyboard bios
 processBios bios 0x1a = processBiosClock bios
 processBios bios _ = processBiosTest bios

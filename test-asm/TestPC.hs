@@ -488,4 +488,17 @@ testPC instrList = do
                 int 0x10
                 hlt
             |]
+        it "BIOS memory and equipment" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(ax `shouldEq` 0x0021), (bx `shouldEq` 0x280)] env comm $ [text|
+                ; Get memory size
+                int 0x11
+                mov bx, ax
+                ; Get equipment list
+                int 0x12
+                hlt
+            |]
 -------------------------------------------------------------------------------
