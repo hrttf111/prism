@@ -273,12 +273,10 @@ TODO:
  - Implement BIOS tests (part of test-asm) +
     - Send keyboard interrupts + update shared state +
  - Implement BIOS timer +
- - Static parameters
-    - Hardcode default
-    - Create unit tests
- - Implement basic video functions
-    - No thread sync is needed initially
-    - It is acceptable if CPU writes when peripheral thread draws image
+ - Static parameters +
+    - Hardcode default +
+    - Create unit tests +
+ - Implement basic video functions +
  - Implement simple application which uses BIOS
     - Key echo (read key, write key)
 
