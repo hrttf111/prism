@@ -52,6 +52,7 @@ executables:
     dependencies:
     - prism
     - optparse-applicative >= 0.14.2.0
+    - vty >= 5.25
 
 tests:
   prism-test:

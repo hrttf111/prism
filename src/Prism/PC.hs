@@ -11,6 +11,7 @@ module Prism.PC (
         , SharedKeyboardState (..)
         , SharedVideoState (..)
         , VideoCommand (..)
+        , VideoCursor (..)
     ) where
 
 import Prism.PC.PC
