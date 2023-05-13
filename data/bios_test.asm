@@ -35,23 +35,24 @@ strl:
     mov dx, di
     repnz scasb
     mov cx, di
+    jcxz STRL_END
     sub cx, dx
     dec cx
+STRL_END:
     ret
 
 print_str:
     ; SI - source str
     ; CX - str length
-    ; ES - data segment
     push ax
-    ;jcxz PRINT_END
+    jcxz PRINT_END
 PRINT_CHAR:
     mov ah, 0xe
     mov al, BYTE [si]
     int 0x10
     inc si
     loop PRINT_CHAR
-;PRINT_END:
+PRINT_END:
     pop ax
     ret
 
@@ -67,7 +68,7 @@ int 0x10
 ;int 0x10
 ;
 print str2
-;print str_empty
+print str_empty
 print str1
 ;
 ;mov dl, [str2+1]
