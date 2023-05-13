@@ -9,6 +9,8 @@ module Prism.PC (
         , PcKey (..), PcKeyFlags (..)
         , emptyKeyFlags
         , SharedKeyboardState (..)
+        , SharedVideoState (..)
+        , VideoCommand (..)
     ) where
 
 import Prism.PC.PC

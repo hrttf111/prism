@@ -23,10 +23,10 @@ func:
     ret
 
 START:
-mov ah, 14
+mov ah, 0xe
 mov al, 'a'
 int 0x10
-mov ah, 14
+mov ah, 0xe
 mov al, 'b'
 int 0x10
 mov al, [str1+2]

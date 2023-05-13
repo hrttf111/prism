@@ -5,6 +5,7 @@ import Data.Semigroup ((<>))
 import qualified Data.Map.Strict (fromList)
 
 import Control.Monad.Trans.State
+import Control.Concurrent.STM
 import Control.Concurrent
 
 import Data.Word (Word8)
@@ -65,11 +66,29 @@ videoInterrupt _ = do
             liftIO $ putStrLn $ "Unknown video function " ++ (show v)
 -}
 
-buildPC :: (MonadIO m) => m (IOCtx, [InterruptHandlerLocation])
+peripheralThread :: PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
+peripheralThread queue keyboard video = runP
+    where
+        execVideo VideoFullDraw = return ()
+        execVideo (VideoDrawChar char attr) = do
+            putStrLn $ [((toEnum . fromEnum) $ char :: Char)]
+        execVideo VideoUpdateCursor = return ()
+        runP = do
+            videoCommands <- atomically $ do
+                s <- readTVar video
+                let cmd = videoCommands s
+                writeTVar video $ s { videoCommands = [] }
+                return cmd
+            mapM_ execVideo videoCommands
+            threadDelay 100000
+            runP
+
+buildPC :: (MonadIO m) => m (IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
 buildPC = do
     queue <- liftIO $ createIOQueue
     pc <- createPC
-    return $ (mkIOCtx pc queue, intList)
+    let states = getPcBiosSharedState pc
+    return $ (mkIOCtx pc queue, intList, states)
     where
         intList = mkBiosInterrupts
         pageSize = 1024
@@ -92,7 +111,8 @@ runBinary binPath_  enableGDB_ = do
     memReg <- allocMemReg
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
-    (ioCtx, intList) <- buildPC
+    (ioCtx, intList, states) <- buildPC
+    (forkIO $ peripheralThread (commCmdQueue comm) (fst states) (snd states))
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     --(ioCtx, peripheral) <- makeDummyIO maxMemorySize PeripheralDevices
     let ctx = makeCtx memReg memMain ioCtx
@@ -102,6 +122,7 @@ runBinary binPath_  enableGDB_ = do
         writeOp ip bootloaderStart
         writeOp cs 0
         decodeHaltCpu (decoder intM) comm
+    threadDelay 1000000
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
