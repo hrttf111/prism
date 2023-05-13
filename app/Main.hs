@@ -46,31 +46,12 @@ data AppOpts = AppOpts {
 maxMemorySize = 1024 * 1024
 bootloaderStart = 0x7C00
 
-{-
-data PeripheralDevices = PeripheralDevices {
-    }
-
-writeTtyChar :: PrismM ()
-writeTtyChar = do
-    valAl <- readOp al
-    liftIO $ putStrLn $ [((toEnum . fromEnum) $ valAl :: Char)]
-
-videoInterrupt :: InterruptHandler
-videoInterrupt _ = do
-    liftIO $ putStrLn "Interrupt"
-    valAh <- readOp ah
-    case valAh of
-        14 ->
-            writeTtyChar
-        v -> do
-            liftIO $ putStrLn $ "Unknown video function " ++ (show v)
--}
-
 peripheralThread :: PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
 peripheralThread queue keyboard video = runP
     where
         execVideo VideoFullDraw = return ()
         execVideo (VideoDrawChar char attr) = do
+            putStrLn "Char"
             putStrLn $ [((toEnum . fromEnum) $ char :: Char)]
         execVideo VideoUpdateCursor = return ()
         runP = do

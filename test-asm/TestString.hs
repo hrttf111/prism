@@ -155,5 +155,17 @@ testString env = do
                 mov al, 0xDD
                 repne scasb
             |]
+        it "SCAS8 NZ found" $ do
+            execPrism [(di `shouldEq` 5)] env [text|
+                mov di, 0
+                mov [es:di], BYTE 0xFF
+                mov [es:di+1], BYTE 0xAB
+                mov [es:di+2], BYTE 0xDD
+                mov [es:di+3], BYTE 0xAF
+                mov [es:di+4], BYTE 0
+                mov cx, 10
+                mov ax, 0
+                repnz scasb
+            |]
 
 -------------------------------------------------------------------------------

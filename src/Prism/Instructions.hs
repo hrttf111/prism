@@ -326,6 +326,7 @@ controlInstrList = [
         makeInstructionS 0xE0 Nothing (decodeImm8 loopNZ),
         makeInstructionS 0xE1 Nothing (decodeImm8 loopZ),
         makeInstructionS 0xE2 Nothing (decodeImm8 loop),
+        makeInstructionS 0xE3 Nothing (decodeImm8 jcxz),
         --JMP
         makeInstructionS 0xE9 Nothing (decodeImm16 jmpNear),
         makeInstructionS 0xEA Nothing (decodeImm32 jmpInter),
