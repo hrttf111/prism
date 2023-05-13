@@ -31,7 +31,7 @@ module Prism.Peripherals (
         ------------------------------------------------------
         , MemPairs (..), PagesBuilder (..)
         , makePageArray, makePage, makePortList, makeMemP
-        , createPeripheralsLR 
+        , createPeripherals, createPeripheralsL, createPeripheralsLR
         ------------------------------------------------------
         , SchedTime (..), SchedId (..), SchedHandler
         , Scheduler (..)

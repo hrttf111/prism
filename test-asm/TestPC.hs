@@ -375,7 +375,7 @@ testPC instrList = do
         it "BIOS keyboard - int 9" $ do
             comm <- newPrismComm False
             devices <- createPC
-            let sharedKeyboard = getPcBiosSharedState devices
+            let sharedKeyboard = fst $ getPcBiosSharedState devices
                 intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             let keys = [(PcKey 3 4)]

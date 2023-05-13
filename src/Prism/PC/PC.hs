@@ -323,7 +323,7 @@ createPC = do
     bios <- mkBios
     return $ PC 999 False defaultPIC defaultPIC defaultPIT bios
 
-getPcBiosSharedState :: PC -> TVar SharedKeyboardState
-getPcBiosSharedState = pcKeyboardShared . pcBiosKeyboard . pcBios
+getPcBiosSharedState :: PC -> (TVar SharedKeyboardState, TVar SharedVideoState)
+getPcBiosSharedState pc = (pcKeyboardShared . pcBiosKeyboard . pcBios $ pc, pcVideoShared . pcVideoState . pcBios $ pc)
 
 -------------------------------------------------------------------------------

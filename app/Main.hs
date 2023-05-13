@@ -25,6 +25,7 @@ import Prism.Command
 import Prism.Run
 import Prism.Instructions
 import Prism.GDB
+import Prism.PC
 
 -------------------------------------------------------------------------------
 
@@ -44,6 +45,7 @@ data AppOpts = AppOpts {
 maxMemorySize = 1024 * 1024
 bootloaderStart = 0x7C00
 
+{-
 data PeripheralDevices = PeripheralDevices {
     }
 
@@ -61,6 +63,24 @@ videoInterrupt _ = do
             writeTtyChar
         v -> do
             liftIO $ putStrLn $ "Unknown video function " ++ (show v)
+-}
+
+buildPC :: (MonadIO m) => m (IOCtx, [InterruptHandlerLocation])
+buildPC = do
+    queue <- liftIO $ createIOQueue
+    pc <- createPC
+    return $ (mkIOCtx pc queue, intList)
+    where
+        intList = mkBiosInterrupts
+        pageSize = 1024
+        portEntries = pcPorts
+        memEntries = []
+        mkIOCtx pc queue =
+            let (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) =
+                    createPeripheralsL pc maxMemorySize pageSize portEntries memEntries
+            in
+                IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
+
 
 runBinary :: FilePath -> Bool -> IO ()
 runBinary binPath_  enableGDB_ = do
@@ -72,10 +92,11 @@ runBinary binPath_  enableGDB_ = do
     memReg <- allocMemReg
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
+    (ioCtx, intList) <- buildPC
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
-    (ioCtx, peripheral) <- makeDummyIO maxMemorySize PeripheralDevices
+    --(ioCtx, peripheral) <- makeDummyIO maxMemorySize PeripheralDevices
     let ctx = makeCtx memReg memMain ioCtx
-    intM <- configureInterrupts memMain 0xFF000 [(PrismInt 0x10, videoInterrupt)]
+    intM <- configureInterrupts memMain 0xFF000 intList
     ctxNew <- runPrismM ctx $ do
         clearRegs
         writeOp ip bootloaderStart
