@@ -63,7 +63,8 @@ data IOCtx = forall a m . ( PeripheralsMonad m
     }
 
 instance Show IOCtx where
-    show c = "IOCtx " ++ (show $ ioCtxMemRegion c)
+    --show c = "IOCtx " ++ (show $ ioCtxMemRegion c) ++ (show $ ioCtxPortRegion c)
+    show c = "IOCtx " ++ (show $ ioCtxMemRegion c) -- ++ (show $ ioCtxPortRegion c)
 
 -------------------------------------------------------------------------------
 

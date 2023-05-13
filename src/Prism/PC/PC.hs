@@ -233,7 +233,7 @@ pcPitUpdate pit = do
     currentCycles <- pcCycles <$> getPC
     let (pit', actions) = pitDoUpdate pit currentCycles
     foldM_ (\ _ action -> do
-            liftIO $ putStrLn $ show action
+            --liftIO $ putStrLn $ show action
             case action of
                 PitActionIrq True irq -> do
                     dispatchIrqUp irq

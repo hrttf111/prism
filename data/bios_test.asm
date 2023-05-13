@@ -17,18 +17,18 @@ dw 0xAA55
 
 SECTION other start=1000h
 str2 db "2322",0
+str_int db "Timer interrupt",0
+str_end db "End",0
 str_empty db 0
 
 SECTION .data start=2000h
 str1 db "1111",0
 numbes db "0123456789\0",0
 
-SECTION .text start=10000h
-func:
-    mov cx, 1
-    mov si, [str2+1]
-    ret
+absolute 0x2500
+counter_1   resw    1
 
+SECTION .text start=10000h
 strl:
     mov ax, 0
     mov cx, 255
@@ -57,20 +57,77 @@ PRINT_END:
     ret
 
 START:
+;Configure PIC and PIT
+PIC1  equ  0x20
+PIC1D equ  0x21
+ICW1  equ  0x17
+ICW2  equ  0x08 ; Master interrupts 0x20-0x27
+ICW3  equ  0x00
+ICW4  equ  0x03
+OCW1  equ  0x00
+;Init Master
+mov al, ICW1
+out PIC1, al
+mov al, ICW2
+out PIC1D, al
+mov al, ICW3
+out PIC1D, al
+mov al, ICW4
+out PIC1D, al
+mov al, OCW1
+out PIC1D, al
+;Init PIT
+PIT_REG_COUNTER0 equ 0x40
+PIT_REG_COMMAND  equ 0x43
+mov ax, 0
+mov es, ax
+mov bx, cs
+mov [es:0x1c * 4], WORD TIMER_INT
+mov [es:0x1c * 4+2], bx
+PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
+;PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
+PIT_COMMAND      equ 0x34 ; Timer0, Mode2, 2 Bytes, HEX
+push ax
+mov al, PIT_COMMAND
+out PIT_REG_COMMAND, al
+pop ax
+;;
+sti
+xor bx, bx
+xor dx, dx
+mov cx, 90
+push ax
+mov al, 10 ; least
+out PIT_REG_COUNTER0, al
+;mov al, 0 ; most
+mov al, 10 ; most
+out PIT_REG_COUNTER0, al
+pop ax
+;;;;
+;Main app
 mov ah, 0xe
 mov al, 'a'
 int 0x10
 mov ah, 0xe
 mov al, 'b'
 int 0x10
-;mov ah, 0xe
-;mov al, BYTE [str2]
-;int 0x10
 ;
 print str2
 print str_empty
 print str1
 ;
-;mov dl, [str2+1]
-;mov dl, [str2+1]
+mov WORD [counter_1], 100
+ELOOPS:
+mov cx, 60000
+ELOOP:
+    loop ELOOP
+mov cx, WORD [counter_1]
+dec cx
+mov WORD [counter_1], cx
+loop ELOOPS
+print str_end
 hlt
+
+TIMER_INT:
+print str_int
+reti

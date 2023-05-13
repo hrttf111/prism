@@ -170,7 +170,7 @@ mkBiosInterrupts = [ (PrismInt 8, \_ -> cpuRunDirect $ DirectCommandU8 8)
 
 processBiosTimerISR :: PcBios -> PrismM PcBios
 processBiosTimerISR bios = do
-    liftIO $ putStrLn "Int 8 ISR"
+    --liftIO $ putStrLn "Int 8 ISR"
     ticks <- liftIO getCPUTime
     let timerPeriod = 54900 -- 54.9 ms ~ 18.2 Hz
         ticksUs = fromIntegral $ div ticks 1000000 -- ps -> us
@@ -182,10 +182,10 @@ processBiosTimerISR bios = do
     if diff > timerPeriod then do
         --liftIO $ putStrLn "Raise interrupt 0x1c"
         raiseInterrupt $ PrismInt 0x1c
-        else
-            return ()
-    --liftIO $ putStrLn "Continue"
-    return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
+        return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
+        else do
+            --liftIO $ putStrLn "Continue"
+            return $ bios { pcTimer = PcTimer (pcTimerLastInt8 $ pcTimer bios) timerTicks' }
 
 processBiosKeyboardISR :: PcBios -> PrismM PcBios
 processBiosKeyboardISR bios = do

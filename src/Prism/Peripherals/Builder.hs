@@ -168,7 +168,7 @@ createPeripheralsL :: p
                      -> [PeripheralMem m]
                      -> PeripheralLocal m p
 createPeripheralsL devices memSize pageSize portEntries memEntries =
-    snd $ createPeripheralsLR devStub devices memSize pageSize portEntries memEntries [] []
+    snd $ createPeripheralsLR devStub devices memSize pageSize [] [] portEntries memEntries
     where
         devStub = 0 :: Int
 

@@ -42,17 +42,17 @@ bootloaderStart = 0x7C00
 
 peripheralThread :: Vty -> PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
 peripheralThread vty queue keyboard video = do
-    runP $ picForImage $ resize 80 25 emptyImage
+    runP $ picForImage $ resize videoColumns videoRows emptyImage
     where
         videoColumns = 80
         videoRows = 25
         videoCharLength = videoColumns * videoRows
         drawVideoScreen :: Ptr Uint8 -> Int -> IO Image
         drawVideoScreen mem scroll =
-            ((crop videoColumns videoRows) . vertCat) <$> mapM drawRow [0..25]
+            ((crop videoColumns videoRows) . vertCat) <$> mapM drawRow [0..videoRows]
             where
                 drawRow rowN = do
-                    horizCat <$> mapM (drawChar rowN) [0..80]
+                    horizCat <$> mapM (drawChar rowN) [0..videoColumns]
                 drawChar rowN columnN = do
                     val <- (peekByteOff mem (((rowN * videoColumns) + columnN) * 2) :: IO Uint8)
                     return $ string defAttr [((toEnum . fromEnum) $ val :: Char)]
@@ -89,7 +89,7 @@ peripheralThread vty queue keyboard video = do
                 execVideo pic VideoFullDraw
                 else
                     foldM execVideo pic videoCommands)-}
-            threadDelay 100000
+            threadDelay 10000
             runP pic'
 
 -------------------------------------------------------------------------------
@@ -124,13 +124,10 @@ buildPC = do
             in
                 IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
-
 runBinary :: FilePath -> Bool -> IO ()
 runBinary binPath_  enableGDB_ = do
     cfg <- standardIOConfig
     vty <- mkVty $ cfg { mouseMode = Just True, vmin = Just 1}
-    --let pic = picForImage $ resize 80 25 emptyImage
-    --update vty pic
     --
     comm <- newPrismComm enableGDB_
     if enableGDB_ then
@@ -141,9 +138,8 @@ runBinary binPath_  enableGDB_ = do
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
     (ioCtx, intList, states) <- buildPC
-    (forkIO $ peripheralThread vty (commCmdQueue comm) (fst states) (snd states))
+    forkIO $ peripheralThread vty (commCmdQueue comm) (fst states) (snd states)
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
-    --(ioCtx, peripheral) <- makeDummyIO maxMemorySize PeripheralDevices
     let ctx = makeCtx memReg memMain ioCtx
     intM <- configureInterrupts memMain 0xFF000 intList
     ctxNew <- runPrismM ctx $ do
