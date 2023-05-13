@@ -126,9 +126,6 @@ buildPC = do
 
 runBinary :: FilePath -> Bool -> IO ()
 runBinary binPath_  enableGDB_ = do
-    cfg <- standardIOConfig
-    vty <- mkVty $ cfg { mouseMode = Just True, vmin = Just 1}
-    --
     comm <- newPrismComm enableGDB_
     if enableGDB_ then
         (forkIO . gdbThread $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)) >> return ()
@@ -138,7 +135,7 @@ runBinary binPath_  enableGDB_ = do
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
     (ioCtx, intList, states) <- buildPC
-    forkIO $ peripheralThread vty (commCmdQueue comm) (fst states) (snd states)
+    vty <- startVtyThread (commCmdQueue comm) (fst states) (snd states)
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     let ctx = makeCtx memReg memMain ioCtx
     intM <- configureInterrupts memMain 0xFF000 intList
@@ -147,11 +144,23 @@ runBinary binPath_  enableGDB_ = do
         writeOp ip bootloaderStart
         writeOp cs 0
         decodeHaltCpu (decoder intM) comm
-    threadDelay 1000000
-    shutdown vty
+    case vty of
+        Just v -> do
+            threadDelay 1000000
+            shutdown v
+        _ -> return ()
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
+        doRunVty = True
+        startVtyThread queue keyboard video =
+            if doRunVty then do
+                cfg <- standardIOConfig
+                vty <- mkVty $ cfg { mouseMode = Just True, vmin = Just 1}
+                forkIO $ peripheralThread vty queue keyboard video
+                return $ Just vty
+                else
+                    return Nothing
         decoder intM = makeDecoderList (combinedList intM)
         combinedList intM = x86InstrList
             ++ (internalInstrList intM)
