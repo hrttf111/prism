@@ -130,4 +130,4 @@ hlt
 
 TIMER_INT:
 print str_int
-reti
+iret
