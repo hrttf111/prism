@@ -127,7 +127,9 @@ buildPC = do
 runBinary :: FilePath -> Bool -> IO ()
 runBinary binPath_  enableGDB_ = do
     comm <- newPrismComm enableGDB_
-    if enableGDB_ then
+    if enableGDB_ then do
+        let (PrismCmdQueue queue) = commCmdQueue comm
+        atomically $ writeTQueue queue PCmdPause
         (forkIO . gdbThread $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)) >> return ()
         else
             return ()
@@ -152,7 +154,7 @@ runBinary binPath_  enableGDB_ = do
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
-        doRunVty = True
+        doRunVty = False
         startVtyThread queue keyboard video =
             if doRunVty then do
                 cfg <- standardIOConfig

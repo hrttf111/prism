@@ -88,16 +88,17 @@ cpuProcessBreakRemove comm b =
         newSet = delete b (commBreakpoints comm)
 
 cpuProcessPause :: PrismComm -> PrismM PrismComm
-cpuProcessPause comm = return $ comm {commWaitResponse = True}
+cpuProcessPause comm =
+    return $ comm {commWaitResponse = True}
 
 cpuProcessStep :: PrismComm -> PrismM PrismComm
 cpuProcessStep comm =
     sendCpuMsgIO (commCmdQueue comm) PCmdPause
     >> sendCpuMsgIO (commRspQueue comm) PRspStep
-    >> return comm
+    >> return (comm {commWaitResponse = False})
 
 cpuProcessCont :: PrismComm -> PrismM PrismComm
-cpuProcessCont comm = do
+cpuProcessCont comm =
     return $ comm {commWaitResponse = False}
 
 cpuProcessMemWrite :: PrismComm -> Int -> [Word8] -> PrismM PrismComm
@@ -131,7 +132,8 @@ cpuProcessReadMem comm offset size = do
     return comm
     where
         readM (MemMain ptr) ptrB = do
-            copyArray ptr ptrB size
+            let ptrA = plusPtr ptr offset
+            copyArray ptrB ptrA size
             return size
 
 cpuProcessReadRegs :: PrismComm -> PrismM PrismComm

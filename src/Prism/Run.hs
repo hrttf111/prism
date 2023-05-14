@@ -30,7 +30,6 @@ runCpuInstruction dec offset = do
     let (b1, _, _, _, _, _) = instr
         func = instrFunc $ (decInstr dec) ! b1
     --liftIO $ putStrLn $ "0x" ++ (showHex offset "") ++ ": " ++ (showHex b1 "")
-    --execTF <$> func instr
     func instr
 
 {-# INLINE runCpuInstruction #-}
