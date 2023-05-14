@@ -148,6 +148,21 @@ testInc env = do
                 dec cx
                 dec dx
             |]
+        it "Simple dec ax" $ do
+            execAndCmp [ax, bx, cx, dx] env $ [text|
+                mov ax, 5
+                mov bx, 2
+                mov cx, 3
+                mov dx, 4
+                dec ax
+                dec ax
+                dec ax
+                dec ax
+                dec ax
+                dec bx
+                dec cx
+                dec dx
+            |]
 
 testSub env = do
     describe "SUB [8] ACC REG <- IMM" $ do
@@ -207,6 +222,12 @@ testSub env = do
                 mov ax, -32123
                 mov bx, 31234
                 sub bx, ax
+            |]
+    describe "CMP [16] REG, IMM" $ do
+        it "Simple cmp" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 10
+                cmp ax, 1
             |]
 
 testArithOther env = do

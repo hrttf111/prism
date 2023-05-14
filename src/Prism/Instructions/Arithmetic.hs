@@ -75,7 +75,7 @@ dec flags val = (flags_, result)
 -------------------------------------------------------------------------------
 
 cmp :: (OperandVal v) => FuncVF2 v
-cmp flags source dest = (flags_, source)
+cmp flags source dest = (flags_, dest)
     where
         (flags_, _) = sub flags source dest
 

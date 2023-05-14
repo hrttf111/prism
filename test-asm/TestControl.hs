@@ -43,6 +43,51 @@ testControl env = do
                 L1:
                 mov al, 2
             |]
+        it "jz 16" $ do
+            execAndCmpNF [al, bl] env $ [text|
+                mov ax, 2
+                mov bl, 0
+                dec ax
+                dec ax
+                cmp ax, 0
+                jz L1
+                mov bl, 1
+                L1:
+                mov al, 2
+            |]
+        it "je" $ do
+            execAndCmpNF [al, bl] env $ [text|
+                mov ax, 0xf111
+                mov bl, 0
+                LOOP1:
+                cmp ax, 0
+                je END
+                inc bl
+                ;dec ax
+                ;mov ax, 0
+                mov cl, 4
+                shl ax, cl
+                jmp LOOP1
+                END:
+                mov dx, 0
+            |]
+        it "je loop" $ do
+            execAndCmpNF [ax, bx, dx, cx] env $ [text|
+                mov ax, 0x1234
+            NUM_LOOP:
+                cmp ax, 0
+                je NUM_TO_STR_END
+                mov bx, ax
+                and bh, 0xf0
+                mov cl, 12
+                shr bx, cl
+                inc di
+                mov cl, 4
+                shl ax, cl
+                jmp NUM_LOOP
+            NUM_TO_STR_END:
+                mov dl, 0
+            |]
         it "jcxz" $ do
             execAndCmpNF [al, bl] env $ [text|
                 mov al, 1

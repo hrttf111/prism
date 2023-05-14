@@ -23,10 +23,12 @@ str_empty db 0
 
 SECTION .data start=2000h
 str1 db "1111",0
-numbes db "0123456789\0",0
+numbers db "0123456789abcdef",0
 
 absolute 0x2500
 counter_1   resw    1
+int_counter resw    2
+temp_str    resb    16
 
 SECTION .text start=10000h
 strl:
@@ -56,7 +58,29 @@ PRINT_END:
     pop ax
     ret
 
+num_to_str:
+    ; ax - num
+    mov di, temp_str
+NUM_LOOP:
+    cmp ax, 0
+    je NUM_TO_STR_END
+    mov bx, ax
+    and bh, 0xf0
+    mov cl, 12
+    shr bx, cl
+    mov dl, [numbers + bx]
+    mov [di], dl
+    inc di
+    mov cl, 4
+    shl ax, cl
+    jmp NUM_LOOP
+NUM_TO_STR_END:
+    mov BYTE [di], 0
+    ret
+
 START:
+cli
+mov WORD [int_counter], 0x3456
 ;Configure PIC and PIT
 PIC1  equ  0x20
 PIC1D equ  0x21
@@ -126,8 +150,15 @@ dec cx
 mov WORD [counter_1], cx
 loop ELOOPS
 print str_end
+mov ax, 0
+mov ax, WORD [int_counter]
 hlt
 
 TIMER_INT:
+mov ax, WORD [int_counter]
+inc ax
+mov WORD [int_counter], ax
+;call num_to_str
+;print temp_str
 print str_int
 iret
