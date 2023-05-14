@@ -154,7 +154,7 @@ runBinary binPath_  enableGDB_ = do
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
-        doRunVty = False
+        doRunVty = True
         startVtyThread queue keyboard video =
             if doRunVty then do
                 cfg <- standardIOConfig

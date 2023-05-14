@@ -80,7 +80,7 @@ NUM_TO_STR_END:
 
 START:
 cli
-mov WORD [int_counter], 0x3456
+mov WORD [int_counter], 0
 ;Configure PIC and PIT
 PIC1  equ  0x20
 PIC1D equ  0x21
@@ -117,6 +117,11 @@ out PIT_REG_COMMAND, al
 pop ax
 ;;
 sti
+;;
+mov ax, 0x7138
+call num_to_str
+print temp_str
+;;
 xor bx, bx
 xor dx, dx
 mov cx, 90
@@ -158,7 +163,7 @@ TIMER_INT:
 mov ax, WORD [int_counter]
 inc ax
 mov WORD [int_counter], ax
-;call num_to_str
-;print temp_str
+call num_to_str
+print temp_str
 print str_int
 iret
