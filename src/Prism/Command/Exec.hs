@@ -57,6 +57,7 @@ processComm comm = do
             PCmdPause -> cpuProcessPause comm
             PCmdStep -> cpuProcessStep comm
             PCmdCont -> cpuProcessCont comm
+            PCmdStop -> cpuProcessStop comm
             PCmdWriteMem addr bytes -> cpuProcessMemWrite comm addr bytes
             PCmdWriteReg8 reg val -> cpuProcessWriteReg8 comm reg val
             PCmdWriteReg16 reg val -> cpuProcessWriteReg16 comm reg val
@@ -100,6 +101,9 @@ cpuProcessStep comm =
 cpuProcessCont :: PrismComm -> PrismM PrismComm
 cpuProcessCont comm =
     return $ comm {commWaitResponse = False}
+
+cpuProcessStop :: PrismComm -> PrismM PrismComm
+cpuProcessStop comm = cpuHalt >> return comm
 
 cpuProcessMemWrite :: PrismComm -> Int -> [Word8] -> PrismM PrismComm
 cpuProcessMemWrite comm addr bytes = do

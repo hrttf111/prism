@@ -61,9 +61,9 @@ logToStdout h loc src level msg = do
   where
     ls = fromLogStr $ makeLogStr loc src level msg
 
-runMyLoggingT :: MonadIO m => LoggingT m a -> m a
-runMyLoggingT = (`runLoggingT` logToStdout stdout) . filterLogger filterL
+runMyLoggingT :: MonadIO m => LogLevel -> LoggingT m a -> m a
+runMyLoggingT logLevel = (`runLoggingT` logToStdout stdout) . filterLogger filterL
     where
-        filterL _ level = True
+        filterL _ level = logLevel == level
 
 -------------------------------------------------------------------------------

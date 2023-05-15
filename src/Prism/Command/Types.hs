@@ -46,6 +46,7 @@ data PrismCpuCommand = PCmdInterruptUp PrismIRQ
                        | PCmdPause
                        | PCmdStep
                        | PCmdCont
+                       | PCmdStop
                        | PCmdBreak MemOffset
                        | PCmdBreakRemove MemOffset
                        | PCmdReadRegs

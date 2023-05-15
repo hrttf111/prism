@@ -1,15 +1,17 @@
 module Main where
 
-import Control.Monad (foldM)
+import Control.Monad (foldM, when)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Semigroup ((<>))
 import qualified Data.Map.Strict (fromList)
 
+import Control.Monad.Logger (LogLevel(..))
 import Control.Monad.Trans.State
 import Control.Concurrent.STM
 import Control.Concurrent
 
 import Data.Word (Word8)
+import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import System.IO (FilePath)
 
@@ -41,7 +43,7 @@ bootloaderStart = 0x7C00
 -------------------------------------------------------------------------------
 
 peripheralThread :: Vty -> PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
-peripheralThread vty queue keyboard video = do
+peripheralThread vty (PrismCmdQueue queue) keyboard video = do
     runP $ picForImage $ resize videoColumns videoRows emptyImage
     where
         videoColumns = 80
@@ -74,6 +76,21 @@ peripheralThread vty queue keyboard video = do
             update vty pic'
             return pic'
         execVideo pic VideoUpdateCursor = return pic
+        readKey = do
+            event <- nextEventNonblocking vty
+            case event of
+                Just (EvKey (KChar 'c') [MCtrl]) -> do
+                    atomically $ writeTQueue queue PCmdStop
+                    return ()
+                Just (EvKey (KChar key) mods) -> do
+                    atomically $ do
+                        ks <- readTVar keyboard
+                        let pcKey = PcKey (fromIntegral $ fromEnum key) 0
+                            ks' = SharedKeyboardState (sharedFlags ks) ((sharedKeys ks) ++ [pcKey])
+                        writeTVar keyboard ks'
+                        writeTQueue queue $ PCmdInterruptUp (PrismIRQ 1)
+                    return ()
+                _ -> return ()
         runP pic = do
             videoCommands <- atomically $ do
                 s <- readTVar video
@@ -89,6 +106,7 @@ peripheralThread vty queue keyboard video = do
                 execVideo pic VideoFullDraw
                 else
                     foldM execVideo pic videoCommands)-}
+            readKey
             threadDelay 10000
             runP pic'
 
@@ -104,7 +122,10 @@ readCodeToPtr filePath ptr offset = liftIO $ do
 
 data AppOpts = AppOpts {
         binPath :: !FilePath,
-        enableGDB :: !Bool
+        enableGDB :: !Bool,
+        pauseGDB :: !Bool,
+        disableVty :: !Bool,
+        logLevelGDB :: !String
     }
 
 buildPC :: (MonadIO m) => m (IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
@@ -124,15 +145,26 @@ buildPC = do
             in
                 IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
-runBinary :: FilePath -> Bool -> IO ()
-runBinary binPath_  enableGDB_ = do
+runBinary :: AppOpts -> IO ()
+runBinary opts = do
+    let binPath_ = binPath opts
+        enableGDB_ = enableGDB opts
     comm <- newPrismComm enableGDB_
-    if enableGDB_ then do
-        let (PrismCmdQueue queue) = commCmdQueue comm
-        atomically $ writeTQueue queue PCmdPause
-        (forkIO . gdbThread $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)) >> return ()
-        else
-            return ()
+    when enableGDB_ (do
+        when (pauseGDB opts) (do
+            let (PrismCmdQueue queue) = commCmdQueue comm
+            atomically $ writeTQueue queue PCmdPause
+            )
+        let logLevel = case logLevelGDB opts of
+                            "debug" -> LevelDebug
+                            "info" -> LevelInfo
+                            "warn" -> LevelWarn
+                            "error" -> LevelError
+                            "no" -> LevelOther $ T.pack "no"
+                            _ -> LevelError
+        forkIO $ gdbThread logLevel $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)
+        return ()
+        )
     memReg <- allocMemReg
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
@@ -154,14 +186,15 @@ runBinary binPath_  enableGDB_ = do
     liftIO . putStrLn . show $ ctxNew
     printRegs $ ctxReg ctxNew
     where
-        doRunVty = True
+        doRunVty = not $ disableVty opts
         startVtyThread queue keyboard video =
             if doRunVty then do
                 cfg <- standardIOConfig
                 vty <- mkVty $ cfg { mouseMode = Just True, vmin = Just 1}
                 forkIO $ peripheralThread vty queue keyboard video
                 return $ Just vty
-                else
+                else do
+                    putStrLn "vty is disabled"
                     return Nothing
         decoder intM = makeDecoderList (combinedList intM)
         combinedList intM = x86InstrList
@@ -170,13 +203,17 @@ runBinary binPath_  enableGDB_ = do
 main :: IO ()
 main = do
     opts <- execParser optsParser
-    runBinary (binPath opts) (enableGDB opts)
+    runBinary opts
     return ()
     where
         optsParser = info
             (helper <*> mainOpts)
             (fullDesc <> progDesc "Prism 8086 emulator" <> header "Prism")
-        mainOpts = AppOpts <$> strArgument (metavar "BIN" <> help "Binary executable path") <*>
-                    switch (long "gdb" <> help "Enable GDB server and stop on first instruction")
+        mainOpts = AppOpts <$>
+                    strArgument (metavar "BIN" <> help "Binary executable path") <*>
+                    switch (long "gdb" <> help "Enable GDB server and stop on first instruction") <*>
+                    switch (long "pause" <> help "Pause after start") <*>
+                    switch (long "no-vty" <> help "Disable vty") <*>
+                    strOption (long "gdb-log" <> help "GDB log level: debug, info, error" <> value "debug")
 
 -------------------------------------------------------------------------------

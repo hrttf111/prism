@@ -145,7 +145,7 @@ print str2
 print str_empty
 print str1
 ;
-mov WORD [counter_1], 100
+mov WORD [counter_1], 10
 ELOOPS:
 mov cx, 60000
 ELOOP:
