@@ -29,6 +29,7 @@ absolute 0x2500
 counter_1   resw    1
 int_counter resw    2
 temp_str    resb    16
+key_str     resb    4
 
 SECTION .text start=10000h
 strl:
@@ -165,5 +166,16 @@ inc ax
 mov WORD [int_counter], ax
 call num_to_str
 print temp_str
-print str_int
+;print str_int
+mov ah, 1
+int 0x16
+jz END_INT
+mov ah, 0
+int 0x16
+mov BYTE [key_str], 0x20
+mov BYTE [key_str+1], al
+mov BYTE [key_str+2], 0x20
+mov BYTE [key_str+3], 0
+print key_str
+END_INT:
 iret
