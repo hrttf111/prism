@@ -102,14 +102,14 @@ Functions
  - int 0x12 (Get memory size)
    - Output to AX
  - int 0x13 (Disk)
-   - ah 0 (Reset disk)
-   - ah 1 (Read status)
+   - ah 0 (Reset disk) -
+   - ah 1 (Read status) -
    - ah 2 (Read sectors)
        - al - number of sectors
        - ch - track number
        - cl - sector number
        - dh - head number
-       - dl - driver number
+       - dl - driver number (0x80 for hdd)
        - es:bx - pointer to buffer
        - out al - sectors read
    - ah 3 (Write sectors)

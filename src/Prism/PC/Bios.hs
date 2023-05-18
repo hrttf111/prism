@@ -119,10 +119,35 @@ data PcVideo = PcVideo {
 instance Show PcVideo where
     show _ = "PcVideo"
 
+data PcChs = PcChs {
+    pcChsTrack :: Int,
+    pcChsSector :: Int,
+    pcChsHead :: Int
+} deriving (Show)
+
+data PcDisk = PcDisk {
+    pcDiskStatus :: Int,
+    pcDiskParams :: PcChs,
+    pcDiskRead :: Int -> Int -> IO B.ByteString,
+    pcDiskWrite :: Int -> B.ByteString -> IO ()
+}
+
+instance Show PcDisk where
+    show _ = "PcDisk"
+
+pcDiskDummyRead :: Int -> Int -> IO B.ByteString
+pcDiskDummyRead _ _ = return B.empty
+
+pcDiskDummyWrite :: Int -> B.ByteString -> IO ()
+pcDiskDummyWrite _ _ = return ()
+
+emptyDisk = PcDisk 0 (PcChs 0 0 0) pcDiskDummyRead pcDiskDummyWrite
+
 data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
     pcVideoState :: PcVideo,
-    pcTimer :: PcTimer
+    pcTimer :: PcTimer,
+    pcDisk :: PcDisk
 } deriving (Show)
 
 mkBios :: (MonadIO m) => m PcBios
@@ -131,25 +156,9 @@ mkBios = do
     videoMem <- liftIO $ callocBytes memSize
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
     videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0 []
-    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer
+    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer emptyDisk
 
 -------------------------------------------------------------------------------
-
-biosInterruptKeyboardInternal :: InterruptHandler
-biosInterruptKeyboardInternal _ =
-    cpuRunDirect $ DirectCommandU8 9
-
-biosInterruptVideo :: InterruptHandler
-biosInterruptVideo _ =
-    cpuRunDirect $ DirectCommandU8 0x10
-
-biosInterruptKeyboard :: InterruptHandler
-biosInterruptKeyboard _ =
-    cpuRunDirect $ DirectCommandU8 0x16
-
-biosInterruptClock :: InterruptHandler
-biosInterruptClock _ =
-    cpuRunDirect $ DirectCommandU8 0x1a
 
 biosInterruptTest :: InterruptHandler
 biosInterruptTest _ =
@@ -157,12 +166,13 @@ biosInterruptTest _ =
 
 mkBiosInterrupts :: [InterruptHandlerLocation]
 mkBiosInterrupts = [ (PrismInt 8, \_ -> cpuRunDirect $ DirectCommandU8 8)
-                   , (PrismInt 9, biosInterruptKeyboardInternal)
-                   , (PrismInt 0x10, biosInterruptVideo)
+                   , (PrismInt 9, \_ -> cpuRunDirect $ DirectCommandU8 9)
+                   , (PrismInt 0x10, \_ -> cpuRunDirect $ DirectCommandU8 0x10)
                    , (PrismInt 0x11, \_ -> cpuRunDirect $ DirectCommandU8 0x11)
                    , (PrismInt 0x12, \_ -> cpuRunDirect $ DirectCommandU8 0x12)
-                   , (PrismInt 0x16, biosInterruptKeyboard)
-                   , (PrismInt 0x1a, biosInterruptClock)
+                   , (PrismInt 0x13, \_ -> cpuRunDirect $ DirectCommandU8 0x13)
+                   , (PrismInt 0x16, \_ -> cpuRunDirect $ DirectCommandU8 0x16)
+                   , (PrismInt 0x1a, \_ -> cpuRunDirect $ DirectCommandU8 0x1a)
                    , (PrismInt 0x1f, biosInterruptTest) -- todo: use higher interrupt vector
                    ]
 
@@ -415,6 +425,60 @@ processBiosClock bios = do
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
 
+processBiosDisk :: PcBios -> PrismM PcBios
+processBiosDisk bios = do
+    valAh <- readOp ah
+    case valAh of
+        2 -> do -- read sectors
+            valAl <- readOp al -- number of sectors
+            valCh <- readOp ch -- track number
+            valCl <- readOp cl -- sector number
+            valDh <- readOp dh -- head number
+            valDl <- readOp dl -- drive number
+            --ex:bs -- input buffer
+            writeOp al 0 -- sectors read
+            return ()
+        3 -> do -- write sectors
+            valAl <- readOp al -- number of sectors
+            valCh <- readOp ch -- track number
+            valCl <- readOp cl -- sector number
+            valDh <- readOp dh -- head number
+            valDl <- readOp dl -- drive number
+            --ex:bs -- output buffer
+            writeOp al 0 -- sectors write
+            return ()
+        4 -> do -- verify sectors
+            writeOp ah 0
+            return ()
+        5 -> do -- format track
+            writeOp ah 0
+            return ()
+        8 -> do -- read params
+            valDl <- readOp dl -- drive number
+            writeOp al 0
+            writeOp bh 0
+            writeOp bl 4
+            writeOp ch 0 -- tracks
+            writeOp cl 0 -- sectors
+            writeOp dh 0 -- heads
+            writeOp dl 0 -- drives
+            -- es:di pointer to param table
+            return ()
+        0xc -> do -- seek
+            writeOp ah 0
+            return ()
+        0x10 -> do -- check ready
+            return ()
+        0x15 -> do -- read type
+            valDl <- readOp dl -- drive number
+            writeOp ah 0x03 -- fixed disk
+            return ()
+        0x16 -> do -- detect change
+            writeOp ah 0
+            return ()
+        _ -> liftIO $ putStrLn "Unsupported"
+    return bios
+
 processBiosEquipment :: PcBios -> PrismM PcBios
 processBiosEquipment bios = do
     let val = 0x0021 -- 80x25 color mode + 1 diskette
@@ -440,6 +504,7 @@ processBios bios 9 = processBiosKeyboardISR bios
 processBios bios 0x10 = processBiosVideo bios
 processBios bios 0x11 = processBiosGetMemorySize bios
 processBios bios 0x12 = processBiosEquipment bios
+processBios bios 0x13 = processBiosDisk bios
 processBios bios 0x16 = processBiosKeyboard bios
 processBios bios 0x1a = processBiosClock bios
 processBios bios _ = processBiosTest bios
