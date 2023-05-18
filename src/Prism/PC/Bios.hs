@@ -9,6 +9,7 @@ import Control.Concurrent.STM
 import Data.Bits
 import Data.List (uncons)
 import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
+import qualified Data.Map.Strict as Map
 import qualified Data.ByteString as B
 
 import Foreign.Ptr
@@ -120,15 +121,39 @@ instance Show PcVideo where
     show _ = "PcVideo"
 
 data PcChs = PcChs {
-    pcChsTrack :: Int,
-    pcChsSector :: Int,
-    pcChsHead :: Int
+    pcChsCylinder :: Uint16,
+    pcChsHead :: Uint16,
+    pcChsSector :: Uint16
 } deriving (Show)
+
+chsToOffset :: PcDisk -> PcChs -> Int
+chsToOffset disk (PcChs c h s) = 0
+
+sectorsToInt :: Uint8 -> Int
+sectorsToInt _ = 0
+
+data PcDiskIndex = PcDiskFloppy Uint8
+                 | PcDiskHdd Uint8
+                 deriving (Show, Ord, Eq)
+
+intToDiskIndex :: Uint8 -> PcDiskIndex
+intToDiskIndex i | i > 0x80 = PcDiskHdd $ i - 0x80
+intToDiskIndex i = PcDiskFloppy i
+
+{-
+data DiskOpReq = DiskOpReq {
+    diskOpReqOffset :: Int,
+    diskOpReqLen :: Int,
+    diskOpReqDrive :: Maybe PcDisk
+}
+-}
 
 data PcDisk = PcDisk {
     pcDiskStatus :: Int,
     pcDiskParams :: PcChs,
+    --pcDiskRead :: Offset -> Len -> Data
     pcDiskRead :: Int -> Int -> IO B.ByteString,
+    --pcDiskWrite :: Offset -> Data -> ()
     pcDiskWrite :: Int -> B.ByteString -> IO ()
 }
 
@@ -147,7 +172,7 @@ data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
     pcVideoState :: PcVideo,
     pcTimer :: PcTimer,
-    pcDisk :: PcDisk
+    pcDisks :: Map.Map PcDiskIndex PcDisk
 } deriving (Show)
 
 mkBios :: (MonadIO m) => m PcBios
@@ -156,7 +181,7 @@ mkBios = do
     videoMem <- liftIO $ callocBytes memSize
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
     videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0 []
-    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer emptyDisk
+    return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer Map.empty
 
 -------------------------------------------------------------------------------
 
@@ -435,16 +460,31 @@ processBiosDisk bios = do
             valCl <- readOp cl -- sector number
             valDh <- readOp dh -- head number
             valDl <- readOp dl -- drive number
-            --ex:bs -- input buffer
-            writeOp al 0 -- sectors read
-            return ()
+            let trackNum = (shiftL (fromIntegral valCl :: Uint16) 2) .&. 0x30
+                chs = PcChs trackNum (fromIntegral valDh :: Uint16) (fromIntegral (valCl .&. 0x3F) :: Uint16)
+                driveIndex = intToDiskIndex valDl
+                drive = Map.lookup driveIndex (pcDisks bios)
+                lenToRead = sectorsToInt valAl
+                sectorsRead = 0
+            --es:bx -- input buffer
+            case drive of
+                Just d -> do
+                    let offset = chsToOffset d chs
+                    bs <- liftIO $ (pcDiskRead d) offset lenToRead
+                    --todo: copy to mem
+                    writeOp al sectorsRead -- sectors read
+                    return ()
+                _ -> do
+                    writeOp al 0 -- sectors read
+                    writeOp ah 15 -- no drive
+                    return ()
         3 -> do -- write sectors
             valAl <- readOp al -- number of sectors
             valCh <- readOp ch -- track number
             valCl <- readOp cl -- sector number
             valDh <- readOp dh -- head number
             valDl <- readOp dl -- drive number
-            --ex:bs -- output buffer
+            --es:bx -- output buffer
             writeOp al 0 -- sectors write
             return ()
         4 -> do -- verify sectors
