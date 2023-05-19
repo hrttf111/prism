@@ -13,6 +13,7 @@ import Control.Concurrent.STM
 
 import Data.Text (append)
 import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
+import qualified Data.ByteString as B
 
 import Prism.Cpu
 import Prism.Command
@@ -499,6 +500,41 @@ testPC instrList = do
                 mov bx, ax
                 ; Get equipment list
                 int 0x12
+                hlt
+            |]
+        it "BIOS disk - no drive" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(al `shouldEq` 0), (ah `shouldEq` 15)] env comm $ [text|
+                mov ah, 2
+                mov dl, 1
+                int 0x13
+                hlt
+            |]
+        it "BIOS disk - read" $ do
+            comm <- newPrismComm False
+            let diskRead offset len = do
+                    putStrLn $ show $ "Offset = " ++ (show offset)
+                    putStrLn $ show $ "Len = " ++ (show len)
+                    return $ B.pack [0xEF | i <- [0..len]]
+                diskWrite offset d = return ()
+                disks = [(PcDiskFloppy 1, PcDisk 0 (PcChs 10 10 10) diskRead diskWrite)]
+            devices <- createPcWithDisks disks
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(al `shouldEq` 0), (ah `shouldEq` 15)] env comm $ [text|
+                mov ax, 0
+                mov es, ax ; buffer ES
+                mov bx, 6000 ; buffer BX
+                mov al, 10 ; number of sectors
+                mov ah, 2 ; read sectors
+                mov cl, 5 ; sector 5
+                mov ch, 1 ; track/cylinder 1
+                mov dl, 1 ; drive floppy 1
+                mov dh, 2 ; head 2
+                int 0x13
                 hlt
             |]
 -------------------------------------------------------------------------------

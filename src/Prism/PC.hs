@@ -1,7 +1,7 @@
 module Prism.PC (
         ------------------------------------------------------
         PC (..), PeripheralsPC
-        , createPC, pcPorts
+        , createPC, createPcWithDisks, pcPorts
         , getPC, putPC
         ------------------------------------------------------
         , mkBiosInterrupts
@@ -12,6 +12,7 @@ module Prism.PC (
         , SharedVideoState (..)
         , VideoCommand (..)
         , VideoCursor (..)
+        , PcDiskIndex (..), PcDisk (..), PcChs (..)
     ) where
 
 import Prism.PC.PC

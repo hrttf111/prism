@@ -11,12 +11,14 @@ import Data.List (uncons)
 import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString as B
+import Data.ByteString.Internal (toForeignPtr0)
 
 import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
 import Foreign.Marshal.Utils (fillBytes)
-import Foreign.Marshal.Array (pokeArray)
+import Foreign.Marshal.Array (pokeArray, copyArray)
 import Foreign.Storable (peekByteOff, pokeByteOff)
+import Foreign.ForeignPtr (withForeignPtr)
 
 import System.CPUTime (getCPUTime)
 
@@ -127,10 +129,17 @@ data PcChs = PcChs {
 } deriving (Show)
 
 chsToOffset :: PcDisk -> PcChs -> Int
-chsToOffset disk (PcChs c h s) = 0
+chsToOffset disk (PcChs c' h' s') = (c * n_heads + h) * n_sectors + (s - 1)
+    where
+        dp = pcDiskParams disk
+        n_heads = fromIntegral $ pcChsHead dp
+        n_sectors = fromIntegral $ pcChsSector dp
+        c = fromIntegral c'
+        h = fromIntegral h'
+        s = fromIntegral s'
 
 sectorsToInt :: Uint8 -> Int
-sectorsToInt _ = 0
+sectorsToInt val = 512 * fromIntegral val
 
 data PcDiskIndex = PcDiskFloppy Uint8
                  | PcDiskHdd Uint8
@@ -471,7 +480,16 @@ processBiosDisk bios = do
                 Just d -> do
                     let offset = chsToOffset d chs
                     bs <- liftIO $ (pcDiskRead d) offset lenToRead
-                    --todo: copy to mem
+                    valBx <- readOp bx
+                    valEs <- readOp es
+                    s <- get
+                    --destOffset <- readOp $ MemSegExp16 (es, MemBx 0)
+                    let (srcPtr, srcLen) = toForeignPtr0 bs
+                        dstOffset = (shiftL (fromIntegral valEs) 4) + (fromIntegral valBx)
+                        (MemMain dstPtr) = ctxMem s
+                        dstPtr' = plusPtr dstPtr dstOffset
+                    liftIO $ withForeignPtr srcPtr (\ srcPtr -> do
+                        copyArray dstPtr' srcPtr srcLen)
                     writeOp al sectorsRead -- sectors read
                     return ()
                 _ -> do

@@ -31,6 +31,9 @@ Memory addresses
  - 0xE0000 - 0xFFFFF - BIOS ROM
  - 0xFFFF0 - 8086 start instruction
 
+CHS
+ A = (c * N_heads + h) * N_sectors + (s - 1)
+
 Functions
  - int 8 (Timer) - BIOS internal (ISR)
  - int 9 (Keyboard) - BIOS internal (ISR)

@@ -10,6 +10,7 @@ import Control.Monad.State.Strict
 import Control.Concurrent.STM (TVar)
 
 import Data.Bits
+import qualified Data.Map.Strict as Map
 
 import Prism.Cpu
 import Prism.Peripherals
@@ -322,6 +323,14 @@ createPC :: (MonadIO m) => m PC
 createPC = do
     bios <- mkBios
     return $ PC 999 False defaultPIC defaultPIC defaultPIT bios
+
+createPcWithDisks :: (MonadIO m) => [(PcDiskIndex, PcDisk)] -> m PC
+createPcWithDisks disks = do
+    pc <- createPC
+    let bios = pcBios pc
+        pcDisks' = Map.fromList disks
+        bios' = bios { pcDisks = pcDisks' }
+    return $ pc { pcBios = bios' }
 
 getPcBiosSharedState :: PC -> (TVar SharedKeyboardState, TVar SharedVideoState)
 getPcBiosSharedState pc = (pcKeyboardShared . pcBiosKeyboard . pcBios $ pc, pcVideoShared . pcVideoState . pcBios $ pc)
