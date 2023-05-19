@@ -11,7 +11,7 @@ import Data.List (uncons)
 import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString as B
-import Data.ByteString.Internal (toForeignPtr0)
+import Data.ByteString.Internal as BI
 
 import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
@@ -149,13 +149,13 @@ intToDiskIndex :: Uint8 -> PcDiskIndex
 intToDiskIndex i | i >= 0x80 = PcDiskHdd $ i - 0x80
 intToDiskIndex i = PcDiskFloppy i
 
-{-
 data DiskOpReq = DiskOpReq {
-    diskOpReqOffset :: Int,
-    diskOpReqLen :: Int,
-    diskOpReqDrive :: Maybe PcDisk
+    diskOpReqDiskOffset :: Int, -- byte offset on disk
+    diskOpReqDataLen :: Int, -- byte length of data to read/write
+    diskOpReqMemPtr :: Ptr Uint8, -- ptr in main memory
+    diskOpReqNumSector :: Uint8,
+    diskOpReqDrive :: PcDisk
 }
--}
 
 data PcDisk = PcDisk {
     pcDiskStatus :: Int,
@@ -459,51 +459,65 @@ processBiosClock bios = do
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
 
+getDiskOpReq :: PcBios -> PrismM (Maybe DiskOpReq)
+getDiskOpReq bios = do
+    valAl <- readOp al -- number of sectors
+    valCh <- readOp ch -- track number
+    valCl <- readOp cl -- sector number
+    valDh <- readOp dh -- head number
+    valDl <- readOp dl -- drive number
+    let trackNum = (shiftL (fromIntegral valCl :: Uint16) 2) .&. 0x30
+        chs = PcChs trackNum (fromIntegral valDh :: Uint16) (fromIntegral (valCl .&. 0x3F) :: Uint16)
+        driveIndex = intToDiskIndex valDl
+        drive = Map.lookup driveIndex (pcDisks bios)
+        lenBytesSectors = sectorsToInt valAl
+        numSectors = valAl
+    --es:bx -- input buffer
+    case drive of
+        Just d -> do
+            valBx <- readOp bx
+            valEs <- readOp es
+            s <- get
+            let memOffset = (shiftL (fromIntegral valEs) 4) + (fromIntegral valBx)
+                (MemMain memPtr) = ctxMem s
+                memPtr' = plusPtr memPtr memOffset
+                offset = chsToOffset d chs
+            return $ Just $ DiskOpReq offset lenBytesSectors memPtr' numSectors d
+        _ -> do
+            return Nothing
+
 processBiosDisk :: PcBios -> PrismM PcBios
 processBiosDisk bios = do
     valAh <- readOp ah
     case valAh of
         2 -> do -- read sectors
-            valAl <- readOp al -- number of sectors
-            valCh <- readOp ch -- track number
-            valCl <- readOp cl -- sector number
-            valDh <- readOp dh -- head number
-            valDl <- readOp dl -- drive number
-            let trackNum = (shiftL (fromIntegral valCl :: Uint16) 2) .&. 0x30
-                chs = PcChs trackNum (fromIntegral valDh :: Uint16) (fromIntegral (valCl .&. 0x3F) :: Uint16)
-                driveIndex = intToDiskIndex valDl
-                drive = Map.lookup driveIndex (pcDisks bios)
-                lenToRead = sectorsToInt valAl
-                sectorsRead = valAl
-            --es:bx -- input buffer
-            case drive of
-                Just d -> do
-                    let offset = chsToOffset d chs
-                    bs <- liftIO $ (pcDiskRead d) offset lenToRead
-                    valBx <- readOp bx
-                    valEs <- readOp es
-                    s <- get
-                    --destOffset <- readOp $ MemSegExp16 (es, MemBx 0)
-                    let (srcPtr, srcLen) = toForeignPtr0 bs
-                        dstOffset = (shiftL (fromIntegral valEs) 4) + (fromIntegral valBx)
-                        (MemMain dstPtr) = ctxMem s
-                        dstPtr' = plusPtr dstPtr dstOffset
+            req <- getDiskOpReq bios
+            case req of
+                Just (DiskOpReq diskOffset dataLen memPtr numSectors drive) -> do
+                    bs <- liftIO $ (pcDiskRead drive) diskOffset dataLen
+                    let (srcPtr, srcLen) = BI.toForeignPtr0 bs
                     liftIO $ withForeignPtr srcPtr (\ srcPtr -> do
-                        copyArray dstPtr' srcPtr srcLen)
-                    writeOp al sectorsRead -- sectors read
+                        copyArray memPtr srcPtr srcLen)
+                    writeOp al numSectors -- sectors read
                     return ()
                 _ -> do
                     writeOp al 0 -- sectors read
                     writeOp ah 15 -- no drive
                     return ()
         3 -> do -- write sectors
-            valAl <- readOp al -- number of sectors
-            valCh <- readOp ch -- track number
-            valCl <- readOp cl -- sector number
-            valDh <- readOp dh -- head number
-            valDl <- readOp dl -- drive number
-            --es:bx -- output buffer
-            writeOp al 0 -- sectors write
+            req <- getDiskOpReq bios
+            case req of
+                Just (DiskOpReq diskOffset dataLen memPtr numSectors drive) -> do
+                    memData <- liftIO $ BI.create dataLen (\ dataPtr ->
+                        copyArray dataPtr memPtr dataLen
+                        )
+                    liftIO $ (pcDiskWrite drive) diskOffset memData
+                    writeOp al numSectors -- sectors read
+                    return ()
+                _ -> do
+                    writeOp al 0 -- sectors read
+                    writeOp ah 15 -- no drive
+                    return ()
             return ()
         4 -> do -- verify sectors
             writeOp ah 0
