@@ -34,6 +34,37 @@ Memory addresses
 CHS
  A = (c * N_heads + h) * N_sectors + (s - 1)
 
+CMOS for diskette
+0x10 bits 7-4 drive 0 type (0x4 - 1.44)
+     bits 3-0 drive 1 type (0x4 - 1.44)
+
+Diskette parameters table 0x1E
+ 0x00 - bits 7-4 drive type/transfer rate -> 0xd0
+        bits 3-0 head unload time -> 0x0f
+ 0x01 - bits 7-1 head load time -> 0x02
+        bit 0 non-DMA flag -> 0x00
+ 0x02 - motor turn-off delay -> 0x25
+ 0x03 - bytes per sector -> 0x02 (512)
+ 0x04 - sectors per track -> 0x18 (18)
+ 0x05 - gap length -> 0x1B
+ 0x06 - data length -> 0xff
+ 0x07 - gap length for format -> 0x6c
+ 0x08 - fill byte for format -> 0xF6
+ 0x09 - head settle time -> 0x0F
+ 0x0A - motor start time -> 0x08
+
+HDD parameters table 0x41(0x46 for driver 1)
+ 0x00 - number of cylinders (2 bytes)
+ 0x02 - number of heads
+ 0x03 - reserved (2 bytes) -> 0
+ 0x05 - starting write precompensation cylinder (2 bytes) -> 0
+ 0x07 - reserved -> 0
+ 0x08 - control byte -> 0xC0
+ 0x09 - reserved (3 bytes) -> 0
+ 0x0C - landing zone cylinder (2 bytes) -> 0
+ 0x0E - number of sectors per track
+ 0x0F - reserved -> 0
+
 Functions
  - int 8 (Timer) - BIOS internal (ISR)
  - int 9 (Keyboard) - BIOS internal (ISR)
@@ -121,15 +152,29 @@ Functions
    - ah 5 (Format track)
    - ah 8 (Read params)
        - dl - driver number
-       - out
-        - ax - 0
-        - bh - 0
-        - bl - 04 (3.5)
+       - out for diskette
+        - ax - 0 -- always 0
+        - bh - 0 -- always 0
+        - bl - 04 (3.5", 1.44 MB)
         - ch - tracks
         - cl - sectors
-        - dh - heads
-        - dl - drives
+        - dh - heads, always 1 when CMOS valid
+        - dl - number of diskette drives
         - es:di - pointer to param table
+        - CF = 0 when no error
+       - out for HDD
+        - ah - 0 when valid
+               7 when drive number is invalid
+        - al - always 0
+        - bh - 0 -- always 0
+        - bl - 04 (3.5", 1.44 MB)
+        - ch - cylinder lower 8 bits, zero-based, 00 when ah == 7
+        - cl - bits 0-5 sectors
+               bits 6-7 cylinder high 2 bits (00 when ah == 7)
+        - dh - heads
+        - dl - number of diskette drives, zero-base, 00 when ah == 7
+        - es:di - pointer to param table
+        - CF = 0 when no error
    - ah c (Seek)
    - ah 10 (Check ready)
    - ah 15 (Read type)

@@ -527,19 +527,22 @@ processBiosDisk bios = do
             return ()
         8 -> do -- read params
             valDl <- readOp dl -- drive number
-            writeOp al 0
-            writeOp bh 0
-            writeOp bl 4
+            writeOp ax 0 -- always 0
+            writeOp bh 0 -- always 0
+            writeOp bl 4 -- 3.5", 1.44 MB
             writeOp ch 0 -- tracks
             writeOp cl 0 -- sectors
-            writeOp dh 0 -- heads
-            writeOp dl 0 -- drives
+            writeOp dh 0 -- heads, always 1 when CMOS valid
+            writeOp dl 0 -- number of diskette drives
+            -- CF = 0 when no error
             -- es:di pointer to param table
             return ()
         0xc -> do -- seek
             writeOp ah 0
             return ()
         0x10 -> do -- check ready
+            -- TODO: check docs
+            writeOp ah 0
             return ()
         0x15 -> do -- read type
             valDl <- readOp dl -- drive number
