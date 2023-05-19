@@ -146,7 +146,7 @@ data PcDiskIndex = PcDiskFloppy Uint8
                  deriving (Show, Ord, Eq)
 
 intToDiskIndex :: Uint8 -> PcDiskIndex
-intToDiskIndex i | i > 0x80 = PcDiskHdd $ i - 0x80
+intToDiskIndex i | i >= 0x80 = PcDiskHdd $ i - 0x80
 intToDiskIndex i = PcDiskFloppy i
 
 {-
@@ -474,7 +474,7 @@ processBiosDisk bios = do
                 driveIndex = intToDiskIndex valDl
                 drive = Map.lookup driveIndex (pcDisks bios)
                 lenToRead = sectorsToInt valAl
-                sectorsRead = 0
+                sectorsRead = valAl
             --es:bx -- input buffer
             case drive of
                 Just d -> do

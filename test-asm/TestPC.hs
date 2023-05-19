@@ -524,7 +524,7 @@ testPC instrList = do
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 0), (ah `shouldEq` 15)] env comm $ [text|
+            execPrismHalt [(al `shouldEq` 10), (ah `shouldEq` 2)] env comm $ [text|
                 mov ax, 0
                 mov es, ax ; buffer ES
                 mov bx, 6000 ; buffer BX
