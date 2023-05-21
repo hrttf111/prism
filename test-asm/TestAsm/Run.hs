@@ -72,8 +72,9 @@ createTestEnv1 :: MonadIO m =>
                   Maybe ThreadId ->
                   [PrismInstruction] ->
                   [InterruptHandlerLocation] ->
+                  PrismM () ->
                   m TestEnv
-createTestEnv1 ioCtx threadId instrList intList = liftIO $ do
+createTestEnv1 ioCtx threadId instrList intList preStartAction = liftIO $ do
     ptrA <- allocMemRegRaw
     memReg <- allocMemReg
     memMain <- allocMemMain memSize
@@ -103,17 +104,18 @@ createTestEnv1 ioCtx threadId instrList intList = liftIO $ do
             writeOp sp 640
             writeOp ds (div 8000 16)
             writeOp cs (div codeStart 16)
+            preStartAction
             runner decoder instrEnd
 
 createTestEnv :: (MonadIO m) => [PrismInstruction] -> m TestEnv
 createTestEnv instrList = do
     (ioCtx, _) <- liftIO $ makeDummyIO (1024*1024) devicesStub
-    createTestEnv1 ioCtx Nothing instrList []
+    createTestEnv1 ioCtx Nothing instrList [] (return ())
     where
         devicesStub = 0 :: Int
 
-createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator mL pL) => 
-                            [PrismInstruction] -> 
+createPeripheralsTestEnv1 :: (MonadIO m, PeripheralsTestCreator mL pL) =>
+                            [PrismInstruction] ->
                             pR ->
                             [PeripheralPort (RemoteTrans pR)] ->
                             [PeripheralMem (RemoteTrans pR)] ->
@@ -121,12 +123,13 @@ createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator mL pL) =>
                             [PeripheralPort mL] ->
                             [PeripheralMem mL] ->
                             [InterruptHandlerLocation] ->
+                            PrismM () ->
                             m TestEnv
-createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList = do
+createPeripheralsTestEnv1 instrList devR portsR memsR devL portsL memsL intList preStartAction = do
     queue <- liftIO $ createIOQueue
     let ioCtx = createTestPeripherals peripheralL queue
     threadId <- liftIO . forkIO $ runRemotePeripherals queue peripheralR execPeripheralsOnce
-    createTestEnv1 ioCtx (Just threadId) instrList intList
+    createTestEnv1 ioCtx (Just threadId) instrList intList preStartAction
     where
         memSize = 1024 * 1024
         pageSize = 1024
@@ -138,6 +141,19 @@ createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList =
                                                          memsR
                                                          portsL
                                                          memsL
+
+createPeripheralsTestEnv :: (MonadIO m, PeripheralsTestCreator mL pL) =>
+                            [PrismInstruction] ->
+                            pR ->
+                            [PeripheralPort (RemoteTrans pR)] ->
+                            [PeripheralMem (RemoteTrans pR)] ->
+                            pL ->
+                            [PeripheralPort mL] ->
+                            [PeripheralMem mL] ->
+                            [InterruptHandlerLocation] ->
+                            m TestEnv
+createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList =
+    createPeripheralsTestEnv1 instrList devR portsR memsR devL portsL memsL intList (return ())
 
 -------------------------------------------------------------------------------
 

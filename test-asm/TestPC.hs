@@ -568,11 +568,12 @@ testPC instrList = do
                     putStrLn $ "Offset = " ++ (show offset)
                     putStrLn $ "Len = " ++ (show $ B.length d)
                     return ()
-                disks = [(PcDiskFloppy 1, PcDisk 0 0x12000 (PcChs 10 10 10) diskRead diskWrite)]
+                disks = [(PcDiskFloppy 1, PcDisk 0 5000 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(ax `shouldEq` 0), (ah `shouldEq` 0), (bl `shouldEq` 4), (dh `shouldEq` 1), (di `shouldEq` 0x12000)] env comm $ [text|
+                initBios = setPcMemory devices
+            env <- createPeripheralsTestEnv1 instrList devR emptyPortR emptyMemR devices pcPorts [] intList initBios
+            execPrismHalt [(ax `shouldEq` 0), (ah `shouldEq` 0), (bl `shouldEq` 4), (dh `shouldEq` 1), (di `shouldEq` 5000)] env comm $ [text|
                 mov ah, 8
                 mov dl, 1
                 int 0x13

@@ -241,6 +241,8 @@ writeDiskParamsTables = mapM_ writeTable
                 (MemMain memPtr) = ctxMem s
                 memPtr' = plusPtr memPtr memOffset
                 (srcPtr, srcLen) = BI.toForeignPtr0 content
+            liftIO $ putStrLn $ "memOffset= " ++ (show memOffset)
+            liftIO $ putStrLn $ "srcLen = " ++ (show srcLen)
             liftIO $ withForeignPtr srcPtr (\ srcPtr ->
                 copyArray memPtr' srcPtr srcLen
                 )
@@ -268,21 +270,11 @@ setBiosMemory bios = do
 
 -------------------------------------------------------------------------------
 
-biosInterruptTest :: InterruptHandler
-biosInterruptTest _ =
-    cpuRunDirect $ DirectCommandU8 0xef
+mkBiosInterrupt :: Uint8 -> InterruptHandlerLocation
+mkBiosInterrupt val = (PrismInt val, \_ -> cpuRunDirect $ DirectCommandU8 val)
 
 mkBiosInterrupts :: [InterruptHandlerLocation]
-mkBiosInterrupts = [ (PrismInt 8, \_ -> cpuRunDirect $ DirectCommandU8 8)
-                   , (PrismInt 9, \_ -> cpuRunDirect $ DirectCommandU8 9)
-                   , (PrismInt 0x10, \_ -> cpuRunDirect $ DirectCommandU8 0x10)
-                   , (PrismInt 0x11, \_ -> cpuRunDirect $ DirectCommandU8 0x11)
-                   , (PrismInt 0x12, \_ -> cpuRunDirect $ DirectCommandU8 0x12)
-                   , (PrismInt 0x13, \_ -> cpuRunDirect $ DirectCommandU8 0x13)
-                   , (PrismInt 0x16, \_ -> cpuRunDirect $ DirectCommandU8 0x16)
-                   , (PrismInt 0x1a, \_ -> cpuRunDirect $ DirectCommandU8 0x1a)
-                   , (PrismInt 0x1f, biosInterruptTest) -- todo: use higher interrupt vector
-                   ]
+mkBiosInterrupts = map mkBiosInterrupt [8, 9, 0x10, 0x11, 0x12, 0x13, 0x16, 0x1a, 0x1f]
 
 -------------------------------------------------------------------------------
 
