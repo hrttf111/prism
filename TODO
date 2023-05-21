@@ -178,7 +178,10 @@ Functions
    - ah 15 (Read type)
        - dl - driver number
        - out
+        for HDD
         - ah - 03 fixed disk
+        - cx - high bits of sectors number per-disk
+        - dx - low bits of sectors number per-disk
    - ah 16 (Detect media change)
  - int 0x14 (Serial)
  - int 0x15 (System services)

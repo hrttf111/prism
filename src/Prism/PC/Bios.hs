@@ -129,7 +129,7 @@ data PcChs = PcChs {
 } deriving (Show)
 
 chsToOffset :: PcDisk -> PcChs -> Int
-chsToOffset disk (PcChs c' h' s') = (c * n_heads + h) * n_sectors + (s - 1)
+chsToOffset disk (PcChs c' h' s') = ((c * n_heads + h) * n_sectors + (s - 1)) * 512
     where
         dp = pcDiskParams disk
         n_heads = fromIntegral $ pcChsHead dp
@@ -159,6 +159,7 @@ data DiskOpReq = DiskOpReq {
 
 data PcDisk = PcDisk {
     pcDiskStatus :: Int,
+    pcDiskParamsLoc :: Uint32,
     pcDiskParams :: PcChs,
     --pcDiskRead :: Offset -> Len -> Data
     pcDiskRead :: Int -> Int -> IO B.ByteString,
@@ -175,7 +176,60 @@ pcDiskDummyRead _ _ = return B.empty
 pcDiskDummyWrite :: Int -> B.ByteString -> IO ()
 pcDiskDummyWrite _ _ = return ()
 
-emptyDisk = PcDisk 0 (PcChs 0 0 0) pcDiskDummyRead pcDiskDummyWrite
+emptyDisk = PcDisk 0 0 (PcChs 0 0 0) pcDiskDummyRead pcDiskDummyWrite
+
+totalSectors :: PcDisk -> Int
+totalSectors disk = n_cylinders * n_heads * n_sectors
+    where
+        dp = pcDiskParams disk
+        n_heads = fromIntegral $ pcChsHead dp
+        n_sectors = fromIntegral $ pcChsSector dp
+        n_cylinders = fromIntegral $ pcChsCylinder dp
+
+diskParamTableContent :: PcDiskIndex -> PcDisk -> B.ByteString
+diskParamTableContent diskIndex disk =
+    B.pack $ case diskIndex of
+        PcDiskFloppy _ -> floppyParams
+        PcDiskHdd _ -> hddParams
+    where
+        floppyParams = [
+            0xDf
+            , 0x02
+            , 0x25
+            , 0x02
+            , 0x18
+            , 0x1B
+            , 0xFF
+            , 0x6C
+            , 0x0F
+            , 0x08
+            ]
+        cylinders = pcChsCylinder . pcDiskParams $ disk
+        cylLow = fromIntegral $ cylinders .&. 0xFF
+        cylHigh = fromIntegral $ shiftR cylinders 8
+        hddParams = [
+            cylHigh
+            , cylLow
+            , (fromIntegral . pcChsHead . pcDiskParams $ disk)
+            , 0x00
+            , 0x00
+            , 0x00
+            , 0x00
+            , 0x00
+            , 0xC0
+            , 0x00
+            , 0x00
+            , 0x00
+            , 0x00
+            , 0x00
+            , (fromIntegral . pcChsSector . pcDiskParams $ disk)
+            , 0x00
+            ]
+
+diskParamTableLoc :: PcDisk -> (Uint16, Uint16)
+diskParamTableLoc disk = (fromIntegral $ (shiftR (loc .&. 0xf0000) 4), fromIntegral $ (loc .&. 0xffff))
+    where
+        loc = pcDiskParamsLoc disk
 
 data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
@@ -536,6 +590,7 @@ processBiosDisk bios = do
                 Just pcDisk ->
                     case driveIndex of
                         PcDiskFloppy _ -> do
+                            let (highParams, lowParams) = diskParamTableLoc pcDisk
                             writeOp ax 0 -- always 0
                             writeOp bh 0 -- always 0
                             writeOp bl 4 -- 3.5", 1.44 MB
@@ -543,22 +598,27 @@ processBiosDisk bios = do
                             writeOp cl $ fromIntegral . pcChsSector . pcDiskParams $ pcDisk -- sectors
                             writeOp dh 1 -- heads, always 1 when CMOS valid
                             writeOp dl 0 -- number of diskette drives
-                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             -- es:di pointer to param table
+                            writeOp es highParams
+                            writeOp di lowParams
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             return ()
                         PcDiskHdd _ -> do
                             let cylinders = pcChsCylinder . pcDiskParams $ pcDisk
                                 cylLow = fromIntegral (cylinders .&. 0xFF)
                                 cylHigh = fromIntegral (shiftR (cylinders .&. 0x30) 2)
                                 sectors = fromIntegral . pcChsSector . pcDiskParams $ pcDisk
+                                (highParams, lowParams) = diskParamTableLoc pcDisk
                             writeOp al 0 -- always 0
                             writeOp ah 0 -- always 0 when disk valid, 0x7 otherwise
                             writeOp ch cylLow -- cylinders
                             writeOp cl $ cylHigh .|. sectors -- cylinders + sectors
                             writeOp dh $ fromIntegral . pcChsHead . pcDiskParams $ pcDisk -- heads
                             writeOp dl 1 -- number of drives, 00 when disk invalid
-                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             -- es:di pointer to param table
+                            writeOp es highParams
+                            writeOp di lowParams
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             return ()
                 Nothing -> do
                     setInterruptOutFlags [(CF, True)] -- set CF = 1, error
@@ -579,8 +639,10 @@ processBiosDisk bios = do
                             return ()
                         PcDiskHdd _ -> do
                             writeOp ah 0x0
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             return ()
                 Nothing -> do
+                    setInterruptOutFlags [(CF, True)] -- set CF = 1, error
                     writeOp ah 15
                     return ()
         0x15 -> do -- read type
@@ -593,11 +655,19 @@ processBiosDisk bios = do
                     case driveIndex of
                         PcDiskFloppy _ -> do
                             writeOp ah 0x01 -- floppy
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             return ()
                         PcDiskHdd _ -> do
+                            let sectors = totalSectors pcDisk
+                                sectorsHigh = fromIntegral $ shiftR sectors 16
+                                sectorsLow = fromIntegral $ sectors .&. 0xffff
                             writeOp ah 0x03 -- fixed disk
+                            writeOp cx sectorsHigh -- number of sectors on drive
+                            writeOp dx sectorsLow
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
                             return ()
                 Nothing -> do
+                    setInterruptOutFlags [(CF, True)] -- set CF = 1, error
                     writeOp ah 15
                     return ()
         0x16 -> do -- detect change

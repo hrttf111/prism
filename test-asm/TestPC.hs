@@ -520,7 +520,7 @@ testPC instrList = do
                     putStrLn $ "Len = " ++ (show len)
                     return $ B.pack [0xEF | i <- [0..len]]
                 diskWrite offset d = return ()
-                disks = [(PcDiskFloppy 1, PcDisk 0 (PcChs 10 10 10) diskRead diskWrite)]
+                disks = [(PcDiskFloppy 1, PcDisk 0 0 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
@@ -544,7 +544,7 @@ testPC instrList = do
                     putStrLn $ "Offset = " ++ (show offset)
                     putStrLn $ "Len = " ++ (show $ B.length d)
                     return ()
-                disks = [(PcDiskFloppy 1, PcDisk 0 (PcChs 10 10 10) diskRead diskWrite)]
+                disks = [(PcDiskFloppy 1, PcDisk 0 0 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
