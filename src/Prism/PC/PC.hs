@@ -332,6 +332,10 @@ createPcWithDisks disks = do
         bios' = bios { pcDisks = pcDisks' }
     return $ pc { pcBios = bios' }
 
+setPcMemory :: PC -> PrismM ()
+setPcMemory pc = do
+    setBiosMemory $ pcBios pc
+
 getPcBiosSharedState :: PC -> (TVar SharedKeyboardState, TVar SharedVideoState)
 getPcBiosSharedState pc = (pcKeyboardShared . pcBiosKeyboard . pcBios $ pc, pcVideoShared . pcVideoState . pcBios $ pc)
 

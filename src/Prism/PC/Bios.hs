@@ -231,6 +231,20 @@ diskParamTableLoc disk = (fromIntegral $ (shiftR (loc .&. 0xf0000) 4), fromInteg
     where
         loc = pcDiskParamsLoc disk
 
+writeDiskParamsTables :: [(PcDiskIndex, PcDisk)] -> PrismM ()
+writeDiskParamsTables = mapM_ writeTable
+    where
+        writeTable (index, disk) = do
+            s <- get
+            let memOffset = fromIntegral $ pcDiskParamsLoc disk
+                content = diskParamTableContent index disk
+                (MemMain memPtr) = ctxMem s
+                memPtr' = plusPtr memPtr memOffset
+                (srcPtr, srcLen) = BI.toForeignPtr0 content
+            liftIO $ withForeignPtr srcPtr (\ srcPtr ->
+                copyArray memPtr' srcPtr srcLen
+                )
+
 data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
     pcVideoState :: PcVideo,
@@ -245,6 +259,12 @@ mkBios = do
     keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
     videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0 []
     return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer Map.empty
+
+setBiosMemory :: PcBios -> PrismM ()
+setBiosMemory bios = do
+    writeDiskParamsTables disks
+    where
+        disks = Map.foldrWithKey (\ k v l -> (k, v) : l) [] $ pcDisks bios
 
 -------------------------------------------------------------------------------
 
@@ -553,8 +573,9 @@ processBiosDisk bios = do
                 Just (DiskOpReq diskOffset dataLen memPtr numSectors drive) -> do
                     bs <- liftIO $ (pcDiskRead drive) diskOffset dataLen
                     let (srcPtr, srcLen) = BI.toForeignPtr0 bs
-                    liftIO $ withForeignPtr srcPtr (\ srcPtr -> do
-                        copyArray memPtr srcPtr srcLen)
+                    liftIO $ withForeignPtr srcPtr (\ srcPtr ->
+                        copyArray memPtr srcPtr srcLen
+                        )
                     writeOp al numSectors -- sectors read
                     return ()
                 _ -> do

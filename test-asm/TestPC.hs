@@ -561,4 +561,21 @@ testPC instrList = do
                 int 0x13
                 hlt
             |]
+        it "BIOS disk - params" $ do
+            comm <- newPrismComm False
+            let diskRead offset len = return B.empty
+                diskWrite offset d = do
+                    putStrLn $ "Offset = " ++ (show offset)
+                    putStrLn $ "Len = " ++ (show $ B.length d)
+                    return ()
+                disks = [(PcDiskFloppy 1, PcDisk 0 0x12000 (PcChs 10 10 10) diskRead diskWrite)]
+            devices <- createPcWithDisks disks
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
+            execPrismHalt [(ax `shouldEq` 0), (ah `shouldEq` 0), (bl `shouldEq` 4), (dh `shouldEq` 1), (di `shouldEq` 0x12000)] env comm $ [text|
+                mov ah, 8
+                mov dl, 1
+                int 0x13
+                hlt
+            |]
 -------------------------------------------------------------------------------
