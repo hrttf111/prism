@@ -245,13 +245,20 @@ processBiosKeyboardISR bios = do
 
 -------------------------------------------------------------------------------
 
-saveInterruptCtx :: PrismM ()
-saveInterruptCtx = do
-    flags <- getFlags
-    eflags <- getFlags
-    pushV $ flagsToVal flags $ eflagsToVal eflags 0
-    pushP cs
-    pushP ip
+
+setInterruptOutFlags :: [(Flag, Bool)] -> PrismM ()
+setInterruptOutFlags flags =
+    retInterrupt >>
+    (mapM_ (\ (f, b) -> setFlag f b) flags) >>
+    saveInterruptCtx
+    where
+        saveInterruptCtx :: PrismM ()
+        saveInterruptCtx = do
+            flags <- getFlags
+            eflags <- getFlags
+            pushV $ flagsToVal flags $ eflagsToVal eflags 0
+            pushP cs
+            pushP ip
 
 processBiosKeyboard :: PcBios -> PrismM PcBios
 processBiosKeyboard bios = do
@@ -271,16 +278,12 @@ processBiosKeyboard bios = do
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
             case keys' of
                 Just (key, keyList') -> do
-                    retInterrupt
-                    setFlag ZF False
                     writeOp al $ pcKeyMain key
                     writeOp ah $ pcKeyAux key
-                    saveInterruptCtx
+                    setInterruptOutFlags [(ZF, False)]
                     return bios
                 Nothing -> do
-                    retInterrupt
-                    setFlag ZF True
-                    saveInterruptCtx
+                    setInterruptOutFlags [(ZF, True)]
                     return bios
         2 -> do -- Check shift flags
             let valAl = toShiftFlags $ pcKeyboardFlags $ pcBiosKeyboard bios
@@ -472,9 +475,9 @@ getDiskOpReq bios = do
         drive = Map.lookup driveIndex (pcDisks bios)
         lenBytesSectors = sectorsToInt valAl
         numSectors = valAl
-    --es:bx -- input buffer
     case drive of
         Just d -> do
+            --es:bx -- input buffer
             valBx <- readOp bx
             valEs <- readOp es
             s <- get
@@ -527,27 +530,76 @@ processBiosDisk bios = do
             return ()
         8 -> do -- read params
             valDl <- readOp dl -- drive number
-            writeOp ax 0 -- always 0
-            writeOp bh 0 -- always 0
-            writeOp bl 4 -- 3.5", 1.44 MB
-            writeOp ch 0 -- tracks
-            writeOp cl 0 -- sectors
-            writeOp dh 0 -- heads, always 1 when CMOS valid
-            writeOp dl 0 -- number of diskette drives
-            -- CF = 0 when no error
-            -- es:di pointer to param table
-            return ()
+            let driveIndex = intToDiskIndex valDl
+                drive = Map.lookup driveIndex (pcDisks bios)
+            case drive of
+                Just pcDisk ->
+                    case driveIndex of
+                        PcDiskFloppy _ -> do
+                            writeOp ax 0 -- always 0
+                            writeOp bh 0 -- always 0
+                            writeOp bl 4 -- 3.5", 1.44 MB
+                            writeOp ch $ fromIntegral . pcChsCylinder . pcDiskParams $ pcDisk -- tracks
+                            writeOp cl $ fromIntegral . pcChsSector . pcDiskParams $ pcDisk -- sectors
+                            writeOp dh 1 -- heads, always 1 when CMOS valid
+                            writeOp dl 0 -- number of diskette drives
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
+                            -- es:di pointer to param table
+                            return ()
+                        PcDiskHdd _ -> do
+                            let cylinders = pcChsCylinder . pcDiskParams $ pcDisk
+                                cylLow = fromIntegral (cylinders .&. 0xFF)
+                                cylHigh = fromIntegral (shiftR (cylinders .&. 0x30) 2)
+                                sectors = fromIntegral . pcChsSector . pcDiskParams $ pcDisk
+                            writeOp al 0 -- always 0
+                            writeOp ah 0 -- always 0 when disk valid, 0x7 otherwise
+                            writeOp ch cylLow -- cylinders
+                            writeOp cl $ cylHigh .|. sectors -- cylinders + sectors
+                            writeOp dh $ fromIntegral . pcChsHead . pcDiskParams $ pcDisk -- heads
+                            writeOp dl 1 -- number of drives, 00 when disk invalid
+                            setInterruptOutFlags [(CF, False)] -- CF = 0 when no error
+                            -- es:di pointer to param table
+                            return ()
+                Nothing -> do
+                    setInterruptOutFlags [(CF, True)] -- set CF = 1, error
+                    writeOp al 0
+                    writeOp ah 15
+                    return ()
         0xc -> do -- seek
             writeOp ah 0
             return ()
         0x10 -> do -- check ready
-            -- TODO: check docs
-            writeOp ah 0
-            return ()
+            valDl <- readOp dl -- drive number
+            let driveIndex = intToDiskIndex valDl
+                drive = Map.lookup driveIndex (pcDisks bios)
+            case drive of
+                Just pcDisk ->
+                    case driveIndex of
+                        PcDiskFloppy _ -> do
+                            return ()
+                        PcDiskHdd _ -> do
+                            writeOp ah 0x0
+                            return ()
+                Nothing -> do
+                    writeOp ah 15
+                    return ()
         0x15 -> do -- read type
             valDl <- readOp dl -- drive number
-            writeOp ah 0x03 -- fixed disk
             return ()
+            let driveIndex = intToDiskIndex valDl
+                drive = Map.lookup driveIndex (pcDisks bios)
+            case drive of
+                Just pcDisk ->
+                    case driveIndex of
+                        PcDiskFloppy _ -> do
+                            writeOp ah 0x01 -- floppy
+                            return ()
+                        PcDiskHdd _ -> do
+                            writeOp ah 0x03 -- fixed disk
+                            return ()
+                Nothing -> do
+                    writeOp ah 15
+                    return ()
         0x16 -> do -- detect change
             writeOp ah 0
             return ()

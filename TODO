@@ -151,7 +151,7 @@ Functions
    - ah 4 (Verify sectors)
    - ah 5 (Format track)
    - ah 8 (Read params)
-       - dl - driver number
+       - dl - drive number
        - out for diskette
         - ax - 0 -- always 0
         - bh - 0 -- always 0
@@ -166,13 +166,11 @@ Functions
         - ah - 0 when valid
                7 when drive number is invalid
         - al - always 0
-        - bh - 0 -- always 0
-        - bl - 04 (3.5", 1.44 MB)
         - ch - cylinder lower 8 bits, zero-based, 00 when ah == 7
         - cl - bits 0-5 sectors
                bits 6-7 cylinder high 2 bits (00 when ah == 7)
         - dh - heads
-        - dl - number of diskette drives, zero-base, 00 when ah == 7
+        - dl - number of drives, zero-base, 00 when ah == 7
         - es:di - pointer to param table
         - CF = 0 when no error
    - ah c (Seek)
@@ -332,8 +330,10 @@ TODO:
     - Hardcode default +
     - Create unit tests +
  - Implement basic video functions +
- - Implement simple application which uses BIOS
-    - Key echo (read key, write key)
+ - Implement simple application which uses BIOS +
+    - Key echo (read key, write key) +
+ - Implement BIOS disk/floppy
+ - Implement bootloader logic in BIOS
 
 -------------------------------------------------------
 
