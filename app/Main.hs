@@ -128,12 +128,12 @@ data AppOpts = AppOpts {
         logLevelGDB :: !String
     }
 
-buildPC :: (MonadIO m) => m (IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
+buildPC :: (MonadIO m) => m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
 buildPC = do
     queue <- liftIO $ createIOQueue
     pc <- createPC
     let states = getPcBiosSharedState pc
-    return $ (mkIOCtx pc queue, intList, states)
+    return $ (pc, mkIOCtx pc queue, intList, states)
     where
         intList = mkBiosInterrupts
         pageSize = 1024
@@ -168,7 +168,7 @@ runBinary opts = do
     memReg <- allocMemReg
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
-    (ioCtx, intList, states) <- buildPC
+    (pc, ioCtx, intList, states) <- buildPC
     vty <- startVtyThread (commCmdQueue comm) (fst states) (snd states)
     (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
     let ctx = makeCtx memReg memMain ioCtx
@@ -177,6 +177,7 @@ runBinary opts = do
         clearRegs
         writeOp ip bootloaderStart
         writeOp cs 0
+        setPcMemory pc
         decodeHaltCpu (decoder intM) comm
     case vty of
         Just v -> do
