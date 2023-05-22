@@ -252,7 +252,11 @@ writeDiskParamsTables = mapM_ writeTable
                         ptrIp = plusPtr memPtr ((*4) $ fromIntegral 0x1E)
                         ptrCs = plusPtr ptrIp 2
                     poke ptrCs highParams >> poke ptrIp lowParams
-                _ -> return ()
+                PcDiskHdd _ -> liftIO $ do
+                    let (highParams, lowParams) = diskParamTableLoc disk
+                        ptrIp = plusPtr memPtr ((*4) $ fromIntegral 0x41)
+                        ptrCs = plusPtr ptrIp 2
+                    poke ptrCs highParams >> poke ptrIp lowParams
 
 data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
