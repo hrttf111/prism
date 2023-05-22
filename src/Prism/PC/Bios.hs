@@ -274,7 +274,7 @@ mkBiosInterrupt :: Uint8 -> InterruptHandlerLocation
 mkBiosInterrupt val = (PrismInt val, \_ -> cpuRunDirect $ DirectCommandU8 val)
 
 mkBiosInterrupts :: [InterruptHandlerLocation]
-mkBiosInterrupts = map mkBiosInterrupt [8, 9, 0x10, 0x11, 0x12, 0x13, 0x16, 0x1a, 0x1f]
+mkBiosInterrupts = map mkBiosInterrupt [8, 9, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x19, 0x1a, 0x1f]
 
 -------------------------------------------------------------------------------
 
@@ -699,6 +699,21 @@ processBiosDisk bios = do
         _ -> liftIO $ putStrLn "Unsupported"
     return bios
 
+processBiosSerial :: PcBios -> PrismM PcBios
+processBiosSerial bios = do
+    writeOp ax 0
+    return bios
+
+processBiosSystem :: PcBios -> PrismM PcBios
+processBiosSystem bios = do
+    writeOp ah 0x86
+    return bios
+
+processBiosPrinter :: PcBios -> PrismM PcBios
+processBiosPrinter bios = do
+    writeOp ah 1 -- no printer
+    return bios
+
 processBiosEquipment :: PcBios -> PrismM PcBios
 processBiosEquipment bios = do
     let val = 0x0021 -- 80x25 color mode + 1 diskette
@@ -708,6 +723,11 @@ processBiosEquipment bios = do
 processBiosGetMemorySize :: PcBios -> PrismM PcBios
 processBiosGetMemorySize bios = do
     writeOp ax 0x280 -- 640K
+    return bios
+
+processBiosReboot :: PcBios -> PrismM PcBios
+processBiosReboot bios = do
+    cpuHalt
     return bios
 
 processBiosTest :: PcBios -> PrismM PcBios
@@ -725,6 +745,10 @@ processBios bios 0x10 = processBiosVideo bios
 processBios bios 0x11 = processBiosGetMemorySize bios
 processBios bios 0x12 = processBiosEquipment bios
 processBios bios 0x13 = processBiosDisk bios
+processBios bios 0x14 = processBiosSerial bios
+processBios bios 0x15 = processBiosSystem bios
 processBios bios 0x16 = processBiosKeyboard bios
+processBios bios 0x17 = processBiosPrinter bios
+processBios bios 0x19 = processBiosReboot bios
 processBios bios 0x1a = processBiosClock bios
 processBios bios _ = processBiosTest bios
