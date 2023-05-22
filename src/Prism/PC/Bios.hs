@@ -326,20 +326,30 @@ setInterruptOutFlags flags =
             pushP cs
             pushP ip
 
+waitKey :: PcBios -> PrismM PcBios
+waitKey bios =
+    if hasKey then
+        return bios
+        else
+            processBiosKeyboardISR bios >>= waitKey
+    where
+        hasKey = not . null . pcKeyboardList $ pcBiosKeyboard bios
+
 processBiosKeyboard :: PcBios -> PrismM PcBios
 processBiosKeyboard bios = do
     valAh <- readOp ah
     case valAh of
         0 -> do -- Get key
-            let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
+            -- suspend, wait for key
+            bios' <- waitKey bios
+            let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios'
             case keys' of
                 Just (key, keyList') -> do
                     writeOp al $ pcKeyMain key
                     writeOp ah $ pcKeyAux key
-                    return $ bios { pcBiosKeyboard = (pcBiosKeyboard bios) {pcKeyboardList = keyList'} }
-                Nothing -> do
-                    -- TODO: suspend, may check shared state periodically
-                    return bios
+                    return $ bios' { pcBiosKeyboard = (pcBiosKeyboard bios') {pcKeyboardList = keyList'} }
+                Nothing ->
+                    return bios'
         1 -> do -- Check key
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios
             case keys' of
