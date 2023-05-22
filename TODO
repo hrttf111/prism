@@ -31,6 +31,77 @@ Memory addresses
  - 0xE0000 - 0xFFFFF - BIOS ROM
  - 0xFFFF0 - 8086 start instruction
 
+BIOS RAM area
+ - 0x0-0x7 - 4 serial ports
+ - 0x8-0xf - 4 parallel ports
+ - 0x10-0x11 - installed devices (int 0x11)
+ - 0x12 - POST
+ - 0x13-0x14 - installed memory in KB
+ - 0x15-0x16 - POST
+ - 0x17 - keyboard shift flags
+ - 0x18 - keyboard ext shift flags
+ - 0x19 - alt key + numeric keypad
+ - 0x1A-0x1B - pointer to next char in keyboard buffer
+ - 0x1C-0x1D - pointer to first spot in keyboard buffer
+ - 0x1E - 16w keyboard buffer
+ - 0x3E - diskette recalibrate status
+ - 0x3F - diskette motor status
+ - 0x40 - diskette motor timeout
+ - 0x41 - diskette return code
+ - 0x42-0x48 - diskette controller status
+ - 0x49 - video mode setting
+ - 0x4A - number of columns on screen
+ - 0x4C - current page size (video)
+ - 0x4E - current page address (video)
+ - 0x50 - cursor pos on each page (8 pages)
+ - 0x60 - cursor type
+ - 0x62 - current page number (video)
+ - 0x63 - io port video
+ - 0x65 - current mode selector reg
+ - 0x66 - current palette value
+ - 0x67-0x6A - POST
+ - 0x6B - POST
+ - 0x6C - timer count
+ - 0x70 - 24h rollover flag
+ - 0x71 - ctrl-break flag
+ - 0x72 - POST
+ - 0x74 - status from last hdd operation
+ - 0x75 - number of hdds
+ - 0x76 - hdd control byte
+ - 0x77 - hdd port offset
+ - 0x78 - printer timeout table
+ - 0x7C - serial timeout table
+ - 0x80 - offset to start of keyboard buffer(from seg 0x40)
+ - 0x82 - offset to end of keyboard buffer
+ - 0x84 - number of rows on screen
+ - 0x85 - char height (VGA)
+ - 0x87 - VGA
+ - 0x88 - VGA
+ - 0x89 - VGA
+ - 0x8A - VGA
+ - 0x8B - diskette rate
+ - 0x8C - hdd status
+ - 0x8D - hdd error
+ - 0x8E - hdd interrupt flag
+ - 0x8F - diskette controller info
+ - 0x90-0x91 - media type of both drives
+ - 0x92 - diskette driver service area
+ - 0x94 - current track number
+ - 0x96 - keyboard status byte
+ - 0x97 - keyboard LED status
+ - 0x98 - user wait flag offset address
+ - 0x9A - user wait flag segment address
+ - 0x9C - LSB of wait count
+ - 0x9E - MSB of wait count
+ - 0xA0 - wait active flag
+ - 0xA8 - VGA
+ - 0xB0-0xB5 - reserved
+ - 0xB6-0xB8 - POST
+ - 0xC0-0xCD - reserved
+ - 0xCE - count of days since 1980
+ - 0xCF-0xFF - reserved
+ - 0x100 - print screen status bytes
+
 CHS
  A = (c * N_heads + h) * N_sectors + (s - 1)
 
