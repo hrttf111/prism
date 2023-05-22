@@ -17,7 +17,7 @@ import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
 import Foreign.Marshal.Utils (fillBytes)
 import Foreign.Marshal.Array (pokeArray, copyArray)
-import Foreign.Storable (peekByteOff, pokeByteOff)
+import Foreign.Storable (poke, peekByteOff, pokeByteOff)
 import Foreign.ForeignPtr (withForeignPtr)
 
 import System.CPUTime (getCPUTime)
@@ -246,6 +246,13 @@ writeDiskParamsTables = mapM_ writeTable
             liftIO $ withForeignPtr srcPtr (\ srcPtr ->
                 copyArray memPtr' srcPtr srcLen
                 )
+            case index of
+                PcDiskFloppy _ -> liftIO $ do
+                    let (highParams, lowParams) = diskParamTableLoc disk
+                        ptrIp = plusPtr memPtr ((*4) $ fromIntegral 0x1E)
+                        ptrCs = plusPtr ptrIp 2
+                    poke ptrCs highParams >> poke ptrIp lowParams
+                _ -> return ()
 
 data PcBios = PcBios {
     pcBiosKeyboard :: PcKeyboard,
