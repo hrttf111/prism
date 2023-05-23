@@ -324,10 +324,14 @@ processBiosKeyboardISR bios = do
 
 
 setInterruptOutFlags :: [(Flag, Bool)] -> PrismM ()
-setInterruptOutFlags flags =
-    retInterrupt >>
-    (mapM_ (\ (f, b) -> setFlag f b) flags) >>
+setInterruptOutFlags flags = do
+    valIp <- readOp ip
+    valCs <- readOp cs
+    retInterrupt
+    (mapM_ (\ (f, b) -> setFlag f b) flags)
     saveInterruptCtx
+    writeOp ip valIp
+    writeOp cs valCs
     where
         saveInterruptCtx :: PrismM ()
         saveInterruptCtx = do

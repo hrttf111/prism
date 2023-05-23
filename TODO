@@ -408,6 +408,7 @@ TODO:
     - Key echo (read key, write key) +
  - Implement BIOS disk/floppy
  - Implement bootloader logic in BIOS
+ - Implement test app which has bootloader area
 
 -------------------------------------------------------
 

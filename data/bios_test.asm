@@ -81,6 +81,9 @@ NUM_TO_STR_END:
 
 START:
 cli
+mov sp, 0xf00
+mov ss, sp
+;
 mov WORD [int_counter], 0
 ;Configure PIC and PIT
 PIC1  equ  0x20
@@ -146,27 +149,33 @@ print str2
 print str_empty
 print str1
 ;
-mov WORD [counter_1], 10
+mov WORD [counter_1], 100
 ELOOPS:
+sti
 mov cx, 60000
 ELOOP:
     loop ELOOP
+cli
 mov cx, WORD [counter_1]
 dec cx
 mov WORD [counter_1], cx
 loop ELOOPS
+sti
 print str_end
 mov ax, 0
 mov ax, WORD [int_counter]
+mov bx, WORD [counter_1]
+mov dx, 0
 hlt
 
 TIMER_INT:
+push cx
 mov ax, WORD [int_counter]
 inc ax
 mov WORD [int_counter], ax
 call num_to_str
 print temp_str
-;print str_int
+;
 mov ah, 1
 int 0x16
 jz END_INT
@@ -177,5 +186,7 @@ mov BYTE [key_str+1], al
 mov BYTE [key_str+2], 0x20
 mov BYTE [key_str+3], 0
 print key_str
+;
 END_INT:
+pop cx
 iret
