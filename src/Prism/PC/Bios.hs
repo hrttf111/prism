@@ -186,6 +186,22 @@ totalSectors disk = n_cylinders * n_heads * n_sectors
         n_sectors = fromIntegral $ pcChsSector dp
         n_cylinders = fromIntegral $ pcChsCylinder dp
 
+minDiskSize = 512
+maxDiskSize = 256 * 63 * 1024 * 512
+-- 63 - sectors
+-- 256 - heads
+-- 1024 - cylinders
+-- 512 - bytes per-sector
+
+diskSizeToChs :: Int -> Maybe PcChs
+diskSizeToChs diskSize | diskSize < minDiskSize || diskSize > maxDiskSize = Nothing
+diskSizeToChs diskSize = Just $ PcChs (fromIntegral cylinders) (fromIntegral heads) (fromIntegral sectors)
+    where
+        sectors = 63
+        sectorsTotal = div diskSize (512 * sectors)
+        cylinders = 1000
+        heads = div sectorsTotal cylinders
+
 diskParamTableContent :: PcDiskIndex -> PcDisk -> B.ByteString
 diskParamTableContent diskIndex disk =
     B.pack $ case diskIndex of

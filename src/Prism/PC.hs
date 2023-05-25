@@ -13,6 +13,7 @@ module Prism.PC (
         , VideoCommand (..)
         , VideoCursor (..)
         , PcDiskIndex (..), PcDisk (..), PcChs (..)
+        , diskSizeToChs
     ) where
 
 import Prism.PC.PC
