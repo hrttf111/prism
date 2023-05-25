@@ -202,6 +202,12 @@ diskSizeToChs diskSize = Just $ PcChs (fromIntegral cylinders) (fromIntegral hea
         cylinders = 1000
         heads = div sectorsTotal cylinders
 
+maxFloppySize = 1440 * 1024
+
+diskFloppySizeToChs :: Int -> Maybe PcChs
+diskFloppySizeToChs diskSize | diskSize > maxFloppySize = Nothing
+diskFloppySizeToChs _ = Just $ PcChs 160 1 18
+
 diskParamTableContent :: PcDiskIndex -> PcDisk -> B.ByteString
 diskParamTableContent diskIndex disk =
     B.pack $ case diskIndex of
