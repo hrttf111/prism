@@ -121,7 +121,8 @@ buildFloppy handle loc =
             return $ PcDisk 0 loc chs (readFloppy handle) (writeFloppy handle))
 
 readFloppy :: Handle -> Int -> Int -> IO BS.ByteString
-readFloppy handle offset length =
+readFloppy handle offset length = do
+    liftIO $ putStrLn $ "Read offset = " ++ (show offset) ++ " len = " ++ (show length)
     if (maxLength <= 0) || (offset < 0) || (length <= 0) then
         return BS.empty
         else do

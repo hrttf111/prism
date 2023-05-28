@@ -10,22 +10,38 @@ CPU 8086
 %endmacro
 
 SECTION bootloader start=7C00h
-mov al, 10
+;mov sp, 0xf00
+;mov ss, sp
+mov sp, 0
+mov ss, sp
+mov sp, 0x7C00
+;
+mov bx, 0x7C00
+mov ax, 0
+mov es, ax
+mov ah, 2
+mov al, 255 ; number of sectors
+mov ch, 3   ; track
+mov cl, 9   ; sector
+mov dh, 0   ; head
+mov dl, 1   ; drive
+int 0x13
+;mov al, 10
 jmp 1000h:START
 times 510-($-$$) db 0
 dw 0xAA55
 
-SECTION other start=1000h
+SECTION other start=8000h
 str2 db "2322",0
 str_int db "Timer interrupt",0
 str_end db "End",0
 str_empty db 0
 
-SECTION .data start=2000h
+SECTION .data start=9000h
 str1 db "1111",0
 numbers db "0123456789abcdef",0
 
-absolute 0x2500
+absolute 0x9200
 counter_1   resw    1
 int_counter resw    2
 temp_str    resb    16
@@ -81,8 +97,6 @@ NUM_TO_STR_END:
 
 START:
 cli
-mov sp, 0xf00
-mov ss, sp
 ;
 mov WORD [int_counter], 0
 ;Configure PIC and PIT
