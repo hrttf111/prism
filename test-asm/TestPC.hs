@@ -579,4 +579,17 @@ testPC instrList = do
                 int 0x13
                 hlt
             |]
+        it "BIOS memory - halt" $ do
+            comm <- newPrismComm False
+            devices <- createPC
+            let intList = mkBiosInterrupts
+            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts pcMemory intList
+            execPrismHalt [(al `shouldEq` 0)] env comm $ [text|
+                mov ax, 0
+                mov ds, ax
+                mov bx, 0x410
+                mov cx, WORD [ds:bx]
+                mov al, 10
+                hlt
+            |]
 -------------------------------------------------------------------------------

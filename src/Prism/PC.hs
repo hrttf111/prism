@@ -1,7 +1,7 @@
 module Prism.PC (
         ------------------------------------------------------
         PC (..), PeripheralsPC
-        , createPC, createPcWithDisks, pcPorts, setPcMemory
+        , createPC, createPcWithDisks, pcPorts, pcMemory, setPcMemory
         , getPC, putPC, rebootPc
         ------------------------------------------------------
         , mkBiosInterrupts

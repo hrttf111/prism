@@ -26,7 +26,8 @@ data PC = PC {
         pcPicMaster :: Pic,
         pcPicSlave :: Pic,
         pcPit :: Pit,
-        pcBios :: PcBios
+        pcBios :: PcBios,
+        pcHalt :: Bool
     } deriving (Show)
 
 type PeripheralsPC' = PeripheralsLocal PC
@@ -82,7 +83,11 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
             ioCtx = IOCtx pcCtx'
                           (ioCtxMemRegion c1)
                           (ioCtxPortRegion c1)
+            doHalt = pcHalt $ localPeripherals pcCtx
         put $ cpuCtx' { ctxIO = ioCtx, ctxCyclesP = cyclesP }
+        when doHalt $ do
+            liftIO $ putStrLn "HALT"
+            cpuHalt
         return res
         where
             pcActions = do
@@ -300,6 +305,31 @@ pcEventHandlerPit schedId = do
 
 -------------------------------------------------------------------------------
 
+pcHaltUp :: String -> MemOffset -> String -> PeripheralsPC ()
+pcHaltUp s offset s2 = do
+    pc <- getPC
+    liftIO $ putStrLn $ "DO HALT = " ++ s ++ "[" ++ (show offset) ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
+    putPC $ pc { pcHalt = True }
+
+pcMemoryBiosDataW8 :: MemOffset -> Uint8 -> PeripheralsPC ()
+pcMemoryBiosDataW8 offset val = pcHaltUp "Write8" offset $ show val
+
+pcMemoryBiosDataW16 :: MemOffset -> Uint16 -> PeripheralsPC ()
+pcMemoryBiosDataW16 offset val = pcHaltUp "Write16" offset $ show val
+
+pcMemoryBiosDataR8 :: MemOffset -> PeripheralsPC Uint8
+pcMemoryBiosDataR8 offset = pcHaltUp "Read8" offset "" >> return 0
+
+pcMemoryBiosDataR16 :: MemOffset -> PeripheralsPC Uint16
+pcMemoryBiosDataR16 offset = pcHaltUp "Read16" offset "" >> return 0
+
+pcBiosMemHandler offset = PeripheralMem offset
+                            $ PeripheralHandlerMem pcMemoryBiosDataW8 pcMemoryBiosDataW16 pcMemoryBiosDataR8 pcMemoryBiosDataR16
+
+pcMemory = [ pcBiosMemHandler $ MemLocation 0x400 0x500 ]
+
+-------------------------------------------------------------------------------
+
 pcPorts = [
         PeripheralPort 0x20
             (PeripheralHandlerPort pcPortWrite8PicControlMaster emptyWriteH pcPortRead8PicControlMaster emptyReadH),
@@ -322,7 +352,7 @@ pcPorts = [
 createPC :: (MonadIO m) => m PC
 createPC = do
     bios <- mkBios
-    return $ PC 999 False defaultPIC defaultPIC defaultPIT bios
+    return $ PC 999 False defaultPIC defaultPIC defaultPIT bios False
 
 createPcWithDisks :: (MonadIO m) => [(PcDiskIndex, PcDisk)] -> m PC
 createPcWithDisks disks = do
