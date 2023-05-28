@@ -45,6 +45,41 @@ bootloaderStart = 0x7C00
 
 -------------------------------------------------------------------------------
 
+convertKeyToKeycode :: Key -> Uint8
+convertKeyToKeycode key = case key of
+    KEsc -> 110
+    KEnter -> 42
+    KLeft -> 79
+    KRight -> 89
+    KUp -> 83
+    KDown -> 84
+    KFun n | n <= 12 -> 111 + (fromIntegral n)
+    KBackTab -> 16
+    KPrtScr -> 124
+    KPause -> 126
+    KIns -> 75
+    KHome -> 80
+    KPageUp -> 85
+    KDel -> 76
+    KEnd -> 81
+    KPageDown -> 86
+    KBS -> 15 -- backspace
+    KChar c -> case c of
+        '1' -> 1
+        '2' -> 2
+        '3' -> 3
+        '4' -> 4
+        '5' -> 5
+        '6' -> 6
+        _ -> 0
+    _ -> 0
+
+
+convertKeyToAscii :: Key -> Uint8
+convertKeyToAscii (KChar c) = fromIntegral $ fromEnum c
+convertKeyToAscii _ = 0
+
+
 peripheralThread :: Vty -> PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
 peripheralThread vty (PrismCmdQueue queue) keyboard video = do
     runP $ picForImage $ resize videoColumns videoRows emptyImage
@@ -85,10 +120,12 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
                 Just (EvKey (KChar 'c') [MCtrl]) -> do
                     atomically $ writeTQueue queue PCmdStop
                     return ()
-                Just (EvKey (KChar key) mods) -> do
+                Just (EvKey key mods) -> do
                     atomically $ do
                         ks <- readTVar keyboard
-                        let pcKey = PcKey (fromIntegral $ fromEnum key) 0
+                        let keyCode = convertKeyToKeycode key
+                            keyAscii = convertKeyToAscii key
+                            pcKey = PcKey keyAscii keyCode
                             ks' = SharedKeyboardState (sharedFlags ks) ((sharedKeys ks) ++ [pcKey])
                         writeTVar keyboard ks'
                         writeTQueue queue $ PCmdInterruptUp (PrismIRQ 1)
