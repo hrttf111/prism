@@ -762,6 +762,17 @@ processBiosGetMemorySize bios = do
     writeOp ax 0x280 -- 640K
     return bios
 
+loadBootSector :: PcBios -> PrismM PcBios
+loadBootSector bios = do
+    case Map.lookup (PcDiskFloppy 1) (pcDisks bios) of
+        Just d -> do
+            dt <- liftIO $ (pcDiskRead d) 0 512
+            copyMainMem bootloaderStart dt
+        Nothing -> return ()
+    return bios
+    where
+        bootloaderStart = 0x7C00
+
 processBiosReboot :: PcBios -> PrismM PcBios
 processBiosReboot bios = do
     cpuHalt

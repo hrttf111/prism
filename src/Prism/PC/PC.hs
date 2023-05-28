@@ -336,6 +336,11 @@ setPcMemory :: PC -> PrismM ()
 setPcMemory pc = do
     setBiosMemory $ pcBios pc
 
+rebootPc :: PC -> PrismM ()
+rebootPc pc = do
+    loadBootSector $ pcBios pc
+    return ()
+
 getPcBiosSharedState :: PC -> (TVar SharedKeyboardState, TVar SharedVideoState)
 getPcBiosSharedState pc = (pcKeyboardShared . pcBiosKeyboard . pcBios $ pc, pcVideoShared . pcVideoState . pcBios $ pc)
 

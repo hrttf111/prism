@@ -2,7 +2,7 @@ module Prism.PC (
         ------------------------------------------------------
         PC (..), PeripheralsPC
         , createPC, createPcWithDisks, pcPorts, setPcMemory
-        , getPC, putPC
+        , getPC, putPC, rebootPc
         ------------------------------------------------------
         , mkBiosInterrupts
         , getPcBiosSharedState
@@ -13,7 +13,7 @@ module Prism.PC (
         , VideoCommand (..)
         , VideoCursor (..)
         , PcDiskIndex (..), PcDisk (..), PcChs (..)
-        , diskSizeToChs, diskFloppySizeToChs
+        , diskSizeToChs, diskFloppySizeToChs, maxFloppySize
     ) where
 
 import Prism.PC.PC

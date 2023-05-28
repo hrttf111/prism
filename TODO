@@ -407,8 +407,12 @@ TODO:
  - Implement simple application which uses BIOS +
     - Key echo (read key, write key) +
  - Implement BIOS disk/floppy +
- - Implement bootloader logic in BIOS
+ - Disk functions in main app
  - Implement test app which has bootloader area
+ - Halt for BIOS data memory
+ - Key conversion
+ - Implement bootloader logic in BIOS
+ - Correct scroll code
 
 -------------------------------------------------------
 

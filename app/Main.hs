@@ -1,8 +1,11 @@
+{-# LANGUAGE TupleSections #-}
+
 module Main where
 
 import Control.Monad (foldM, when)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Semigroup ((<>))
+import Data.Maybe (maybeToList)
 import qualified Data.Map.Strict (fromList)
 
 import Control.Monad.Logger (LogLevel(..))
@@ -13,7 +16,7 @@ import Control.Concurrent
 import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
-import System.IO (FilePath)
+import System.IO (FilePath, Handle, openFile, hSeek, hFileSize, IOMode(..), SeekMode(..))
 
 import Options.Applicative
 import Options.Applicative.Types
@@ -112,6 +115,43 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
 
 -------------------------------------------------------------------------------
 
+buildFloppy :: Handle -> Uint32 -> IO (Maybe PcDisk)
+buildFloppy handle loc =
+    (diskFloppySizeToChs . fromIntegral <$> hFileSize handle) >>= mapM (\ chs ->
+            return $ PcDisk 0 loc chs (readFloppy handle) (writeFloppy handle))
+
+readFloppy :: Handle -> Int -> Int -> IO BS.ByteString
+readFloppy handle offset length =
+    if (maxLength <= 0) || (offset < 0) || (length <= 0) then
+        return BS.empty
+        else do
+            hSeek handle AbsoluteSeek $ fromIntegral offset
+            dt <- BS.hGetSome handle normLength
+            let lenDiff = normLength - (BS.length dt)
+            if lenDiff > 0 then
+                return $ BS.append dt $ BS.pack [0 | _ <- [0..lenDiff]]
+                else
+                    return dt
+    where
+        maxLength = maxFloppySize - offset
+        normLength = if length > maxLength then maxLength else length
+
+writeFloppy :: Handle -> Int -> BS.ByteString -> IO ()
+writeFloppy handle offset dt =
+    if (offset < 0) || (offset > maxFloppySize) || (BS.null dt) then
+        return ()
+        else do
+            diskSize <- fromIntegral <$> hFileSize handle
+            let maxLength = diskSize - offset
+            if maxLength <= 0 then
+                return ()
+                else do
+                    let normLength = if (BS.length dt) > maxLength then maxLength else (BS.length dt)
+                    hSeek handle AbsoluteSeek $ fromIntegral offset
+                    BS.hPut handle $ BS.take normLength dt
+
+-------------------------------------------------------------------------------
+
 readCodeToPtr :: MonadIO m => FilePath -> Ptr Word8 -> Int -> m (Ptr Word8, Int)
 readCodeToPtr filePath ptr offset = liftIO $ do
     bs <- BS.readFile filePath
@@ -125,13 +165,19 @@ data AppOpts = AppOpts {
         enableGDB :: !Bool,
         pauseGDB :: !Bool,
         disableVty :: !Bool,
+        floppyMode :: !Bool,
         logLevelGDB :: !String
     }
 
-buildPC :: (MonadIO m) => m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
-buildPC = do
+buildPC :: (MonadIO m) => AppOpts -> m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
+buildPC opts = do
     queue <- liftIO $ createIOQueue
-    pc <- createPC
+    disks <- liftIO $ if floppyMode opts then do
+        handle <- openFile (binPath opts) ReadWriteMode
+        map (PcDiskFloppy 1,) . maybeToList <$> buildFloppy handle 0xE0100
+        else
+            return []
+    pc <- createPcWithDisks disks
     let states = getPcBiosSharedState pc
     return $ (pc, mkIOCtx pc queue, intList, states)
     where
@@ -168,9 +214,11 @@ runBinary opts = do
     memReg <- allocMemReg
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
-    (pc, ioCtx, intList, states) <- buildPC
+    (pc, ioCtx, intList, states) <- buildPC opts
     vty <- startVtyThread (commCmdQueue comm) (fst states) (snd states)
-    (_, codeLen) <- readCodeToPtr binPath_ ptrMem 0
+    when (not $ floppyMode opts) $ do
+        readCodeToPtr binPath_ ptrMem 0
+        return ()
     let ctx = makeCtx memReg memMain ioCtx
     intM <- configureInterrupts memMain 0xFF000 intList
     ctxNew <- runPrismM ctx $ do
@@ -178,6 +226,7 @@ runBinary opts = do
         writeOp ip bootloaderStart
         writeOp cs 0
         setPcMemory pc
+        when (floppyMode opts) $ rebootPc pc
         decodeHaltCpu (decoder intM) comm
     case vty of
         Just v -> do
@@ -215,6 +264,7 @@ main = do
                     switch (long "gdb" <> help "Enable GDB server and stop on first instruction") <*>
                     switch (long "pause" <> help "Pause after start") <*>
                     switch (long "no-vty" <> help "Disable vty") <*>
+                    switch (long "floppy" <> help "Floppy mode") <*>
                     strOption (long "gdb-log" <> help "GDB log level: debug, info, error" <> value "debug")
 
 -------------------------------------------------------------------------------
