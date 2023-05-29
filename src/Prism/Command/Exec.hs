@@ -3,6 +3,7 @@ module Prism.Command.Exec where
 import Control.Monad.State.Strict
 import Control.Monad.Trans (MonadIO, liftIO)
 
+import Data.ByteString as B
 import Data.ByteString.Internal (createUptoN)
 import Data.Word (Word32, Word16, Word8)
 import Data.Set
@@ -130,11 +131,15 @@ cpuProcessWriteRegSeg comm reg val = do
 
 cpuProcessReadMem :: PrismComm -> MemOffset -> Int -> PrismM PrismComm
 cpuProcessReadMem comm offset size = do
-    ctx <- get
-    b <- liftIO $ createUptoN size $ readM (ctxMem ctx)
-    sendCpuMsgIO (commRspQueue comm) (PRspMem b)
+    if (offset + size) >= maxMemSize then
+        sendCpuMsgIO (commRspQueue comm) (PRspMem B.empty)
+        else do
+            ctx <- get
+            b <- liftIO $ createUptoN size $ readM (ctxMem ctx)
+            sendCpuMsgIO (commRspQueue comm) (PRspMem b)
     return comm
     where
+        maxMemSize = 1024 * 1024
         readM (MemMain ptr) ptrB = do
             let ptrA = plusPtr ptr offset
             copyArray ptrB ptrA size

@@ -263,6 +263,8 @@ runBinary opts = do
         clearRegs
         writeOp ip bootloaderStart
         writeOp cs 0
+        writeOp ss 0
+        writeOp sp 0x7C00
         setPcMemory pc
         when (floppyMode opts) $ rebootPc pc
         decodeHaltCpu (decoder intM) comm

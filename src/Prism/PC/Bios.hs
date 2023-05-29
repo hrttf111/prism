@@ -773,7 +773,8 @@ loadBootSector :: PcBios -> PrismM PcBios
 loadBootSector bios = do
     case Map.lookup (PcDiskFloppy 1) (pcDisks bios) of
         Just d -> do
-            dt <- liftIO $ (pcDiskRead d) 0x7C00 512
+            --dt <- liftIO $ (pcDiskRead d) 0x7C00 512
+            dt <- liftIO $ (pcDiskRead d) 0 512
             copyMainMem bootloaderStart dt
         Nothing -> return ()
     return bios
