@@ -212,7 +212,7 @@ buildPC opts = do
     queue <- liftIO $ createIOQueue
     disks <- liftIO $ if floppyMode opts then do
         handle <- openFile (binPath opts) ReadWriteMode
-        map (PcDiskFloppy 1,) . maybeToList <$> buildFloppy handle 0xE0100
+        map (PcDiskFloppy 0,) . maybeToList <$> buildFloppy handle 0xE0100
         else
             return []
     pc <- createPcWithDisks disks

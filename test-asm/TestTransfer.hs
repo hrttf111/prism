@@ -131,11 +131,17 @@ testMovMem env = do
             |]
     describe "MOV mem ds" $ do
         it "Mem16 bp <- Imm16" $ do
-            execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xDDCC)] env [text|
+            execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xDDCC), (dx `shouldEq` 100)] env [text|
+                mov bx, bp
+                sub bx, 10
+                ;add bx, 4
+                mov [ss:bx], WORD 100
                 mov [bp], WORD 0xFFAA
                 mov ax, [bp]
                 mov [bp + 10], WORD 0xDDCC
                 mov bx, [bp + 10]
+                mov dx, [bp - 10]
+                ;mov dx, [bp + 4]
             |]
         it "Mem16 bp + si/di <- Imm16" $ do
             execPrism [(cx `shouldEq` 0xDDCC), (dx `shouldEq` 0x8877)] env [text|

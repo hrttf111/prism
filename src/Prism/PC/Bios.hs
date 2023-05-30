@@ -264,8 +264,8 @@ writeDiskParamsTables = mapM_ writeTable
                 (MemMain memPtr) = ctxMem s
                 memPtr' = plusPtr memPtr memOffset
                 (srcPtr, srcLen) = BI.toForeignPtr0 content
-            liftIO $ putStrLn $ "memOffset= " ++ (show memOffset)
-            liftIO $ putStrLn $ "srcLen = " ++ (show srcLen)
+            --liftIO $ putStrLn $ "memOffset = " ++ (show memOffset)
+            --liftIO $ putStrLn $ "srcLen = " ++ (show srcLen)
             liftIO $ withForeignPtr srcPtr (\ srcPtr ->
                 copyArray memPtr' srcPtr srcLen
                 )
@@ -771,7 +771,7 @@ processBiosGetMemorySize bios = do
 
 loadBootSector :: PcBios -> PrismM PcBios
 loadBootSector bios = do
-    case Map.lookup (PcDiskFloppy 1) (pcDisks bios) of
+    case Map.lookup (PcDiskFloppy 0) (pcDisks bios) of
         Just d -> do
             --dt <- liftIO $ (pcDiskRead d) 0x7C00 512
             dt <- liftIO $ (pcDiskRead d) 0 512
