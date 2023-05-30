@@ -46,6 +46,15 @@ testAdd env = do
                 mov ax, -32123
                 add ax, -31234
             |]
+        it "Add negative CF and OF 2" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 0x2002
+                add ax, -100
+            |]
+            execPrism [(ax `shouldEq` (0x2002 - 100))] env $ [text|
+                mov ax, 0x2002
+                add ax, -100
+            |]
     describe "ADD [8] REG <- REG" $ do
         it "Simple add" $ do
             execAndCmp [al, bl] env $ [text|

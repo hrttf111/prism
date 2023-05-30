@@ -173,6 +173,14 @@ instance MemSegWrapper MemSeg16 where
 
 -------------------------------------------------------------------------------
 
+mkEA3 :: Uint16 -> Uint16 -> Disp -> EA
+mkEA3 val1 val2 disp = val1 + val2 + disp
+
+mkEA2 :: Uint16 -> Disp -> EA
+mkEA2 val disp = val + disp
+
+-------------------------------------------------------------------------------
+
 getMemOffset :: (MonadIO m) => Ctx -> MemSeg -> m MemOffset
 getMemOffset ctx mem = getMemOffsetI (ctxReg ctx) (ctxReplaceSeg ctx) mem
 
@@ -217,8 +225,7 @@ getMemReg3 memReg reg1 reg2 regSeg disp = do
     valR1 <- fromIntegral <$> readReg16 memReg reg1
     valR2 <- fromIntegral <$> readReg16 memReg reg2
     valSeg <- fromIntegral <$> readSeg memReg regSeg
-    let disp32 = fromIntegral disp :: MemOffset
-    return $ (shiftL valSeg 4) + valR1 + valR2 + disp32
+    return $ (shiftL valSeg 4) + (fromIntegral $ mkEA3 valR1 valR2 disp)
 
 {-# SPECIALISE INLINE getMemReg3 :: MemReg -> Reg16 -> Reg16 -> RegSeg -> Disp -> CpuTrans MemOffset #-}
 
@@ -226,8 +233,7 @@ getMemReg2 :: (MonadIO m) => MemReg -> Reg16 -> RegSeg -> Disp -> m MemOffset
 getMemReg2 memReg reg1 regSeg disp = do
     valR1 <- fromIntegral <$> readReg16 memReg reg1
     valSeg <- fromIntegral <$> readSeg memReg regSeg
-    let disp32 = fromIntegral disp :: MemOffset
-    return $ (shiftL valSeg 4) + valR1 + disp32
+    return $ (shiftL valSeg 4) + (fromIntegral $ mkEA2 valR1 disp)
 
 {-# SPECIALISE INLINE getMemReg2 :: MemReg -> Reg16 -> RegSeg -> Disp -> CpuTrans MemOffset #-}
 
@@ -244,18 +250,18 @@ getMemReg1 memReg regSeg disp = do
 getMemEA :: (MonadIO m) => Ctx -> MemSeg -> m EA
 getMemEA ctx mem = getEAI (ctxReg ctx) mem
 
-getEA3 :: MonadIO m => MemReg -> Reg16 -> Reg16 -> Disp -> m EA
+getEA3 :: (MonadIO m) => MemReg -> Reg16 -> Reg16 -> Disp -> m EA
 getEA3 memReg reg1 reg2 disp = do
-    valR1 <- fromIntegral <$> readReg16 memReg reg1
-    valR2 <- fromIntegral <$> readReg16 memReg reg2
-    return $ valR1 + valR2 + disp
+    valR1 <- readReg16 memReg reg1
+    valR2 <- readReg16 memReg reg2
+    return $ mkEA3 valR1 valR2 disp
 
-getEA2 :: MonadIO m => MemReg -> Reg16 -> Disp -> m EA
+getEA2 :: (MonadIO m) => MemReg -> Reg16 -> Disp -> m EA
 getEA2 memReg reg1 disp = do
     valR1 <- readReg16 memReg reg1
-    return $ valR1 + disp
+    return $ mkEA2 valR1 disp
 
-getEAI :: MonadIO m => MemReg -> MemSeg -> m EA
+getEAI :: (MonadIO m) => MemReg -> MemSeg -> m EA
 getEAI memReg (MemBxSi disp) = getEA3 memReg bx si disp
 getEAI memReg (MemBxDi disp) = getEA3 memReg bx di disp
 getEAI memReg (MemBpSi disp) = getEA3 memReg bp si disp

@@ -85,6 +85,21 @@ testMov env =
                 mov bx, 0x2002
                 lea ax, [bx + 120]
             |]
+        it "Test LEA disp16" $ do
+            execPrism [(ax `shouldEq` (0x2002 + 0x1001))] env [text|
+                mov bx, 0x2002
+                lea ax, [bx + 0x1001]
+            |]
+        it "Test LEA neg disp" $ do
+            execPrism [(ax `shouldEq` (0x2002 - 1))] env [text|
+                mov bx, 0x2002
+                lea ax, WORD [bx - 1]
+            |]
+        it "Test LEA neg disp16" $ do
+            execPrism [(ax `shouldEq` (0x2002 - 0x1000))] env [text|
+                mov bx, 0x2002
+                lea ax, WORD [bx - 0x1000]
+            |]
 
 testMovMem env = do
     describe "MOV mem ds" $ do

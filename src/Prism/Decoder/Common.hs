@@ -3,7 +3,8 @@
 
 module Prism.Decoder.Common where
 
-import Data.Bits (shiftL)
+import Data.Bits (shiftL, (.|.))
+import Data.Int (Int8)
 
 import Prism.Cpu
 
@@ -33,15 +34,16 @@ getImm8 :: Uint8 -> Imm8
 getImm8 = id
 
 getImm16 :: Uint8 -> Uint8 -> Imm16
-getImm16 lo hi = (+) (fromIntegral lo :: Imm16) $ shiftL (fromIntegral hi :: Imm16) 8
+getImm16 lo hi = (.|.) (fromIntegral lo :: Imm16) $ shiftL (fromIntegral hi :: Imm16) 8
 
 -------------------------------------------------------------------------------
 
 getDisp8 :: Uint8 -> Disp
+getDisp8 lo | lo > 127 = fromIntegral $ (fromIntegral lo :: Int8)
 getDisp8 lo = fromIntegral lo :: Disp
 
 getDisp16 :: Uint8 -> Uint8 -> Disp
-getDisp16 lo hi = (+) (fromIntegral lo :: Disp) $ shiftL (fromIntegral hi :: Disp) 8
+getDisp16 lo hi = (.|.) (fromIntegral lo :: Disp) $ shiftL (fromIntegral hi :: Disp) 8
 
 -------------------------------------------------------------------------------
 
