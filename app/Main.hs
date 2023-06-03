@@ -246,7 +246,7 @@ runBinary opts = do
                             "error" -> LevelError
                             "no" -> LevelOther $ T.pack "no"
                             _ -> LevelError
-        forkIO $ gdbThread logLevel $ GDBState True 1000 (commCmdQueue comm) (commRspQueue comm)
+        forkIO $ gdbThread logLevel $ GDBState True 1000 0 (commCmdQueue comm) (commRspQueue comm)
         return ()
         )
     memReg <- allocMemReg

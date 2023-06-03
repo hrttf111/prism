@@ -59,9 +59,9 @@ recvPacketData sock buffer = do
             return (False, a1, a2)
 
 parsePacket :: B.ByteString -> (B.ByteString, Maybe B.ByteString)
-parsePacket buffer = 
+parsePacket buffer =
     if messageIsGood then
-        doParse messageBody messageEnd 
+        doParse messageBody messageEnd
     else
         (messageStart, Nothing)
     where
@@ -114,7 +114,7 @@ processCommand command commandText sock = do
     state <- SC.get
     case command of
         GQuery GQSupported ->
-            sendPacketString sock state $ 
+            sendPacketString sock state $
                 "PacketSize=" ++ (show $ gdbPacketSize state)
         GQuery GQTStatus ->
             sendPacketString sock state "T1"
@@ -166,6 +166,9 @@ processCommand command commandText sock = do
                     else
                         return ()
             replyOk sock state
+        GWriteMem (0, _) -> do
+            logInfoN . T.pack $ "Bad write - " ++ commandText
+            replyEmpty sock state
         GWriteMem (addr, val) -> do
             sendCpuMsgIO (gdbCmdQueue state) $ PCmdWriteMem addr val
             replyOk sock state
@@ -173,6 +176,15 @@ processCommand command commandText sock = do
             res <- sendQueueAndWait state PCmdStep
             case res of
                 PRspStep -> 
+                    sendPacketString sock state "S05"
+                r -> do
+                    logErrorSH r
+                    sendPacketString sock state "E00"
+        GCont _ | (gdbNumBreakpoints state) <= 0 -> do
+            logInfoN . T.pack $ "Bad cont - " ++ commandText
+            res <- sendQueueAndWait state PCmdStep
+            case res of
+                PRspStep ->
                     sendPacketString sock state "S05"
                 r -> do
                     logErrorSH r
@@ -185,15 +197,20 @@ processCommand command commandText sock = do
                 r -> do
                     logErrorSH r
                     sendPacketString sock state "E00"
+        GBreakPoint (0, _) -> do
+            logInfoN . T.pack $ "Bad breakpoint - " ++ commandText
+            replyEmpty sock state
         GBreakPoint (addr, type_) -> do
             logInfoN $ T.pack $ "Breakpoint " ++ (show addr) ++ " " ++ (show type_)
             replyOk sock state
             sendCpuMsgIO (gdbCmdQueue state) $ PCmdBreak addr
+            SC.put $ state { gdbNumBreakpoints = (gdbNumBreakpoints state) + 1 }
             return ()
         GBreakPointRemove (addr, type_) -> do
             logInfoN $ T.pack $ "Breakpoint remove " ++ (show addr) ++ " " ++ (show type_)
             replyOk sock state
             sendCpuMsgIO (gdbCmdQueue state) $ PCmdBreakRemove addr
+            SC.put $ state { gdbNumBreakpoints = (gdbNumBreakpoints state) - 1 }
             return ()
         GHaltReason ->
             sendPacketString sock state "S05"
@@ -229,7 +246,7 @@ sendPacket sock state packet = liftIO $ SocketB.send sock packetData >> return (
         ackEnabled = gdbAckEnabled state
         checksum = showHex (B.foldl (+) 0 packet) ""
         checksumBC = BC.pack $ if length checksum < 2 then '0' : checksum else checksum
-        packetData = 
+        packetData =
             if ackEnabled then
                 BC.append (BC.snoc (BC.cons '+' (BC.cons '$' packet)) '#') checksumBC
             else
@@ -256,7 +273,7 @@ spawnServer (sock, addr) = do
     readMessages sock B.empty
 
 iterServer :: Socket -> GDBServer
-iterServer sock = 
+iterServer sock =
     bracket (liftIO $ accept sock) (liftIO . close . fst) (spawnServer) >> iterServer sock
 
 runServer :: String -> Int -> GDBServer

@@ -27,6 +27,7 @@ import Prism.Command
 data GDBState = GDBState {
     gdbAckEnabled :: Bool,
     gdbPacketSize :: Int,
+    gdbNumBreakpoints :: Int,
     gdbCmdQueue :: PrismCmdQueue,
     gdbRspQueue :: PrismRspQueue
 }

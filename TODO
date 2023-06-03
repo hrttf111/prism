@@ -19,6 +19,10 @@
 
 -------------------------------------------------------
 
+radare2 -e asm.bits=16 x86BOOT.img
+
+-------------------------------------------------------
+
 HSBIOS
  - Simple implementation of PC BIOS
  - Completely in haskell
