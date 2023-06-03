@@ -58,9 +58,8 @@ lea16 mem reg =
 
 lxs16 :: (CpuMonad m) => RegSeg -> FuncO2M MemSeg16 Reg16 m
 lxs16 regSeg mem reg = do
-    offset <- getPA mem
-    let segVal = fromIntegral $ shiftR offset 16
-        regVal = fromIntegral offset
+    regVal <- readOp mem
+    segVal <- readOp $ mapMem (\ m -> m + 2) mem
     writeOp reg regVal
     writeOp regSeg segVal
 

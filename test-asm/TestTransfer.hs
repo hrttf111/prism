@@ -100,6 +100,37 @@ testMov env =
                 mov bx, 0x2002
                 lea ax, WORD [bx - 0x1000]
             |]
+        it "Test LES" $ do
+            execPrism [(ax `shouldEq` 0x1234), (dx `shouldEq` 0x0060)] env [text|
+                absolute 0x100
+                    reg_mem    resw    1
+                    seg_mem    resw    1
+                section .text
+                org 0
+                    mov ax, 0
+                    mov es, ax
+                    mov ds, ax
+                    mov [reg_mem], WORD 0x1234
+                    mov [seg_mem], WORD 0x0060
+                    les ax, [reg_mem]
+                    mov dx, es
+            |]
+        it "Test LDS" $ do
+            execPrism [(ax `shouldEq` 0x1234), (dx `shouldEq` 0x0060)] env [text|
+                absolute 0x100
+                    reg_mem    resw    1
+                    seg_mem    resw    1
+                section .text
+                org 0
+                    mov ax, 0
+                    mov es, ax
+                    mov ds, ax
+                    mov [reg_mem], WORD 0x1234
+                    mov [seg_mem], WORD 0x0060
+                    lds ax, [reg_mem]
+                    mov dx, ds
+            |]
+
 
 testMovMem env = do
     describe "MOV mem ds" $ do
