@@ -22,9 +22,17 @@ add _ source dest = (flags_, after)
 -------------------------------------------------------------------------------
 
 adc :: (OperandVal v) => FuncVF2 v
-adc flags source dest = add flags source newDest
+adc flags source dest = (flags'', after')
     where
-        newDest = dest + if flagCF flags then 1 else 0
+        newDest = if flagCF flags then 1 else 0
+        (flags', after) = add flags source dest
+        after' = after + newDest
+        flags'' = Flags ((calcCFCarry dest after') || flagCF flags')
+                       (calcPF after')
+                       ((calcAFCarry dest after') || flagAF flags')
+                       (calcZF after')
+                       (calcSF after')
+                       ((calcOFAdd dest source after') || flagOF flags')
 
 -------------------------------------------------------------------------------
 

@@ -75,11 +75,36 @@ testAdd env = do
                 mov bx, 2
                 add ax, bx
             |]
+        it "Simple add1" $ do
+            execAndCmp [ax, bx] env $ [text|
+                mov ax, 0xffff
+                mov bx, 2
+                add ax, bx
+            |]
+        it "Simple add2" $ do
+            execAndCmp [ax, bx] env $ [text|
+                mov ax, 2
+                mov bx, 0xffff
+                add ax, bx
+            |]
         it "Add negative CF and OF" $ do
             execAndCmp [ax] env $ [text|
                 mov ax, -32123
                 mov bx, -31234
                 add bx, ax
+            |]
+    describe "ADC [16] REG <- REG" $ do
+        it "ADC with CF" $ do
+            execAndCmp [bx] env $ [text|
+                mov bx, 0xFFFF
+                adc bx, bx
+            |]
+        it "ADC with CF2" $ do
+            execAndCmp [bx] env $ [text|
+                mov bx, 0xFFFF
+                adc bx, bx
+                mov bx, 0xFFFF
+                adc bx, bx
             |]
 
 testInc env = do
@@ -231,6 +256,16 @@ testSub env = do
                 mov ax, -32123
                 mov bx, 31234
                 sub bx, ax
+            |]
+    describe "SBB [16] REG <- REG" $ do
+        it "Simple sbb" $ do
+            execAndCmp [ax, bx] env $ [text|
+                mov ax, 2
+                mov bx, 1
+                sbb bx, ax
+                mov ax, 2
+                mov bx, 1
+                sbb bx, ax
             |]
     describe "CMP [16] REG, IMM" $ do
         it "Simple cmp" $ do
