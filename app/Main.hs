@@ -159,7 +159,7 @@ buildFloppy handle loc =
 
 readFloppy :: Handle -> Int -> Int -> IO BS.ByteString
 readFloppy handle offset length = do
-    liftIO $ putStrLn $ "Read offset = " ++ (show offset) ++ " len = " ++ (show length)
+    --liftIO $ putStrLn $ "Read offset = " ++ (show offset) ++ " len = " ++ (show length)
     if (maxLength <= 0) || (offset < 0) || (length <= 0) then
         return BS.empty
         else do

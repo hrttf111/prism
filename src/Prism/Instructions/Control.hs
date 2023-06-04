@@ -1,5 +1,7 @@
 module Prism.Instructions.Control where
 
+import Control.Monad.Trans (lift, liftIO, MonadIO)
+
 import Prism.Cpu
 import Prism.InstructionM
 
@@ -17,8 +19,9 @@ jmpIntra :: (CpuMonad m) => FuncImm1 Imm16 m
 jmpIntra ipVal =
     writeOp ip ipVal
 
-jmpInter :: (CpuMonad m) => FuncImm2 Imm16 m
-jmpInter ipVal csVal =
+jmpInter :: (CpuMonad m, MonadIO m) => FuncImm2 Imm16 m
+jmpInter ipVal csVal = do
+    --liftIO $ putStrLn $ "ipVal = " ++ (show ipVal) ++ ", csVal = " ++ (show csVal)
     writeOp cs csVal >> writeOp ip ipVal
 
 instrJMem32 :: (CpuMonad m) => FuncImm2 Imm16 m -> FuncO1M MemSeg16 m

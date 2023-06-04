@@ -104,29 +104,33 @@ decodeNI freg fmem (b1, b2, b3, b4, b5, b6) =
                         imm = decodeImm b5 b6
                         mem = decodeMemDirect disp16
                         in
-                    fmem mem imm >> cpuUpdateIP (4 + (immLength imm))
+                    --fmem mem imm >> cpuUpdateIP (4 + (immLength imm))
+                    cpuUpdateIP (4 + (immLength imm)) >> fmem mem imm
                 _ ->
                     let mem = decodeMemSeg rm 0
                         imm = decodeImm b3 b4
                         in
-                    fmem mem imm >> cpuUpdateIP (2 + (immLength imm))
+                    --fmem mem imm >> cpuUpdateIP (2 + (immLength imm))
+                    cpuUpdateIP (2 + (immLength imm)) >> fmem mem imm
         0x01 -> 
             let disp8 = getDisp8 b3
                 mem = decodeMemSeg rm disp8
                 imm = decodeImm b4 b5
                 in
-            fmem mem imm >> cpuUpdateIP (3 + (immLength imm))
+            --fmem mem imm >> cpuUpdateIP (3 + (immLength imm))
+            cpuUpdateIP (3 + (immLength imm)) >> fmem mem imm
         0x02 ->
             let disp16 = getDisp16 b3 b4 
                 mem = decodeMemSeg rm disp16
                 imm = decodeImm b5 b6
                 in
-            fmem mem imm >> cpuUpdateIP (4 + (immLength imm))
+            --fmem mem imm >> cpuUpdateIP (4 + (immLength imm))
+            cpuUpdateIP (4 + (immLength imm)) >> fmem mem imm
         0x03 ->
             let reg = decodeReg rm
                 imm = decodeImm b3 b4
                 in
-            freg reg imm >> cpuUpdateIP (2 + (immLength imm))
+            cpuUpdateIP (2 + (immLength imm)) >> freg reg imm
 
 {-# SPECIALISE decodeNI :: FuncOI1M Reg8 Uint8 -> FuncOI1M MemSeg8 Uint8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeNI :: FuncOI1M Reg16 Uint16 -> FuncOI1M MemSeg16 Uint16 -> PrismInstrFunc #-}
@@ -169,25 +173,30 @@ decodeRM freg fmem (b1, b2, b3, b4, _, _) =
                     let disp16 = getDisp16 b3 b4
                         mem = decodeMemDirect disp16
                         in
-                    fmem mem reg >> cpuUpdateIP 4
+                    --fmem mem reg >> cpuUpdateIP 4
+                    cpuUpdateIP 4 >> fmem mem reg
                 _ ->
                     let mem = decodeMemSeg rm 0
                         in
-                    fmem mem reg >> cpuUpdateIP 2
+                    --fmem mem reg >> cpuUpdateIP 2
+                    cpuUpdateIP 2 >> fmem mem reg
         0x01 -> 
             let disp8 = getDisp8 b3
                 mem = decodeMemSeg rm disp8
                 in
-            fmem mem reg >> cpuUpdateIP 3
+            --fmem mem reg >> cpuUpdateIP 3
+            cpuUpdateIP 3 >> fmem mem reg
         0x02 ->
             let disp16 = getDisp16 b3 b4 
                 mem = decodeMemSeg rm disp16
                 in
-            fmem mem reg >> cpuUpdateIP 4
+            --fmem mem reg >> cpuUpdateIP 4
+            cpuUpdateIP 4 >> fmem mem reg
         0x03 ->
             let reg2 = decodeReg rm
                 in
-            freg reg2 reg >> cpuUpdateIP 2
+            --freg reg2 reg >> cpuUpdateIP 2
+            cpuUpdateIP 2 >> freg reg2 reg
 
 {-# SPECIALISE decodeRM :: FuncO2M Reg8 Reg8 -> FuncO2M MemSeg8 Reg8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeRM :: FuncO2M Reg16 Reg16 -> FuncO2M MemSeg16 Reg16 -> PrismInstrFunc #-}
@@ -218,25 +227,30 @@ decodeN freg fmem (b1, b2, b3, b4, _, _) =
                     let disp16 = getDisp16 b3 b4
                         mem = decodeMemDirect disp16
                         in
-                    fmem mem >> cpuUpdateIP 4
+                    --fmem mem >> cpuUpdateIP 4
+                    cpuUpdateIP 4 >> fmem mem
                 _ ->
                     let mem = decodeMemSeg rm 0
                         in
-                    fmem mem >> cpuUpdateIP 2
+                    --fmem mem >> cpuUpdateIP 2
+                    cpuUpdateIP 2 >> fmem mem
         0x01 -> 
             let disp8 = getDisp8 b3
                 mem = decodeMemSeg rm disp8
                 in
-            fmem mem >> cpuUpdateIP 3
+            --fmem mem >> cpuUpdateIP 3
+            cpuUpdateIP 3 >> fmem mem
         0x02 ->
             let disp16 = getDisp16 b3 b4 
                 mem = decodeMemSeg rm disp16
                 in
-            fmem mem >> cpuUpdateIP 4
+            --fmem mem >> cpuUpdateIP 4
+            cpuUpdateIP 4 >> fmem mem
         0x03 ->
             let reg = decodeReg rm
                 in
-            freg reg >> cpuUpdateIP 2
+            --freg reg >> cpuUpdateIP 2
+            cpuUpdateIP 2 >> freg reg
 
 {-# SPECIALISE decodeN :: FuncO1M Reg8 -> FuncO1M MemSeg8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeN :: FuncO1M Reg16 -> FuncO1M MemSeg16 -> PrismInstrFunc #-}

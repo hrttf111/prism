@@ -24,6 +24,29 @@ testControl env = do
                 L1:
                 mov al, 2
             |]
+        it "jmp far" $ do
+            --execAndCmpNF [al, bl] env $ [text|
+            execPrism [(al `shouldEq` 2), (bl `shouldEq` 0)] env [text|
+                absolute 0x100
+                    reg_mem    resw    1
+                    seg_mem    resw    1
+                section .text
+                org 0
+                    mov [reg_mem], WORD L1
+                    mov [seg_mem], WORD cs
+                    ;mov [bp], WORD reg_mem
+                    mov al, 1
+                    mov bl, 0
+                    jmp far [reg_mem]
+                    mov bl, 1
+                    L1:
+                    mov al, 2
+                    mov al, 2
+                    mov al, 2
+                    mov al, 2
+                    mov al, 2
+                    ;hlt
+            |]
     describe "Conditional jump" $ do
         it "loop" $ do
             execAndCmpNF [ax, cx] env $ [text|

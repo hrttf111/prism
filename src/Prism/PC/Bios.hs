@@ -380,6 +380,7 @@ processBiosKeyboard bios = do
     case valAh of
         0 -> do -- Get key
             -- suspend, wait for key
+            liftIO $ putStrLn "Wait key"
             bios' <- waitKey bios
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios'
             case keys' of
@@ -410,8 +411,8 @@ processBiosKeyboard bios = do
             writeOp al valAl
             writeOp ah valAh
             return bios
-        _ -> do
-            liftIO $ putStrLn "Unsupported"
+        c -> do
+            liftIO $ putStrLn $ "Unsupported keyboard: " ++ show c
             return bios
 
 processBiosVideo :: PcBios -> PrismM PcBios
@@ -501,7 +502,7 @@ processBiosVideo bios = do
             writeOp ah $ fromIntegral videoColumns -- number of columns
             writeOp bh 0 -- page
             return ()
-        _ -> liftIO $ putStrLn "Unsupported"
+        c -> liftIO $ putStrLn $ "Unsupported video: " ++ show c
     return bios
     where
         videoColumns = 80
@@ -574,7 +575,7 @@ processBiosClock bios = do
             writeOp dh month
             writeOp dl day
             return ()
-        _ -> liftIO $ putStrLn "Unsupported"
+        c -> liftIO $ putStrLn $ "Unsupported clock: " ++ show c
     return bios
 
 getDiskOpReq :: PcBios -> PrismM (Maybe DiskOpReq)
@@ -591,7 +592,7 @@ getDiskOpReq bios = do
         drive = Map.lookup driveIndex (pcDisks bios)
         lenBytesSectors = sectorsToInt valAl
         numSectors = valAl
-    liftIO $ putStrLn $ show chs
+    --liftIO $ putStrLn $ show chs
     case drive of
         Just d -> do
             --es:bx -- input buffer
@@ -612,8 +613,8 @@ processBiosDisk bios = do
     case valAh of
         2 -> do -- read sectors
             req <- getDiskOpReq bios
-            liftIO $ putStrLn "--READ DISK--"
-            liftIO $ putStrLn $ show req
+            --liftIO $ putStrLn "--READ DISK--"
+            --liftIO $ putStrLn $ show req
             case req of
                 Just (DiskOpReq diskOffset dataLen memOffset memPtr numSectors drive) -> do
                     bs <- liftIO $ (pcDiskRead drive) diskOffset dataLen
@@ -741,7 +742,7 @@ processBiosDisk bios = do
         0x16 -> do -- detect change
             writeOp ah 0
             return ()
-        _ -> liftIO $ putStrLn "Unsupported"
+        c -> liftIO $ putStrLn $ "Unsupported disk: " ++ show c
     return bios
 
 processBiosSerial :: PcBios -> PrismM PcBios
