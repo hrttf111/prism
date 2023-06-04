@@ -80,6 +80,21 @@ testMov env =
                 pop cx
                 pop dx
             |]
+        it "PUSH BP" $ do
+            execAndCmpNF [ax, bx, cx, dx] env $ [text|
+                mov bp, 0x1010
+                mov bx, 0x2002
+                mov cx, 0x3003
+                mov dx, 0x4004
+                push bp
+                ;push bx
+                ;push cx
+                ;push dx
+                pop ax
+                ;pop bx
+                ;pop cx
+                ;pop dx
+            |]
         it "Test LEA" $ do
             execPrism [(ax `shouldEq` (0x2002 + 120))] env [text|
                 mov bx, 0x2002

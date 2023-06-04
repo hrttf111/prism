@@ -134,5 +134,19 @@ testControl env = do
                 L1:
                 mov cx, 10
             |]
+    describe "Ret" $ do
+        it "ret far" $ do
+            execPrism [(al `shouldEq` 1)] env [text|
+                mov bx, L1
+                push cs
+                push bx
+                mov al, 0
+                retf
+                mov al, 2
+                hlt
+                L1:
+                mov al, 1
+                hlt
+            |]
 
 -------------------------------------------------------------------------------

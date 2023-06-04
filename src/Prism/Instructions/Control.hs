@@ -64,10 +64,10 @@ retIntra val = do
 
 retInter :: (CpuMonad m) => FuncImm1 Imm16 m
 retInter val = do
-    csVal <- popV
     ipVal <- popV
-    writeOp ip ipVal
-    writeOp cs csVal
+    csVal <- popV
+    writeOp ip (ipVal :: Uint16)
+    writeOp cs (csVal :: Uint16)
     if val /= 0 then do
         spOld <- readOp sp
         writeOp sp $ spOld + val
