@@ -207,7 +207,8 @@ maxFloppySize = 1440 * 1024
 
 diskFloppySizeToChs :: Int -> Maybe PcChs
 diskFloppySizeToChs diskSize | diskSize > maxFloppySize = Nothing
-diskFloppySizeToChs _ = Just $ PcChs 160 1 18
+--diskFloppySizeToChs _ = Just $ PcChs 160 1 18
+diskFloppySizeToChs _ = Just $ PcChs 80 2 18
 
 diskParamTableContent :: PcDiskIndex -> PcDisk -> B.ByteString
 diskParamTableContent diskIndex disk =
