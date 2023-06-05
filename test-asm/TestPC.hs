@@ -494,12 +494,12 @@ testPC instrList = do
             devices <- createPC
             let intList = mkBiosInterrupts
             env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(ax `shouldEq` 0x0021), (bx `shouldEq` 0x280)] env comm $ [text|
+            execPrismHalt [(ax `shouldEq` 0x0021), (bx `shouldEq` 0x27f)] env comm $ [text|
                 ; Get memory size
-                int 0x11
+                int 0x12
                 mov bx, ax
                 ; Get equipment list
-                int 0x12
+                int 0x11
                 hlt
             |]
         it "BIOS disk - no drive" $ do

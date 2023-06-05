@@ -105,7 +105,7 @@ shr flags val shVal = (flags_, result)
         of_ = rotateFlagsOF (flagOF flags) val result shVal
         flags_ = Flags cf_
                        (calcPF result)
-                       (flagAF flags)
+                       (flagAF flags) -- always undefined
                        (calcZF result)
                        (calcSF result)
                        of_

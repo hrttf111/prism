@@ -454,9 +454,11 @@ processBiosVideo bios = do
             writeOp dl $ fromIntegral $ videoCursorRow cursor
             return ()
         6 -> do -- Scroll up
+            liftIO $ putStrLn "Scroll UP"
             doScroll True
             return ()
         7 -> do -- Scroll down
+            liftIO $ putStrLn "Scroll DOWN"
             doScroll False
             return ()
         8 -> do -- Get char
@@ -494,6 +496,7 @@ processBiosVideo bios = do
                     c' = updateCursorPos $ videoCursor s
                 writeTVar vs $ s { videoCursor = c' }
                 return (videoMemory s, offset)
+            --liftIO $ putStrLn $ "Video char " ++ show (toEnum (fromIntegral valAl) :: Char)
             liftIO $ writeChar ptr offset valAl valBl
             liftIO $ atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar valAl valBl), VideoUpdateCursor]
             return ()
@@ -768,7 +771,8 @@ processBiosEquipment bios = do
 
 processBiosGetMemorySize :: PcBios -> PrismM PcBios
 processBiosGetMemorySize bios = do
-    writeOp ax 0x280 -- 640K
+    --writeOp ax 0x280 -- 640K
+    writeOp ax 0x27f -- 640K
     return bios
 
 loadBootSector :: PcBios -> PrismM PcBios
@@ -800,8 +804,8 @@ processBios :: PcBios -> Uint8 -> PrismM PcBios
 processBios bios 8 = processBiosTimerISR bios
 processBios bios 9 = processBiosKeyboardISR bios
 processBios bios 0x10 = processBiosVideo bios
-processBios bios 0x11 = processBiosGetMemorySize bios
-processBios bios 0x12 = processBiosEquipment bios
+processBios bios 0x11 = processBiosEquipment bios
+processBios bios 0x12 = processBiosGetMemorySize bios
 processBios bios 0x13 = processBiosDisk bios
 processBios bios 0x14 = processBiosSerial bios
 processBios bios 0x15 = processBiosSystem bios
