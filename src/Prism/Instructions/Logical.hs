@@ -65,7 +65,7 @@ logicalFunc flags val = (flags_, val)
     where
         flags_ = Flags False
                        (calcPF val)
-                       (flagAF flags)
+                       False
                        (calcZF val)
                        (calcSF val)
                        False

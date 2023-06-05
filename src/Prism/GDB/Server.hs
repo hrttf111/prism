@@ -78,6 +78,21 @@ sendPacketString sock state packet = sendPacket sock state $ BC.pack packet
 sendQueueAndWait :: MonadIO m => GDBState -> PrismCpuCommand -> m PrismCpuResponse
 sendQueueAndWait state cmd = sendAndWaitCpuMsg (gdbCmdQueue state) (gdbRspQueue state) cmd
 
+sendQueueAndWaitF :: MonadIO m => GDBState -> PrismCpuCommand -> (PrismCpuResponse -> Bool) -> m PrismCpuResponse
+sendQueueAndWaitF state cmd ignoreRsp = do
+    sendCpuMsgIO (gdbCmdQueue state) cmd
+    waitRsp
+    where
+        waitRsp = do
+            rsp <- recvCpuMsgIO (gdbRspQueue state)
+            if ignoreRsp rsp then
+                waitRsp
+                else
+                    return rsp
+
+ignoreRspCont PRspCont = True
+ignoreRspCont _ = False
+
 -------------------------------------------------------------------------------
 
 regsToString :: RegState -> String
@@ -129,7 +144,7 @@ processCommand command commandText sock = do
         GMustReplyEmpty ->
             replyEmpty sock state
         GReadGRegs -> do
-            res <- sendQueueAndWait state PCmdReadRegs
+            res <- sendQueueAndWaitF state PCmdReadRegs ignoreRspCont
             case res of
                 PRspRegs regs -> do
                     let str = regsToString regs
@@ -139,7 +154,7 @@ processCommand command commandText sock = do
                     logErrorSH r
                     sendPacketString sock state "E00"
         GReadMem (addr, len) -> do
-            res <- sendQueueAndWait state $ PCmdReadMem addr len
+            res <- sendQueueAndWaitF state (PCmdReadMem addr len) ignoreRspCont
             case res of
                 PRspMem mem -> do
                     let str = memToString mem
@@ -173,7 +188,7 @@ processCommand command commandText sock = do
             sendCpuMsgIO (gdbCmdQueue state) $ PCmdWriteMem addr val
             replyOk sock state
         GStep -> do
-            res <- sendQueueAndWait state PCmdStep
+            res <- sendQueueAndWaitF state PCmdStep ignoreRspCont
             case res of
                 PRspStep -> 
                     sendPacketString sock state "S05"
@@ -182,7 +197,7 @@ processCommand command commandText sock = do
                     sendPacketString sock state "E00"
         GCont _ | (gdbNumBreakpoints state) <= 0 -> do
             logInfoN . T.pack $ "Bad cont - " ++ commandText
-            res <- sendQueueAndWait state PCmdStep
+            res <- sendQueueAndWaitF state PCmdStep ignoreRspCont
             case res of
                 PRspStep ->
                     sendPacketString sock state "S05"
