@@ -50,6 +50,7 @@ module Prism.Cpu (
         , MemSeg8 (..), MemSeg16 (..)
         , MemSegExp8 (..), MemSegExp16 (..)
         , MemPhy8 (..), MemPhy16 (..)
+        , MemPhy8Abs (..), MemPhy16Abs (..)
         , MemSeg (..)
         , PrismM
         ------------------------------------------------------

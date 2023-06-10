@@ -418,6 +418,7 @@ processBiosKeyboard bios = do
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
+    --liftIO $ putStrLn $ "Video = " ++ show valAh
     case valAh of
         0 -> do -- Set video mode
             writeOp al 0x30 -- text mode is set
@@ -547,6 +548,7 @@ processBiosVideo bios = do
 processBiosClock :: PcBios -> PrismM PcBios
 processBiosClock bios = do
     valAh <- readOp ah
+    liftIO $ putStrLn $ "     BIOS CLOCK " ++ (show valAh)
     case valAh of
         0 -> do -- Get ticks
             let ticks = pcTimerTicks $ pcTimer bios
@@ -765,12 +767,14 @@ processBiosPrinter bios = do
 
 processBiosEquipment :: PcBios -> PrismM PcBios
 processBiosEquipment bios = do
+    liftIO $ putStrLn "     GetEquipment"
     let val = 0x0021 -- 80x25 color mode + 1 diskette
     writeOp ax val
     return bios
 
 processBiosGetMemorySize :: PcBios -> PrismM PcBios
 processBiosGetMemorySize bios = do
+    liftIO $ putStrLn "      GetMemorySize"
     --writeOp ax 0x280 -- 640K
     writeOp ax 0x27f -- 640K
     return bios

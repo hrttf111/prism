@@ -2,6 +2,7 @@ module Prism.Instructions.Control where
 
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 
+import Data.Bits (shiftL)
 import Prism.Cpu
 import Prism.InstructionM
 
@@ -15,13 +16,21 @@ jmpNear :: (CpuMonad m) => FuncImm1 Imm16 m
 jmpNear val =
     ((val+) <$> readOp ip) >>= writeOp ip
 
-jmpIntra :: (CpuMonad m) => FuncImm1 Imm16 m
-jmpIntra ipVal =
+jmpIntra :: (CpuMonad m, MonadIO m) => FuncImm1 Imm16 m
+jmpIntra ipVal = do
+    --liftIO $ putStrLn $ "Intra ipVal = " ++ (show ipVal)
     writeOp ip ipVal
 
 jmpInter :: (CpuMonad m, MonadIO m) => FuncImm2 Imm16 m
 jmpInter ipVal csVal = do
-    --liftIO $ putStrLn $ "ipVal = " ++ (show ipVal) ++ ", csVal = " ++ (show csVal)
+    offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
+    let offsetTo = regsToOffset csVal ipVal
+    liftIO $ putStrLn $ "FAR ipVal = "
+                         ++ (show ipVal)
+                         ++ "; csVal = "
+                         ++ (show csVal)
+                         ++ "; from = " ++ (show offsetFrom)
+                         ++ "; to = " ++ (show offsetTo)
     writeOp cs csVal >> writeOp ip ipVal
 
 instrJMem32 :: (CpuMonad m) => FuncImm2 Imm16 m -> FuncO1M MemSeg16 m
@@ -32,40 +41,61 @@ instrJMem32 func mem = do
 
 -------------------------------------------------------------------------------
 
-callNear :: (CpuMonad m) => FuncImm1 Imm16 m
+regsToOffset :: Uint16 -> Uint16 -> Int
+regsToOffset csVal ipVal = ((shiftL (fromIntegral csVal) 4) + (fromIntegral ipVal)) :: Int
+
+callNear :: (CpuMonad m, MonadIO m) => FuncImm1 Imm16 m
 callNear val = do
     ipVal <- readOp ip
     pushV ipVal
     writeOp ip (ipVal + val)
 
-callIntra :: (CpuMonad m) => FuncImm1 Imm16 m
+callIntra :: (CpuMonad m, MonadIO m) => FuncImm1 Imm16 m
 callIntra val = do
     ipVal <- readOp ip
+    --liftIO $ putStrLn $ "Call Intra ipVal = " ++ (show ipVal)
     pushV ipVal
     writeOp ip val
 
-callInter :: (CpuMonad m) => FuncImm2 Imm16 m
+callInter :: (CpuMonad m, MonadIO m) => FuncImm2 Imm16 m
 callInter ipVal csVal = do
     ipValOld <- readOp ip
     csValOld <- readOp cs
     pushV csValOld
     pushV ipValOld
+    offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
+    let offsetTo = regsToOffset csVal ipVal
+    liftIO $ putStrLn $ "CALL FAR ipVal = "
+                         ++ (show ipVal)
+                         ++ "; csVal = "
+                         ++ (show csVal)
+                         ++ "; from = " ++ (show offsetFrom)
+                         ++ "; to = " ++ (show offsetTo)
     writeOp cs csVal
     writeOp ip ipVal
 
-retIntra :: (CpuMonad m) => FuncImm1 Imm16 m
+retIntra :: (CpuMonad m, MonadIO m) => FuncImm1 Imm16 m
 retIntra val = do
     ipVal <- popV
+    --liftIO $ putStrLn $ "Ret Intra ipVal = " ++ (show ipVal)
     writeOp ip ipVal
     if val /= 0 then do
         spOld <- readOp sp
         writeOp sp $ spOld + val
         else return ()
 
-retInter :: (CpuMonad m) => FuncImm1 Imm16 m
+retInter :: (CpuMonad m, MonadIO m) => FuncImm1 Imm16 m
 retInter val = do
     ipVal <- popV
     csVal <- popV
+    offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
+    let offsetTo = regsToOffset csVal ipVal
+    liftIO $ putStrLn $ "RET FAR ipVal = "
+                         ++ (show ipVal)
+                         ++ "; csVal = "
+                         ++ (show csVal)
+                         ++ "; from = " ++ (show offsetFrom)
+                         ++ "; to = " ++ (show offsetTo)
     writeOp ip (ipVal :: Uint16)
     writeOp cs (csVal :: Uint16)
     if val /= 0 then do

@@ -1,5 +1,8 @@
 module Prism.Instructions.Processor where
 
+import Control.Monad.Trans (MonadIO, liftIO)
+import Numeric
+
 import Prism.Cpu
 import Prism.InstructionM
 
@@ -42,14 +45,18 @@ nop = return ()
 
 -------------------------------------------------------------------------------
 
-int :: (CpuMonad m) => FuncImm1 Imm8 m
-int = raiseInterrupt . PrismInt
+int :: (CpuMonad m, MonadIO m) => FuncImm1 Imm8 m
+int i = do
+    liftIO $ putStrLn $ "Int = 0x" ++ showHex i ""
+    raiseInterrupt . PrismInt $ i
 
-into :: (CpuMonad m) => FuncImplicit m
+into :: (CpuMonad m, MonadIO m) => FuncImplicit m
 into = int 4
 
-iret :: (CpuMonad m) => FuncImplicit m
-iret = retInterrupt
+iret :: (CpuMonad m, MonadIO m) => FuncImplicit m
+iret = do
+    --liftIO $ putStrLn "Reti"
+    retInterrupt
 
 -------------------------------------------------------------------------------
 

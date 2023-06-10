@@ -222,7 +222,8 @@ buildPC opts = do
         intList = mkBiosInterrupts
         pageSize = 1024
         portEntries = pcPorts
-        memEntries = []
+        --memEntries = []
+        memEntries = pcMemory
         mkIOCtx pc queue =
             let (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) =
                     createPeripheralsL pc maxMemorySize pageSize portEntries memEntries

@@ -11,6 +11,7 @@ import Control.Concurrent.STM (TVar)
 
 import Data.Bits
 import qualified Data.Map.Strict as Map
+import Numeric
 
 import Prism.Cpu
 import Prism.Peripherals
@@ -308,7 +309,7 @@ pcEventHandlerPit schedId = do
 pcHaltUp :: String -> MemOffset -> String -> PeripheralsPC ()
 pcHaltUp s offset s2 = do
     pc <- getPC
-    liftIO $ putStrLn $ "DO HALT = " ++ s ++ "[" ++ (show offset) ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
+    liftIO $ putStrLn $ "DO HALT = " ++ s ++ "[0x" ++ (showHex offset "") ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
     putPC $ pc { pcHalt = True }
 
 pcMemoryBiosDataW8 :: MemOffset -> Uint8 -> PeripheralsPC ()
@@ -326,7 +327,52 @@ pcMemoryBiosDataR16 offset = pcHaltUp "Read16" offset "" >> return 0
 pcBiosMemHandler offset = PeripheralMem offset
                             $ PeripheralHandlerMem pcMemoryBiosDataW8 pcMemoryBiosDataW16 pcMemoryBiosDataR8 pcMemoryBiosDataR16
 
-pcMemory = [ pcBiosMemHandler $ MemLocation 0x400 0x500 ]
+pcMemoryBiosDataW8_0 :: MemOffset -> Uint8 -> PeripheralsPC ()
+pcMemoryBiosDataW8_0 offset val = return ()
+
+pcMemoryBiosDataW16_0 :: MemOffset -> Uint16 -> PeripheralsPC ()
+pcMemoryBiosDataW16_0 offset val = return ()
+
+pcMemoryBiosDataR8_0 :: MemOffset -> PeripheralsPC Uint8
+pcMemoryBiosDataR8_0 offset = return 0
+
+pcMemoryBiosDataR16_0 :: MemOffset -> PeripheralsPC Uint16
+pcMemoryBiosDataR16_0 offset = return 0
+
+pcBiosMemHandler_0 offset = PeripheralMem offset
+                            $ PeripheralHandlerMem pcMemoryBiosDataW8_0 pcMemoryBiosDataW16_0 pcMemoryBiosDataR8_0 pcMemoryBiosDataR16_0
+
+{-pcMemoryBiosDataW8_1 :: MemOffset -> Uint8 -> PeripheralsPC ()
+pcMemoryBiosDataW8_1 offset val = do
+    liftIO $ putStrLn $ "[0x" ++ (showHex offset "") ++ "]" ++ show val
+    writeOp (MemPhy8Abs offset) val
+    return ()
+
+pcMemoryBiosDataW16_1 :: MemOffset -> Uint16 -> PeripheralsPC ()
+pcMemoryBiosDataW16_1 offset val = do
+    liftIO $ putStrLn $ "[0x" ++ (showHex offset "") ++ "]" ++ show val
+    writeOp (MemPhy16Abs offset) val
+    return ()
+
+pcMemoryBiosDataR8_1 :: MemOffset -> PeripheralsPC Uint8
+pcMemoryBiosDataR8_1 = readOp . MemPhy8Abs
+
+pcMemoryBiosDataR16_1 :: MemOffset -> PeripheralsPC Uint16
+pcMemoryBiosDataR16_1 = readOp . MemPhy16Abs
+
+pcBiosMemHandler_1 offset = PeripheralMem offset
+                            $ PeripheralHandlerMem pcMemoryBiosDataW8_1 pcMemoryBiosDataW16_1 pcMemoryBiosDataR8_1 pcMemoryBiosDataR16_1
+-}
+
+pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x470)
+           , (pcBiosMemHandler_0 $ MemLocation 0x471 0x471)
+           , (pcBiosMemHandler $ MemLocation 0x472 0x495)
+           , (pcBiosMemHandler_0 $ MemLocation 0x496 0x496)
+           , (pcBiosMemHandler $ MemLocation 0x497 0x500)
+           --, (pcBiosMemHandler_1 $ MemLocation 3354 3354)
+           ]
+--pcMemory = [ pcBiosMemHandler $ MemLocation 0x400 0x500 ]
+--pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x500), (pcBiosMemHandler $ MemLocation 3354 3354) ]
 
 -------------------------------------------------------------------------------
 

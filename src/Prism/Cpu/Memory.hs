@@ -109,6 +109,28 @@ instance Operand MemPhy16 CpuTrans Uint16 where
 
 -------------------------------------------------------------------------------
 
+instance Operand MemPhy8Abs CpuTrans Uint8 where
+    readOp (MemPhy8Abs offset) = do
+        s <- get
+        let (MemMain mm) = ctxMem s
+        liftIO $ peekByteOff mm offset
+    writeOp (MemPhy8Abs offset) val = do
+        s <- get
+        let (MemMain mm) = ctxMem s
+        liftIO $ pokeByteOff mm offset val
+
+instance Operand MemPhy16Abs CpuTrans Uint16 where
+    readOp (MemPhy16Abs offset) = do
+        s <- get
+        let (MemMain mm) = ctxMem s
+        liftIO $ peekByteOff mm offset
+    writeOp (MemPhy16Abs offset) val = do
+        s <- get
+        let (MemMain mm) = ctxMem s
+        liftIO $ pokeByteOff mm offset val
+
+-------------------------------------------------------------------------------
+
 instance MemAddress MemSeg8 CpuTrans Uint8 where
     getEA (MemSeg8 memSeg) = do
         s <- get
@@ -348,5 +370,11 @@ instance Show MemPhy8 where
 
 instance Show MemPhy16 where
     show (MemPhy16 mem) = show mem
+
+instance Show MemPhy8Abs where
+    show (MemPhy8Abs mem) = show mem
+
+instance Show MemPhy16Abs where
+    show (MemPhy16Abs mem) = show mem
 
 -------------------------------------------------------------------------------
