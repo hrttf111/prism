@@ -94,8 +94,9 @@ newtype MemSegExp16 = MemSegExp16 (RegSeg, MemSeg) deriving (Eq)
 newtype MemPhy8 = MemPhy8 MemOffset deriving (Eq)
 newtype MemPhy16 = MemPhy16 MemOffset deriving (Eq)
 
-newtype MemPhy8Abs = MemPhy8Abs MemOffset deriving (Eq)
-newtype MemPhy16Abs = MemPhy16Abs MemOffset deriving (Eq)
+newtype MemPhyDir8 = MemPhyDir8 MemOffset deriving (Eq)
+newtype MemPhyDir16 = MemPhyDir16 MemOffset deriving (Eq)
+newtype MemPhyDir32 = MemPhyDir32 MemOffset deriving (Eq)
 
 class MemSegWrapper a where
     unwrapMemSeg :: a -> MemSeg

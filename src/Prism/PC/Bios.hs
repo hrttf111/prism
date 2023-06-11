@@ -300,8 +300,35 @@ mkBios = do
 setBiosMemory :: PcBios -> PrismM ()
 setBiosMemory bios = do
     writeDiskParamsTables disks
+    writeBisoRamData
     where
         disks = Map.foldrWithKey (\ k v l -> (k, v) : l) [] $ pcDisks bios
+
+-------------------------------------------------------------------------------
+
+biosMemStart = 0x400
+biosMem8 = MemPhyDir8 . (+biosMemStart)
+biosMem16 = MemPhyDir16 . (+biosMemStart)
+biosMem32 = MemPhyDir32 . (+biosMemStart)
+
+writeBisoRamData :: PrismM ()
+writeBisoRamData = do
+    clearArea
+    writeOp (biosMem16 0x10) 0x0021 -- installed devices
+    writeOp (biosMem16 0x15) 0x27F -- installed memory
+    writeOp (biosMem8 0x40) 0x7 -- diskette motor timeout
+    writeOp (biosMem8 0x49) 0x3 -- video mode setting
+    writeOp (biosMem16 0x4A) 80 -- number of columns on screen
+    writeOp (biosMem16 0x4C) 0x1000 -- current page size (video)
+    writeOp (biosMem16 0x63) 0x3d4 -- current io port for video
+    writeOp (biosMem8 0x75) 0 -- number of HDDs
+    writeOp (biosMem8 0x76) 0 -- HDD control byte
+    writeOp (biosMem8 0x77) 0 -- HDD port offset
+    writeOp (biosMem16 0x80) 0 -- offset to start of keyboard buffer (from seg 0x40)
+    writeOp (biosMem16 0x82) 0 -- offset to end of keyboard buffer
+    writeOp (biosMem8 0x84) 25 -- number of rows on screen
+    where
+        clearArea = return ()
 
 -------------------------------------------------------------------------------
 
@@ -324,6 +351,8 @@ processBiosTimerISR bios = do
         timerTicks' = timerTicks + 1
     --liftIO $ putStrLn $ "Ticks = " ++ (show timerTicks')
     --liftIO $ putStrLn $ "Diff = " ++ (show diff)
+    --TODO: check that timer ticks are correct
+    writeOp (biosMem32 0x6C) $ fromIntegral timerTicks' -- update timer count
     if diff > timerPeriod then do
         --liftIO $ putStrLn "Raise interrupt 0x1c"
         raiseInterrupt $ PrismInt 0x1c
@@ -342,10 +371,24 @@ processBiosKeyboardISR bios = do
     let keys' = (pcKeyboardList keyboard) ++ (sharedKeys res)
         keys'' = drop ((length keys') - 16) keys'
         keyboard' = PcKeyboard shared (sharedFlags res) keys''
+    writeKeyboardToRam keyboard'
     return $ bios { pcBiosKeyboard = keyboard' }
 
 -------------------------------------------------------------------------------
 
+writeKeyboardToRam :: PcKeyboard -> PrismM ()
+writeKeyboardToRam keyboard = do
+    return ()
+
+writeVideoToRam :: PcVideo -> PrismM ()
+writeVideoToRam video = do
+    return ()
+
+writeDiskToRam :: Map.Map PcDiskIndex PcDisk -> PrismM ()
+writeDiskToRam disks = do
+    return ()
+
+-------------------------------------------------------------------------------
 
 setInterruptOutFlags :: [(Flag, Bool)] -> PrismM ()
 setInterruptOutFlags flags = do
@@ -387,7 +430,9 @@ processBiosKeyboard bios = do
                 Just (key, keyList') -> do
                     writeOp al $ pcKeyMain key
                     writeOp ah $ pcKeyAux key
-                    return $ bios' { pcBiosKeyboard = (pcBiosKeyboard bios') {pcKeyboardList = keyList'} }
+                    let keyboard' = (pcBiosKeyboard bios') {pcKeyboardList = keyList'}
+                    writeKeyboardToRam keyboard'
+                    return $ bios' { pcBiosKeyboard = keyboard' }
                 Nothing ->
                     return bios'
         1 -> do -- Check key
@@ -507,6 +552,7 @@ processBiosVideo bios = do
             writeOp bh 0 -- page
             return ()
         c -> liftIO $ putStrLn $ "Unsupported video: " ++ show c
+    writeVideoToRam $ pcVideoState bios
     return bios
     where
         videoColumns = 80
@@ -759,6 +805,7 @@ processBiosDisk bios = do
         c -> do
             --liftIO $ putStrLn $ "Unsupported disk: " ++ show c
             return ()
+    writeDiskToRam $ pcDisks bios
     return bios
 
 processBiosSerial :: PcBios -> PrismM PcBios

@@ -109,22 +109,32 @@ instance Operand MemPhy16 CpuTrans Uint16 where
 
 -------------------------------------------------------------------------------
 
-instance Operand MemPhy8Abs CpuTrans Uint8 where
-    readOp (MemPhy8Abs offset) = do
+instance Operand MemPhyDir8 CpuTrans Uint8 where
+    readOp (MemPhyDir8 offset) = do
         s <- get
         let (MemMain mm) = ctxMem s
         liftIO $ peekByteOff mm offset
-    writeOp (MemPhy8Abs offset) val = do
+    writeOp (MemPhyDir8 offset) val = do
         s <- get
         let (MemMain mm) = ctxMem s
         liftIO $ pokeByteOff mm offset val
 
-instance Operand MemPhy16Abs CpuTrans Uint16 where
-    readOp (MemPhy16Abs offset) = do
+instance Operand MemPhyDir16 CpuTrans Uint16 where
+    readOp (MemPhyDir16 offset) = do
         s <- get
         let (MemMain mm) = ctxMem s
         liftIO $ peekByteOff mm offset
-    writeOp (MemPhy16Abs offset) val = do
+    writeOp (MemPhyDir16 offset) val = do
+        s <- get
+        let (MemMain mm) = ctxMem s
+        liftIO $ pokeByteOff mm offset val
+
+instance Operand MemPhyDir32 CpuTrans Uint32 where
+    readOp (MemPhyDir32 offset) = do
+        s <- get
+        let (MemMain mm) = ctxMem s
+        liftIO $ peekByteOff mm offset
+    writeOp (MemPhyDir32 offset) val = do
         s <- get
         let (MemMain mm) = ctxMem s
         liftIO $ pokeByteOff mm offset val
@@ -371,10 +381,13 @@ instance Show MemPhy8 where
 instance Show MemPhy16 where
     show (MemPhy16 mem) = show mem
 
-instance Show MemPhy8Abs where
-    show (MemPhy8Abs mem) = show mem
+instance Show MemPhyDir8 where
+    show (MemPhyDir8 mem) = show mem
 
-instance Show MemPhy16Abs where
-    show (MemPhy16Abs mem) = show mem
+instance Show MemPhyDir16 where
+    show (MemPhyDir16 mem) = show mem
+
+instance Show MemPhyDir32 where
+    show (MemPhyDir32 mem) = show mem
 
 -------------------------------------------------------------------------------
