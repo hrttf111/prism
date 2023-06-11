@@ -324,8 +324,8 @@ writeBisoRamData = do
     writeOp (biosMem8 0x75) 0 -- number of HDDs
     writeOp (biosMem8 0x76) 0 -- HDD control byte
     writeOp (biosMem8 0x77) 0 -- HDD port offset
-    writeOp (biosMem16 0x80) 0 -- offset to start of keyboard buffer (from seg 0x40)
-    writeOp (biosMem16 0x82) 0 -- offset to end of keyboard buffer
+    writeOp (biosMem16 0x80) 0x1E -- offset to start of keyboard buffer (from seg 0x40)
+    writeOp (biosMem16 0x82) 0x3E -- offset to end of keyboard buffer
     writeOp (biosMem8 0x84) 25 -- number of rows on screen
     where
         clearArea = return ()
@@ -378,14 +378,28 @@ processBiosKeyboardISR bios = do
 
 writeKeyboardToRam :: PcKeyboard -> PrismM ()
 writeKeyboardToRam keyboard = do
+    writeOp (biosMem8 0x17) 0 -- shift flags
+    writeOp (biosMem8 0x18) 0 -- ext flags
+    writeOp (biosMem16 0x1A) 0x1E -- offset to next char in keyboard buffer
+    writeOp (biosMem16 0x1C) (0x1E + (fromIntegral $ length $ pcKeyboardList keyboard)) -- offset to next spot in keyboard buffer
+    -- 0x1E - 0x3E -- keyboard buffer
+    foldM_ (\ n (PcKey m a) -> do
+        writeOp (biosMem8 $ 0x1E + n) m
+        writeOp (biosMem8 $ 0x1E + n + 1) a
+        return (n+2)
+        ) 0 (pcKeyboardList keyboard)
     return ()
 
 writeVideoToRam :: PcVideo -> PrismM ()
 writeVideoToRam video = do
+    cursor <- liftIO $ atomically $ videoCursor <$> readTVar (pcVideoShared video)
+    writeOp (biosMem8 0x50) $ fromIntegral $ videoCursorColumn cursor  -- cursor pos X on page 0
+    writeOp (biosMem8 0x51) $ fromIntegral $ videoCursorRow cursor -- cursor pos Y on page 0
     return ()
 
 writeDiskToRam :: Map.Map PcDiskIndex PcDisk -> PrismM ()
 writeDiskToRam disks = do
+    writeOp (biosMem8 0x41) 0 -- diskette return code
     return ()
 
 -------------------------------------------------------------------------------

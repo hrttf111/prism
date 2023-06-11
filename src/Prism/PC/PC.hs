@@ -382,6 +382,28 @@ pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x470)
 
 -------------------------------------------------------------------------------
 
+pcHaltUpPort :: String -> Uint16 -> String -> PeripheralsPC ()
+pcHaltUpPort s port s2 = do
+    pc <- getPC
+    liftIO $ putStrLn $ "DO HALT = " ++ s ++ "[0x" ++ (showHex port "") ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
+    putPC $ pc { pcHalt = True }
+
+pcPortReadF8 :: Uint16 -> PeripheralsPC Uint8
+pcPortReadF8 port = pcHaltUpPort "Read port 8" port "" >> return 0
+
+pcPortReadF16 :: Uint16 -> PeripheralsPC Uint16
+pcPortReadF16 port = pcHaltUpPort "Read port 16" port "" >> return 0
+
+pcPortWriteF8 :: Uint16 -> Uint8 -> PeripheralsPC ()
+pcPortWriteF8 port val = pcHaltUpPort "Write port 8" port (show val)
+
+pcPortWriteF16 :: Uint16 -> Uint16 -> PeripheralsPC ()
+pcPortWriteF16 port val = pcHaltUpPort "Write port 16" port (show val)
+
+pcPortHandlerF = PeripheralHandlerPort pcPortWriteF8 pcPortWriteF16 pcPortReadF8 pcPortReadF16
+
+-------------------------------------------------------------------------------
+
 pcPorts = [
         PeripheralPort 0x20
             (PeripheralHandlerPort pcPortWrite8PicControlMaster emptyWriteH pcPortRead8PicControlMaster emptyReadH),
@@ -398,7 +420,20 @@ pcPorts = [
         PeripheralPort 0x42
             (PeripheralHandlerPort pcPortWrite8PitTimer2 emptyWriteH pcPortRead8PitTimer2 emptyReadH),
         PeripheralPort 0x43
-            (PeripheralHandlerPort pcPortWrite8PitCommand emptyWriteH emptyReadH emptyReadH)
+            (PeripheralHandlerPort pcPortWrite8PitCommand emptyWriteH emptyReadH emptyReadH),
+        PeripheralPort 0x60 pcPortHandlerF,
+        PeripheralPort 0x61 pcPortHandlerF,
+        PeripheralPort 0x62 pcPortHandlerF,
+        PeripheralPort 0x63 pcPortHandlerF,
+        PeripheralPort 0x64 pcPortHandlerF,
+        PeripheralPort 0x3B4 pcPortHandlerF,
+        PeripheralPort 0x3B8 pcPortHandlerF,
+        PeripheralPort 0x3B5 pcPortHandlerF,
+        PeripheralPort 0x3D4 pcPortHandlerF,
+        PeripheralPort 0x3D5 pcPortHandlerF,
+        PeripheralPort 0x49D pcPortHandlerF,
+        PeripheralPort 0x49E pcPortHandlerF,
+        PeripheralPort 0x4AD pcPortHandlerF
     ]
 
 createPC :: (MonadIO m) => m PC
