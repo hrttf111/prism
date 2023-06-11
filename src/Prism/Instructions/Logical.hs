@@ -80,7 +80,9 @@ xorI :: (OperandVal v) => FuncVF2 v
 xorI flags source dest = logicalFunc flags $ xor source dest
 
 testI :: (OperandVal v) => FuncVF2 v
-testI flags source dest = logicalFunc flags $ source .&. dest
+testI flags source dest = (flags', dest)
+    where
+        (flags', _) = logicalFunc flags $ source .&. dest
 
 -------------------------------------------------------------------------------
 

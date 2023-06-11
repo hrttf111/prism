@@ -48,6 +48,10 @@ nop = return ()
 int :: (CpuMonad m, MonadIO m) => FuncImm1 Imm8 m
 int i = do
     liftIO $ putStrLn $ "Int = 0x" ++ showHex i ""
+    if i == 0x24 then
+        liftIO $ putStrLn $ "  !!!! Int = 0x" ++ showHex i ""
+        else
+            return ()
     raiseInterrupt . PrismInt $ i
 
 into :: (CpuMonad m, MonadIO m) => FuncImplicit m

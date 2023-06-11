@@ -52,6 +52,16 @@ testLog env = do
                 mov ax, 1
                 test ax, 1
             |]
+        it "8_2" $ do
+            execAndCmp [al] env $ [text|
+                mov al, 0x10
+                test al, 1
+            |]
+        it "16_2" $ do
+            execAndCmp [ax] env $ [text|
+                mov ax, 0x0100
+                test ax, 1
+            |]
     describe "SHL" $ do
         it "8" $ do
             execAndCmpFF [al] env ignoreAF $ [text|

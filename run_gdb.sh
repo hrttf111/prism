@@ -8,15 +8,18 @@
 #    -ex 'set disassembly-flavor intel' \
 #    -ex 'set architecture i8086'
 
-# 0x90a20
 # x/10c (16*$ds + $si + 10)
+# 0x90a20 - execr
+# 0xa08 - clock init
+# 0x9a4b7 - ???
 
 gdb -ex 'target remote localhost:20001' \
     -ex 'set disassembly-flavor intel' \
     -ex 'set architecture i8086' \
     -ex 'layout asm' \
-    -ex 'break *0x90a20' \
+    -ex 'break *0x9a4a0' \
     -ex 'cont'
+    #-ex 'break *0x90a20' \
     #-ex 'break *0x90a15' \
     #-ex 'break *162770' \
     #-ex 'break *2330' \
