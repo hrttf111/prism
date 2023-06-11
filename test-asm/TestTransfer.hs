@@ -48,6 +48,24 @@ testMov env =
                 mov cx, 0x3003
                 mov dx, 0x4004
             |]
+        it "MOV IMM16 to SP, BP, SI, DI" $ do
+            execPrism [(sp `shouldEq` 0x1001), (bp `shouldEq` 0x1002), (si `shouldEq` 0x1003), (di `shouldEq` 0x1004)] env $ [text|
+                mov sp, 0x1001
+                mov bp, 0x1002
+                mov si, 0x1003
+                mov di, 0x1004
+            |]
+        it "MOV REG to SP, BP, SI, DI" $ do
+            execPrism [(sp `shouldEq` 0x1001), (bp `shouldEq` 0x1002), (si `shouldEq` 0x1003), (di `shouldEq` 0x1004)] env $ [text|
+                mov ax, 0x1001
+                mov bx, 0x1002
+                mov cx, 0x1003
+                mov dx, 0x1004
+                mov sp, ax
+                mov bp, bx
+                mov si, cx
+                mov di, dx
+            |]
         it "XCHG to accumulator Reg8" $ do
             execAndCmpNF [al, bl, cl, dl] env $ [text|
                 mov al, 0x10
