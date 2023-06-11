@@ -7,6 +7,7 @@ import Test.Hspec.Core.Runner
 
 import Prism.Cpu
 import Prism.Instructions
+import Prism.Command
 
 import TestAsm.Run
 import TestAsm.Common
@@ -235,6 +236,44 @@ testMovMem env = do
                 mov [es:0], WORD 0xFFAA
                 mov ax, [16]
                 mov bx, [ds:16]
+            |]
+    describe "XLAT" $ do
+        it "XLAT simple" $ do
+            comm <- newPrismComm False
+            execPrismHalt [(ax `shouldEq` 0x15)] env comm [text|
+                SECTION .data start=100h
+                    pxlat_table db 0x11, 0x12, 0x13, 0x14, 0x15
+                    times 256-($-$$) db 0xAF
+                section .text
+                org 0
+                    mov ax, cs
+                    mov ds, ax
+                    mov bx, pxlat_table
+                    mov ax, 4
+                    xlatb
+                    hlt
+            |]
+        it "XLAT" $ do
+            comm <- newPrismComm False
+            execPrismHalt [(bx `shouldEq` 0x15), (dx `shouldEq` 0x11), (cx `shouldEq` 0xAF)] env comm [text|
+                SECTION .data start=100h
+                    pxlat_table db 0x11, 0x12, 0x13, 0x14, 0x15
+                    times 256-($-$$) db 0xAF
+                section .text
+                org 0
+                    mov ax, cs
+                    mov ds, ax
+                    mov bx, pxlat_table
+                    mov ax, 10
+                    xlatb
+                    mov cx, ax
+                    mov ax, 0
+                    xlatb
+                    mov dx, ax
+                    mov ax, 4
+                    xlatb
+                    mov bx, ax
+                    hlt
             |]
 
 -------------------------------------------------------------------------------
