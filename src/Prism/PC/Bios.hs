@@ -497,7 +497,7 @@ processBiosVideo bios = do
                     c' = updateCursorPos $ videoCursor s
                 writeTVar vs $ s { videoCursor = c' }
                 return (videoMemory s, offset)
-            --liftIO $ putStrLn $ "Video char " ++ show (toEnum (fromIntegral valAl) :: Char)
+            liftIO $ putStrLn $ "Video char " ++ show (toEnum (fromIntegral valAl) :: Char)
             liftIO $ writeChar ptr offset valAl valBl
             liftIO $ atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar valAl valBl), VideoUpdateCursor]
             return ()
@@ -542,13 +542,20 @@ processBiosVideo bios = do
             valCl <- readOp cl -- left column scroll window
             valDh <- readOp dh -- bottom row scroll window
             valDl <- readOp dl -- right column scroll window
+            liftIO $ do
+                putStrLn $ "  Distance (in rows): " ++ show valAl
+                putStrLn $ "  Attr for blank lines: " ++ show valBh
+                putStrLn $ "  Top row scroll window: " ++ show valCh
+                putStrLn $ "  Left column scroll window: " ++ show valCl
+                putStrLn $ "  Bottom row scroll window: " ++ show valDh
+                putStrLn $ "  Right column scroll window: " ++ show valDl
             --TODO
             return ()
 
 processBiosClock :: PcBios -> PrismM PcBios
 processBiosClock bios = do
     valAh <- readOp ah
-    liftIO $ putStrLn $ "     BIOS CLOCK " ++ (show valAh)
+    --liftIO $ putStrLn $ "     BIOS CLOCK " ++ (show valAh)
     case valAh of
         0 -> do -- Get ticks
             let ticks = pcTimerTicks $ pcTimer bios
@@ -580,7 +587,9 @@ processBiosClock bios = do
             writeOp dh month
             writeOp dl day
             return ()
-        c -> liftIO $ putStrLn $ "Unsupported clock: " ++ show c
+        c -> do
+            --liftIO $ putStrLn $ "Unsupported clock: " ++ show c
+            return ()
     return bios
 
 getDiskOpReq :: PcBios -> PrismM (Maybe DiskOpReq)
@@ -747,7 +756,9 @@ processBiosDisk bios = do
         0x16 -> do -- detect change
             writeOp ah 0
             return ()
-        c -> liftIO $ putStrLn $ "Unsupported disk: " ++ show c
+        c -> do
+            --liftIO $ putStrLn $ "Unsupported disk: " ++ show c
+            return ()
     return bios
 
 processBiosSerial :: PcBios -> PrismM PcBios
@@ -767,14 +778,14 @@ processBiosPrinter bios = do
 
 processBiosEquipment :: PcBios -> PrismM PcBios
 processBiosEquipment bios = do
-    liftIO $ putStrLn "     GetEquipment"
+    --liftIO $ putStrLn "     GetEquipment"
     let val = 0x0021 -- 80x25 color mode + 1 diskette
     writeOp ax val
     return bios
 
 processBiosGetMemorySize :: PcBios -> PrismM PcBios
 processBiosGetMemorySize bios = do
-    liftIO $ putStrLn "      GetMemorySize"
+    --liftIO $ putStrLn "      GetMemorySize"
     --writeOp ax 0x280 -- 640K
     writeOp ax 0x27f -- 640K
     return bios

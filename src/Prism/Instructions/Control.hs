@@ -23,14 +23,14 @@ jmpIntra ipVal = do
 
 jmpInter :: (CpuMonad m, MonadIO m) => FuncImm2 Imm16 m
 jmpInter ipVal csVal = do
-    offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
+    {-offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
     let offsetTo = regsToOffset csVal ipVal
     liftIO $ putStrLn $ "FAR ipVal = "
                          ++ (show ipVal)
                          ++ "; csVal = "
                          ++ (show csVal)
                          ++ "; from = " ++ (show offsetFrom)
-                         ++ "; to = " ++ (show offsetTo)
+                         ++ "; to = " ++ (show offsetTo)-}
     writeOp cs csVal >> writeOp ip ipVal
 
 instrJMem32 :: (CpuMonad m) => FuncImm2 Imm16 m -> FuncO1M MemSeg16 m
@@ -63,14 +63,14 @@ callInter ipVal csVal = do
     csValOld <- readOp cs
     pushV csValOld
     pushV ipValOld
-    offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
+    {-offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
     let offsetTo = regsToOffset csVal ipVal
     liftIO $ putStrLn $ "CALL FAR ipVal = "
                          ++ (show ipVal)
                          ++ "; csVal = "
                          ++ (show csVal)
                          ++ "; from = " ++ (show offsetFrom)
-                         ++ "; to = " ++ (show offsetTo)
+                         ++ "; to = " ++ (show offsetTo)-}
     writeOp cs csVal
     writeOp ip ipVal
 
@@ -90,12 +90,12 @@ retInter val = do
     csVal <- popV
     offsetFrom <- regsToOffset <$> readOp cs <*> readOp ip
     let offsetTo = regsToOffset csVal ipVal
-    liftIO $ putStrLn $ "RET FAR ipVal = "
+    {-liftIO $ putStrLn $ "RET FAR ipVal = "
                          ++ (show ipVal)
                          ++ "; csVal = "
                          ++ (show csVal)
                          ++ "; from = " ++ (show offsetFrom)
-                         ++ "; to = " ++ (show offsetTo)
+                         ++ "; to = " ++ (show offsetTo)-}
     writeOp ip (ipVal :: Uint16)
     writeOp cs (csVal :: Uint16)
     if val /= 0 then do
