@@ -336,7 +336,7 @@ mkBiosInterrupt :: Uint8 -> InterruptHandlerLocation
 mkBiosInterrupt val = (PrismInt val, \_ -> cpuRunDirect $ DirectCommandU8 val)
 
 mkBiosInterrupts :: [InterruptHandlerLocation]
-mkBiosInterrupts = map mkBiosInterrupt [8, 9, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x19, 0x1a, 0x1f]
+mkBiosInterrupts = map mkBiosInterrupt [8, 9, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x19, 0x1a, 0x1f, 0x1c]
 
 -------------------------------------------------------------------------------
 
@@ -359,7 +359,7 @@ processBiosTimerISR bios = do
         return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
         else do
             --liftIO $ putStrLn "Continue"
-            return $ bios { pcTimer = PcTimer (pcTimerLastInt8 $ pcTimer bios) timerTicks' }
+            return $ bios { pcTimer = PcTimer (pcTimerLastInt8 $ pcTimer bios) timerTicks }
 
 processBiosKeyboardISR :: PcBios -> PrismM PcBios
 processBiosKeyboardISR bios = do
@@ -876,6 +876,11 @@ processBiosTest bios = do
     writeOp al 89
     return bios
 
+processBiosUserTimerDummy :: PcBios -> PrismM PcBios
+processBiosUserTimerDummy bios = do
+    liftIO $ putStrLn "User dummy timer interrupt"
+    return bios
+
 processBios :: PcBios -> Uint8 -> PrismM PcBios
 processBios bios 8 = processBiosTimerISR bios
 processBios bios 9 = processBiosKeyboardISR bios
@@ -889,4 +894,5 @@ processBios bios 0x16 = processBiosKeyboard bios
 processBios bios 0x17 = processBiosPrinter bios
 processBios bios 0x19 = processBiosReboot bios
 processBios bios 0x1a = processBiosClock bios
+processBios bios 0x1c = processBiosUserTimerDummy bios
 processBios bios _ = processBiosTest bios

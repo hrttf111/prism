@@ -367,18 +367,16 @@ pcMemoryBiosDataR16_1 off = do
 pcBiosMemHandler_1 offset = PeripheralMem offset
                             $ PeripheralHandlerMem pcMemoryBiosDataW8 pcMemoryBiosDataW16 pcMemoryBiosDataR8_1 pcMemoryBiosDataR16_1
 
-pcMemory = [ pcBiosMemHandler_1 $ MemLocation 0x400 0x500 ]
-
-{-
-pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x470)
+--pcMemory = [ pcBiosMemHandler_1 $ MemLocation 0x400 0x500 ]
+{-pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x470)
            , (pcBiosMemHandler_0 $ MemLocation 0x471 0x471)
            , (pcBiosMemHandler $ MemLocation 0x472 0x495)
            , (pcBiosMemHandler_0 $ MemLocation 0x496 0x496)
            , (pcBiosMemHandler $ MemLocation 0x497 0x500)
-           ]
-           -}
+           ]-}
 --pcMemory = [ pcBiosMemHandler $ MemLocation 0x400 0x500 ]
 --pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x500), (pcBiosMemHandler $ MemLocation 3354 3354) ]
+pcMemory = []
 
 -------------------------------------------------------------------------------
 

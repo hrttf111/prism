@@ -267,6 +267,7 @@ runBinary opts = do
         writeOp ss 0
         writeOp sp 0x7C00
         setPcMemory pc
+        initPicPit
         when (floppyMode opts) $ rebootPc pc
         decodeHaltCpu (decoder intM) comm
     case vty of
@@ -290,6 +291,18 @@ runBinary opts = do
         decoder intM = makeDecoderList (combinedList intM)
         combinedList intM = x86InstrList
             ++ (internalInstrList intM)
+        initPicPit = do
+            -- Init PIC
+            writeOp (Port8 0x20) 0x17
+            writeOp (Port8 0x21) 0x08 -- Master interrupts 0x20-0x27
+            writeOp (Port8 0x21) 0x00
+            writeOp (Port8 0x21) 0x03
+            writeOp (Port8 0x21) 0x00
+            -- Init PIT
+            writeOp (Port8 0x43) 0x34 -- Timer0, Mode2, 2 Bytes, HEX
+            writeOp (Port8 0x40) 10
+            writeOp (Port8 0x40) 10
+            return ()
 
 main :: IO ()
 main = do
