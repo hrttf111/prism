@@ -46,7 +46,8 @@ decodeImm32 func (_, b2, b3, b4, b5, _) =
 decodeStR :: (OperandVal v, OperandReg a PrismM v) =>
     a -> FuncO1M a -> PrismInstrFunc 
 decodeStR reg func _ =
-    func reg >> cpuUpdateIP 1
+    --func reg >> cpuUpdateIP 1
+    cpuUpdateIP 1 >> func reg
 
 {-# SPECIALISE decodeStR :: Reg8 -> FuncO1M Reg8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeStR :: Reg16 -> FuncO1M Reg16 -> PrismInstrFunc #-}
@@ -57,7 +58,8 @@ decodeStRI :: (ImmDecoder v, OperandVal v, OperandReg a PrismM v) =>
 decodeStRI reg func (_, b2, b3, _, _, _) =
     let imm = decodeImm b2 b3 
         in
-    func reg imm >> cpuUpdateIP (1 + immLength imm)
+    --func reg imm >> cpuUpdateIP (1 + immLength imm)
+    cpuUpdateIP (1 + immLength imm) >> func reg imm
 
 {-# SPECIALISE decodeStRI :: Reg8 -> FuncOI1M Reg8 Uint8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeStRI :: Reg16 -> FuncOI1M Reg16 Uint16 -> PrismInstrFunc #-}
@@ -66,7 +68,8 @@ decodeStRI reg func (_, b2, b3, _, _, _) =
 decodeStRR :: (OperandVal v, OperandReg a PrismM v) =>
     a -> a -> FuncO2M a a -> PrismInstrFunc
 decodeStRR reg1 reg2 func _ =
-    func reg1 reg2 >> cpuUpdateIP 1
+    --func reg1 reg2 >> cpuUpdateIP 1
+     cpuUpdateIP 1 >> func reg1 reg2
 
 {-# SPECIALISE decodeStRR :: Reg8 -> Reg8 -> FuncO2M Reg8 Reg8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeStRR :: Reg16 -> Reg16 -> FuncO2M Reg16 Reg16 -> PrismInstrFunc #-}
@@ -76,7 +79,8 @@ decodeStRM :: (OperandVal v, OperandMem a1 PrismM v, OperandReg a2 PrismM v) =>
 decodeStRM reg func (_, b2, b3, _, _, _) =
     let mem = decodeMemDirect $ getDisp16 b2 b3
         in
-    func mem reg >> cpuUpdateIP 3
+    --func mem reg >> cpuUpdateIP 3
+     cpuUpdateIP 3 >> func mem reg
 
 {-# SPECIALISE decodeStRM :: Reg8 -> FuncO2M MemSeg8 Reg8 -> PrismInstrFunc #-}
 {-# SPECIALISE decodeStRM :: Reg16 -> FuncO2M MemSeg16 Reg16 -> PrismInstrFunc #-}
