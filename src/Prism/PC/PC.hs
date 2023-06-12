@@ -400,6 +400,8 @@ pcPortWriteF16 port val = pcHaltUpPort "Write port 16" port (show val)
 
 pcPortHandlerF = PeripheralHandlerPort pcPortWriteF8 pcPortWriteF16 pcPortReadF8 pcPortReadF16
 
+pcPortHandlerIgnore = PeripheralHandlerPort emptyWriteH emptyWriteH emptyReadH emptyReadH
+
 -------------------------------------------------------------------------------
 
 pcPorts = [
@@ -420,7 +422,7 @@ pcPorts = [
         PeripheralPort 0x43
             (PeripheralHandlerPort pcPortWrite8PitCommand emptyWriteH emptyReadH emptyReadH),
         PeripheralPort 0x60 pcPortHandlerF,
-        PeripheralPort 0x61 pcPortHandlerF,
+        PeripheralPort 0x61 pcPortHandlerIgnore, -- speaker, do nothing
         PeripheralPort 0x62 pcPortHandlerF,
         PeripheralPort 0x63 pcPortHandlerF,
         PeripheralPort 0x64 pcPortHandlerF,
