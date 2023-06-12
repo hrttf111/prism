@@ -12,12 +12,13 @@
 # 0x90a20 - execr
 # 0xa08 - clock init
 # 0x9a4b7 - ???
+# 0x9ace4 - timer ends
 
 gdb -ex 'target remote localhost:20001' \
     -ex 'set disassembly-flavor intel' \
     -ex 'set architecture i8086' \
     -ex 'layout asm' \
-    -ex 'break *0x9a4a0' \
+    -ex 'break *0x9ace4' \
     -ex 'cont'
     #-ex 'break *0x90a20' \
     #-ex 'break *0x90a15' \

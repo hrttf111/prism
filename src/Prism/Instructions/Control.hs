@@ -3,14 +3,18 @@ module Prism.Instructions.Control where
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 
 import Data.Bits (shiftL)
+import Data.Int (Int8)
 import Prism.Cpu
 import Prism.InstructionM
+
+convImm8 :: Imm8 -> Uint16
+convImm8 val = fromIntegral (fromIntegral val :: Int8)
 
 -------------------------------------------------------------------------------
 
 jmpShort :: (CpuMonad m) => FuncImm1 Imm8 m
 jmpShort val =
-    jmpNear $ signExtendWord val
+    jmpNear $ convImm8 val
 
 jmpNear :: (CpuMonad m) => FuncImm1 Imm16 m
 jmpNear val =
