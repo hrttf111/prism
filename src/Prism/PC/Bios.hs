@@ -514,11 +514,11 @@ processBiosVideo bios = do
             writeOp dl $ fromIntegral $ videoCursorRow cursor
             return ()
         6 -> do -- Scroll up
-            liftIO $ putStrLn "Scroll UP"
+            --liftIO $ putStrLn "Scroll UP"
             doScroll True
             return ()
         7 -> do -- Scroll down
-            liftIO $ putStrLn "Scroll DOWN"
+            --liftIO $ putStrLn "Scroll DOWN"
             doScroll False
             return ()
         8 -> do -- Get char
@@ -550,15 +550,19 @@ processBiosVideo bios = do
             valBl <- readOp bl -- FG color
             --valBh <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
+                char = toEnum (fromIntegral valAl)
             (ptr, offset) <- liftIO $ atomically $ do
                 s <- readTVar vs
                 let offset = videoOffset s
-                    c' = updateCursorPos $ videoCursor s
+                    c' = updateCursorPos (videoCursor s) char
                 writeTVar vs $ s { videoCursor = c' }
                 return (videoMemory s, offset)
-            liftIO $ putStrLn $ "Video char " ++ show (toEnum (fromIntegral valAl) :: Char)
+            --liftIO $ putStrLn $ "Video char " ++ show (toEnum (fromIntegral valAl) :: Char)
             liftIO $ writeChar ptr offset valAl valBl
-            liftIO $ atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar valAl valBl), VideoUpdateCursor]
+            if char == '\r' || char == '\n' then
+                liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
+                else
+                    liftIO $ atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar valAl valBl), VideoUpdateCursor]
             return ()
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
@@ -571,7 +575,14 @@ processBiosVideo bios = do
     where
         videoColumns = 80
         videoRows = 100
-        updateCursorPos c = if (h+1) < videoColumns then
+        updateCursorPos c '\r' = c { videoCursorColumn = 0 }
+        updateCursorPos c '\n' = if v < videoRows then
+                c { videoCursorRow = (v + 1) }
+                else
+                    c { videoCursorRow = v }
+            where
+                v = videoCursorRow c
+        updateCursorPos c _ = if (h+1) < videoColumns then
             c { videoCursorRow = v, videoCursorColumn = (h + 1) }
             else if v < videoRows then
                 c { videoCursorRow = (v + 1), videoCursorColumn = 0 }
@@ -602,13 +613,14 @@ processBiosVideo bios = do
             valCl <- readOp cl -- left column scroll window
             valDh <- readOp dh -- bottom row scroll window
             valDl <- readOp dl -- right column scroll window
-            liftIO $ do
+            {-liftIO $ do
                 putStrLn $ "  Distance (in rows): " ++ show valAl
                 putStrLn $ "  Attr for blank lines: " ++ show valBh
                 putStrLn $ "  Top row scroll window: " ++ show valCh
                 putStrLn $ "  Left column scroll window: " ++ show valCl
                 putStrLn $ "  Bottom row scroll window: " ++ show valDh
                 putStrLn $ "  Right column scroll window: " ++ show valDl
+                -}
             --TODO
             return ()
 
@@ -878,7 +890,7 @@ processBiosTest bios = do
 
 processBiosUserTimerDummy :: PcBios -> PrismM PcBios
 processBiosUserTimerDummy bios = do
-    liftIO $ putStrLn "User dummy timer interrupt"
+    --liftIO $ putStrLn "User dummy timer interrupt"
     return bios
 
 processBios :: PcBios -> Uint8 -> PrismM PcBios
