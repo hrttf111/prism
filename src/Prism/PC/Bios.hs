@@ -474,6 +474,19 @@ processBiosKeyboard bios = do
             liftIO $ putStrLn $ "Unsupported keyboard: " ++ show c
             return bios
 
+data ScrollScreen = ScrollScreen {
+    scrollScreenTop :: Uint8,
+    scrollScreenBottom :: Uint8,
+    scrollScreenLeft :: Uint8,
+    scrollScreenRight :: Uint8
+} deriving (Show)
+
+scrollWidth :: ScrollScreen -> Uint8
+scrollWidth ss = (scrollScreenRight ss - scrollScreenLeft ss)
+
+scrollHeight :: ScrollScreen -> Uint8
+scrollHeight ss = (scrollScreenBottom ss - scrollScreenTop ss)
+
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
@@ -606,13 +619,21 @@ processBiosVideo bios = do
             pokeByteOff ptr (off+1) attr
         readChar ptr off =
             (,) <$> peekByteOff ptr off <*> peekByteOff ptr (off+1)
+        clearScreen ss attr = do
+            mapM_ (\ rowNum -> return ()) [scrollScreenTop..scrollScreenBottom]
         doScroll doUp = do
+            -- validate scroll
             valAl <- readOp al -- scroll distance in rows
             valBh <- readOp bh -- attr for blank lines
             valCh <- readOp ch -- top row scroll window
             valCl <- readOp cl -- left column scroll window
             valDh <- readOp dh -- bottom row scroll window
             valDl <- readOp dl -- right column scroll window
+            let ss = ScrollScreen valCh valDh valCl valDl
+            if valAl == 0 then -- clear screen when distance is 0
+                clearScreen ss valBh
+                else
+                    return ()
             {-liftIO $ do
                 putStrLn $ "  Distance (in rows): " ++ show valAl
                 putStrLn $ "  Attr for blank lines: " ++ show valBh
