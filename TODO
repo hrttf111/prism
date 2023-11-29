@@ -576,3 +576,25 @@ counter components:
 0x61 - speaker (out pin?)
 
 -------------------------------------------------------
+
+Original:
+111
+222
+333
+
+One down (starts from the bottom):
+---
+111
+222
+
+One up (starts from the top):
+222
+333
+---
+
+Two down:
+---
+---
+111
+
+-------------------------------------------------------

@@ -15,7 +15,7 @@ import Data.ByteString.Internal as BI
 
 import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
-import Foreign.Marshal.Utils (fillBytes)
+import Foreign.Marshal.Utils (fillBytes, copyBytes)
 import Foreign.Marshal.Array (pokeArray, copyArray)
 import Foreign.Storable (poke, peekByteOff, pokeByteOff)
 import Foreign.ForeignPtr (withForeignPtr)
@@ -487,6 +487,18 @@ scrollWidth ss = (scrollScreenRight ss - scrollScreenLeft ss)
 scrollHeight :: ScrollScreen -> Uint8
 scrollHeight ss = (scrollScreenBottom ss - scrollScreenTop ss)
 
+scrollCopyRange :: ScrollScreen -> Uint8 -> Bool -> (Int, [Int])
+scrollCopyRange ss distance True =
+    if (scrollHeight ss) <= distance then
+        (0, [])
+        else
+            (fromIntegral distance, [(fromIntegral (scrollScreenTop ss + distance))..(fromIntegral $ scrollScreenBottom ss)])
+scrollCopyRange ss distance False =
+    if (scrollHeight ss) <= distance then
+        (0, [])
+        else
+            (-(fromIntegral distance), [(fromIntegral (scrollScreenBottom ss - distance))..(fromIntegral $ scrollScreenTop ss)])
+
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
@@ -619,9 +631,27 @@ processBiosVideo bios = do
             pokeByteOff ptr (off+1) attr
         readChar ptr off =
             (,) <$> peekByteOff ptr off <*> peekByteOff ptr (off+1)
-        clearScreen ss attr = do
-            mapM_ (\ rowNum -> return ()) [scrollScreenTop..scrollScreenBottom]
+        clearScreen videoPtr ss attr =
+            mapM_ fillRow [s..e]
+            where
+                defaultChar = 0x20 :: Uint8
+                s = fromIntegral $ scrollScreenTop ss
+                e = fromIntegral $ scrollScreenBottom ss
+                rowStart = fromIntegral $ scrollScreenLeft ss
+                rowEnd = fromIntegral $ scrollScreenRight ss
+                fillRow rowNum =
+                    mapM_ (\ pos -> liftIO $ writeChar videoPtr ((videoColumns * rowNum + pos)*2) defaultChar attr) [rowStart..rowEnd]
+        copyRow videoPtr ss srcRow dstRow =
+                copyBytes ptr1 ptr2 toCopy
+            where
+                toCopy = 2 * (fromIntegral $ scrollWidth ss)
+                ptr1 = plusPtr videoPtr $ (srcRow * videoColumns + (fromIntegral $ scrollScreenLeft ss)) * 2
+                ptr2 = plusPtr videoPtr $ (dstRow * videoColumns + (fromIntegral $ scrollScreenLeft ss)) * 2
         doScroll doUp = do
+            let vs = pcVideoShared $ pcVideoState bios
+            ptr <- liftIO $ atomically $ do
+                s <- readTVar vs
+                return $ videoMemory s
             -- validate scroll
             valAl <- readOp al -- scroll distance in rows
             valBh <- readOp bh -- attr for blank lines
@@ -631,9 +661,11 @@ processBiosVideo bios = do
             valDl <- readOp dl -- right column scroll window
             let ss = ScrollScreen valCh valDh valCl valDl
             if valAl == 0 then -- clear screen when distance is 0
-                clearScreen ss valBh
+                clearScreen ptr ss valBh
                 else
                     return ()
+            let (step, rowRange) = scrollCopyRange ss valAl doUp
+            liftIO $ mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
             {-liftIO $ do
                 putStrLn $ "  Distance (in rows): " ++ show valAl
                 putStrLn $ "  Attr for blank lines: " ++ show valBh
@@ -643,6 +675,7 @@ processBiosVideo bios = do
                 putStrLn $ "  Right column scroll window: " ++ show valDl
                 -}
             --TODO
+            liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
             return ()
 
 processBiosClock :: PcBios -> PrismM PcBios
