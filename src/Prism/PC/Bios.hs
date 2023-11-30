@@ -492,12 +492,12 @@ scrollCopyRange ss distance True =
     if (scrollHeight ss) <= distance then
         (0, [])
         else
-            (fromIntegral distance, [(fromIntegral (scrollScreenTop ss + distance))..(fromIntegral $ scrollScreenBottom ss)])
+            (-(fromIntegral distance), [(fromIntegral (scrollScreenTop ss + distance))..(fromIntegral $ scrollScreenBottom ss)])
 scrollCopyRange ss distance False =
     if (scrollHeight ss) <= distance then
         (0, [])
         else
-            (-(fromIntegral distance), [(fromIntegral (scrollScreenBottom ss - distance))..(fromIntegral $ scrollScreenTop ss)])
+            ((fromIntegral distance), [((fromIntegral $ scrollHeight ss) - i-1)|i <- [(fromIntegral $ scrollScreenTop ss)..(fromIntegral (scrollScreenBottom ss - distance))]])
 
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
@@ -641,8 +641,9 @@ processBiosVideo bios = do
                 rowEnd = fromIntegral $ scrollScreenRight ss
                 fillRow rowNum =
                     mapM_ (\ pos -> liftIO $ writeChar videoPtr ((videoColumns * rowNum + pos)*2) defaultChar attr) [rowStart..rowEnd]
-        copyRow videoPtr ss srcRow dstRow =
-                copyBytes ptr1 ptr2 toCopy
+        copyRow videoPtr ss srcRow dstRow = do
+                --liftIO $ putStrLn $ (show srcRow) ++ "->" ++ (show dstRow)
+                copyBytes ptr2 ptr1 toCopy
             where
                 toCopy = 2 * (fromIntegral $ scrollWidth ss)
                 ptr1 = plusPtr videoPtr $ (srcRow * videoColumns + (fromIntegral $ scrollScreenLeft ss)) * 2
@@ -662,10 +663,16 @@ processBiosVideo bios = do
             let ss = ScrollScreen valCh valDh valCl valDl
             if valAl == 0 then -- clear screen when distance is 0
                 clearScreen ptr ss valBh
-                else
+                else do
+                    let (step, rowRange) = scrollCopyRange ss valAl doUp
+                    --liftIO $ putStrLn $ show rowRange ++ show step
+                    liftIO $ mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
+                    let (blankStart, blankEnd) = if doUp then
+                            ((scrollScreenTop ss + (scrollHeight ss) - valAl)+1, scrollScreenBottom ss)
+                            else
+                                (scrollScreenTop ss, scrollScreenTop ss + valAl - 1)
+                    clearScreen ptr (ss{scrollScreenTop = blankStart, scrollScreenBottom = blankEnd}) valBh
                     return ()
-            let (step, rowRange) = scrollCopyRange ss valAl doUp
-            liftIO $ mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
             {-liftIO $ do
                 putStrLn $ "  Distance (in rows): " ++ show valAl
                 putStrLn $ "  Attr for blank lines: " ++ show valBh
@@ -674,7 +681,6 @@ processBiosVideo bios = do
                 putStrLn $ "  Bottom row scroll window: " ++ show valDh
                 putStrLn $ "  Right column scroll window: " ++ show valDl
                 -}
-            --TODO
             liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
             return ()
 

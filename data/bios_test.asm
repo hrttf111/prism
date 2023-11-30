@@ -2,11 +2,23 @@ BITS 16
 CPU 8086
 
 %macro print 1
+    push ax
+    push bx
+    push cx
+    push dx
+    push di
+    push si
     mov cx, 255
     mov di, %1
     mov si, di
     call strl
     call print_str
+    pop si
+    pop di
+    pop dx
+    pop cx
+    pop bx
+    pop ax
 %endmacro
 
 SECTION bootloader start=7C00h
@@ -33,12 +45,13 @@ dw 0xAA55
 
 SECTION other start=8000h
 str2 db "2322",0
+str_test db "1234567890abcdef",0
 str_int db "Timer interrupt",0
 str_end db "End",0
 str_empty db 0
 
 SECTION .data start=9000h
-str1 db "1111",0
+str1 db "11110---112333",0
 numbers db "0123456789abcdef",0
 
 absolute 0x9200
@@ -93,6 +106,26 @@ NUM_LOOP:
     jmp NUM_LOOP
 NUM_TO_STR_END:
     mov BYTE [di], 0
+    ret
+
+test_scroll:
+    push ax
+    push bx
+    push cx
+    push dx
+    mov ah, 6 ; up
+    ;mov ah, 7 ; down
+    mov al, 1 ; distance
+    mov bh, 0 ; attr
+    mov ch, 0 ; top
+    mov cl, 3 ; left
+    mov dh, 5 ; bottom
+    mov dl, 20 ; right
+    int 0x10
+    pop dx
+    pop cx
+    pop bx
+    pop ax
     ret
 
 START:
@@ -162,6 +195,12 @@ int 0x10
 print str2
 print str_empty
 print str1
+
+mov cx, 60
+LOOPSTR:
+    print str_test
+    print str1
+    loop LOOPSTR
 ;
 mov WORD [counter_1], 100
 ELOOPS:
@@ -175,6 +214,17 @@ dec cx
 mov WORD [counter_1], cx
 loop ELOOPS
 sti
+;;
+call test_scroll
+cli
+mov cx, 60000
+ELOOP1:
+    loop ELOOP1
+sti
+;;
+LOOP_INF:
+    mov cx, 10
+    loop LOOP_INF
 print str_end
 mov ax, 0
 mov ax, WORD [int_counter]
