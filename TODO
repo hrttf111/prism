@@ -414,9 +414,9 @@ TODO:
  - Disk functions in main app +
  - Implement test app which has bootloader area +
  - Halt for BIOS data memory +
+ - Correct scroll code +
  - Key conversion
  - Implement bootloader logic in BIOS
- - Correct scroll code
 
 -------------------------------------------------------
 
@@ -574,27 +574,5 @@ counter components:
     - only write
     - no read
 0x61 - speaker (out pin?)
-
--------------------------------------------------------
-
-Original:
-111
-222
-333
-
-One down (starts from the bottom):
----
-111
-222
-
-One up (starts from the top):
-222
-333
----
-
-Two down:
----
----
-111
 
 -------------------------------------------------------
