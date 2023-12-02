@@ -22,7 +22,7 @@ import Options.Applicative
 import Options.Applicative.Types
 
 import Foreign.Storable (peekByteOff)
-import Foreign.Marshal.Array (pokeArray)
+import Foreign.Marshal.Array (pokeArray, peekArray)
 import Foreign.Marshal.Alloc
 import Foreign.Ptr
 
@@ -80,22 +80,39 @@ convertKeyToAscii (KChar c) = fromIntegral $ fromEnum c
 convertKeyToAscii _ = 0
 
 
+convertUint8ToChar :: Uint8 -> Char
+convertUint8ToChar = toEnum . fromEnum
+
+
+peekVideoColumn :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> IO [(Uint8, Uint8)]
+peekVideoColumn console videoMem row =
+    splitPairs [] <$> peekArray rowLengthBytes rowPtr
+    where
+        rowLengthBytes = (videoConsoleCharSize console) * (videoConsoleColumns console)
+        rowPtr = plusPtr videoMem $ videoConsoleMemOffset console row 0
+        splitPairs :: [(Uint8, Uint8)] -> [Uint8] -> [(Uint8, Uint8)]
+        splitPairs res [] = res
+        splitPairs res (_:[]) = res
+        splitPairs res (a:(b:c)) = splitPairs (res ++ [(a,b)]) c
+
+
 peripheralThread :: Vty -> PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
 peripheralThread vty (PrismCmdQueue queue) keyboard video = do
-    runP $ picForImage $ resize videoColumns videoRows emptyImage
+    runP $ picForImage $ resize (videoConsoleColumns console) (videoConsoleRows console) emptyImage
     where
-        videoColumns = 80
-        videoRows = 25
-        videoCharLength = videoColumns * videoRows
+        console = VideoConsole80x25
         drawVideoScreen :: Ptr Uint8 -> Int -> IO Image
         drawVideoScreen mem scroll =
-            ((crop videoColumns videoRows) . vertCat) <$> mapM drawRow [0..videoRows]
+            ((crop (videoConsoleColumns console) (videoConsoleRows console)) . vertCat)
+                <$> mapM drawRowNoAttr (videoConsoleRowsRange console)
             where
+                drawRowNoAttr rowN =
+                    (string defAttr . map (convertUint8ToChar . fst)) <$> peekVideoColumn console mem rowN
                 drawRow rowN = do
-                    horizCat <$> mapM (drawChar rowN) [0..videoColumns]
+                    horizCat <$> mapM (drawChar rowN) (videoConsoleColumnsRange console)
                 drawChar rowN columnN = do
-                    val <- (peekByteOff mem (((rowN * videoColumns) + columnN) * 2) :: IO Uint8)
-                    return $ string defAttr [((toEnum . fromEnum) $ val :: Char)]
+                    (valChar, _) <- peekVideoChar console mem rowN columnN
+                    return $ char defAttr $ convertUint8ToChar valChar
         execVideo pic VideoFullDraw = do
             s <- atomically $ readTVar video
             img <- drawVideoScreen (videoMemory s) (videoScrollPos s)

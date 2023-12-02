@@ -115,6 +115,12 @@ data SharedVideoState = SharedVideoState {
     videoCommands :: [VideoCommand]
 } deriving (Show)
 
+getVideoCursorPos :: SharedVideoState -> (Int, Int)
+getVideoCursorPos state = (scrollPos + videoCursorRow c, videoCursorColumn c)
+    where
+        c = videoCursor state
+        scrollPos = videoScrollPos state
+
 data PcVideo = PcVideo {
     pcVideoShared :: TVar SharedVideoState
 }
@@ -474,6 +480,75 @@ processBiosKeyboard bios = do
             liftIO $ putStrLn $ "Unsupported keyboard: " ++ show c
             return bios
 
+-------------------------------------------------------------------------------
+
+class VideoConsole c where
+    videoConsoleRows :: c -> Int
+    videoConsoleColumns :: c -> Int
+    videoConsoleCharSize :: c -> Int
+    videoConsoleCodePos :: c -> Int
+    videoConsoleAttrPos :: c -> Int
+
+videoConsoleMemOffset :: (VideoConsole c) => c -> Int -> Int -> Int
+videoConsoleMemOffset c row column =
+    (row * (videoConsoleColumns c) + column) * (videoConsoleCharSize c)
+
+peekVideoChar :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> IO (Uint8, Uint8)
+peekVideoChar c videoMem row column =
+    (,) <$> peekByteOff videoMem (offset + videoConsoleCodePos c)
+        <*> peekByteOff videoMem (offset + videoConsoleAttrPos c)
+    where
+        offset = videoConsoleMemOffset c row column
+
+pokeVideoChar :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> (Uint8, Uint8) -> IO ()
+pokeVideoChar c videoMem row column (code, attr) =
+    pokeByteOff videoMem (offset + videoConsoleCodePos c) code
+        >> pokeByteOff videoMem (offset + videoConsoleAttrPos c) attr
+    where
+        offset = videoConsoleMemOffset c row column
+
+videoConsoleLastRow :: (VideoConsole c) => c -> Int
+videoConsoleLastRow c = (videoConsoleRows c) - 1
+
+videoConsoleLastColumn :: (VideoConsole c) => c -> Int
+videoConsoleLastColumn c = (videoConsoleColumns c) - 1
+
+videoConsoleRowsRange :: (VideoConsole c) => c -> [Int]
+videoConsoleRowsRange c = [0..(videoConsoleLastRow c)]
+
+videoConsoleColumnsRange :: (VideoConsole c) => c -> [Int]
+videoConsoleColumnsRange c = [0..(videoConsoleLastColumn c)]
+
+updateCursorPosition :: (VideoConsole c) => c -> VideoCursor -> Char -> VideoCursor
+updateCursorPosition _ cursor '\r' =
+    cursor { videoCursorColumn = 0 }
+updateCursorPosition console cursor '\n' =
+    if row < (videoConsoleLastRow console) then
+        cursor { videoCursorRow = (row + 1) }
+        else
+            cursor
+    where
+        row = videoCursorRow cursor
+updateCursorPosition console cursor _ =
+    if column < (videoConsoleLastColumn console) then
+        cursor { videoCursorRow = row, videoCursorColumn = (column+1) }
+        else if row < (videoConsoleLastRow console) then
+            cursor { videoCursorRow = (row+1), videoCursorColumn = 0 }
+            else
+                cursor { videoCursorRow = row, videoCursorColumn = (videoConsoleLastColumn console) }
+    where
+        row = videoCursorRow cursor
+        column = videoCursorColumn cursor
+
+data VideoConsole80x25 = VideoConsole80x25
+
+instance VideoConsole VideoConsole80x25 where
+    videoConsoleRows _ = 25
+    videoConsoleColumns _ = 80
+    videoConsoleCharSize _ = 2
+    videoConsoleCodePos _ = 0
+    videoConsoleAttrPos _ = 1
+
 data ScrollScreen = ScrollScreen {
     scrollScreenTop :: Uint8,
     scrollScreenBottom :: Uint8,
@@ -506,7 +581,6 @@ processBiosVideo bios = do
     case valAh of
         0 -> do -- Set video mode
             writeOp al 0x30 -- text mode is set
-            return ()
         1 -> do -- Set cursor shape
             valCh <- readOp ch
             valCl <- readOp cl
@@ -516,28 +590,26 @@ processBiosVideo bios = do
                 s <- readTVar vs
                 let c = videoCursor s
                 writeTVar vs $ s { videoCursor = c { videoCursorEnabled = enableCursor } }
-            return ()
         2 -> do -- Set cursor pos
-            --valBh <- readOp bh
-            valDh <- fromIntegral <$> readOp dh -- row
-            valDl <- fromIntegral <$> readOp dl -- column
+            --pageNum <- readOp bh
+            row <- fromIntegral <$> readOp dh
+            column <- fromIntegral <$> readOp dl
             let vs = pcVideoShared $ pcVideoState bios
+            --liftIO $ putStrLn $ "Set cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
             liftIO $ atomically $ do
                 s <- readTVar vs
                 let c = videoCursor s
                     commands = (videoCommands s) ++ [VideoUpdateCursor]
-                writeTVar vs $ s { videoCursor = c { videoCursorColumn = valDl, videoCursorRow = valDh }, videoCommands = commands }
+                writeTVar vs $ s { videoCursor = c { videoCursorColumn = column, videoCursorRow = row }, videoCommands = commands }
             writeOp al 0
-            return ()
         3 -> do -- Get cursor pos
-            --valBh <- readOp bh
+            --pageNum <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
             cursor <- liftIO $ atomically $ videoCursor <$> readTVar vs
             writeOp ch 0 -- starting cursor scan line
             writeOp cl 0 -- ending cursor scan line
             writeOp dh $ fromIntegral $ videoCursorColumn cursor
             writeOp dl $ fromIntegral $ videoCursorRow cursor
-            return ()
         6 -> do -- Scroll up
             --liftIO $ putStrLn "Scroll UP"
             doScroll True
@@ -547,141 +619,106 @@ processBiosVideo bios = do
             doScroll False
             return ()
         8 -> do -- Get char
-            --valBh <- readOp bh
+            --pageNum <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
-            (ptr, offset) <- liftIO $ atomically $ do
-                s <- readTVar vs
-                let offset = videoOffset s
-                return (videoMemory s, offset)
-            (code, attr) <- liftIO $ readChar ptr offset
+            (code, attr) <- liftIO $ do
+                (ptr, (row, column)) <- atomically $ do
+                    s <- readTVar vs
+                    return (videoMemory s, getVideoCursorPos s)
+                peekVideoChar console ptr row column
             writeOp al code -- ASCII char
             writeOp ah attr -- attr
-            return ()
         9 -> do -- Write char + attr
-            valAl <- readOp al -- ASCII code
-            valBl <- readOp bl -- attr
-            --valBh <- readOp bh
+            charCode <- readOp al
+            charAttr <- readOp bl
+            --pageNum <- readOp bh
             valCx <- readOp cx -- repeat
             let vs = pcVideoShared $ pcVideoState bios
-            (ptr, offset) <- liftIO $ atomically $ do
-                s <- readTVar vs
-                let offset = videoOffset s
-                return (videoMemory s, offset)
-            liftIO $ writeChar ptr offset valAl valBl
-            liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar valAl valBl]
-            return ()
+            liftIO $ do
+                (ptr, (row, column)) <- atomically $ do
+                    s <- readTVar vs
+                    return (videoMemory s, getVideoCursorPos s)
+                pokeVideoChar console ptr row column (charCode, charAttr)
+                atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr]
         0xe -> do -- Write char and update cursor
-            valAl <- readOp al -- ASCII code
-            valBl <- readOp bl -- FG color
-            --valBh <- readOp bh
+            --pageNum <- readOp bh
+            charCode <- readOp al
+            charAttr <- readOp bl
             let vs = pcVideoShared $ pcVideoState bios
-                char = toEnum (fromIntegral valAl)
-            (ptr, offset) <- liftIO $ atomically $ do
-                s <- readTVar vs
-                let offset = videoOffset s
-                    c' = updateCursorPos (videoCursor s) char
-                writeTVar vs $ s { videoCursor = c' }
-                return (videoMemory s, offset)
-            --liftIO $ putStrLn $ "Video char " ++ show (toEnum (fromIntegral valAl) :: Char)
-            liftIO $ writeChar ptr offset valAl valBl
-            if char == '\r' || char == '\n' then
-                liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
-                else
-                    liftIO $ atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar valAl valBl), VideoUpdateCursor]
-            return ()
+                char = toEnum (fromIntegral charCode)
+            liftIO $ do
+                (ptr, (row, column)) <- atomically $ do
+                    s <- readTVar vs
+                    let c' = updateCursorPosition console (videoCursor s) char
+                    writeTVar vs $ s { videoCursor = c' }
+                    return (videoMemory s, getVideoCursorPos s)
+                --putStrLn $ "Video char " ++ show char ++ " to row=" ++ (show row) ++ ", column=" ++ (show column)
+                pokeVideoChar console ptr row column (charCode, charAttr)
+                if char == '\r' || char == '\n' then
+                    atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
+                    else
+                        atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr), VideoUpdateCursor]
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
-            writeOp ah $ fromIntegral videoColumns -- number of columns
+            writeOp ah $ fromIntegral $ videoConsoleColumns console -- number of columns
             writeOp bh 0 -- page
-            return ()
         c -> liftIO $ putStrLn $ "Unsupported video: " ++ show c
     writeVideoToRam $ pcVideoState bios
     return bios
     where
-        videoColumns = 80
-        videoRows = 100
-        updateCursorPos c '\r' = c { videoCursorColumn = 0 }
-        updateCursorPos c '\n' = if v < videoRows then
-                c { videoCursorRow = (v + 1) }
-                else
-                    c { videoCursorRow = v }
-            where
-                v = videoCursorRow c
-        updateCursorPos c _ = if (h+1) < videoColumns then
-            c { videoCursorRow = v, videoCursorColumn = (h + 1) }
-            else if v < videoRows then
-                c { videoCursorRow = (v + 1), videoCursorColumn = 0 }
-                else
-                    c { videoCursorRow = v, videoCursorColumn = (videoColumns - 1) }
-            where
-                v = videoCursorRow c
-                h = videoCursorColumn c
-        videoOffset state = ((sPos + v) * videoColumns + h) * 2
-            where
-                charSize = 2
-                c = videoCursor state
-                (v, h) = (videoCursorRow c, videoCursorColumn c)
-                sPos = videoScrollPos state
+        console = VideoConsole80x25
         addVideoCommands commands s =
             s { videoCommands = commands' }
             where
                 commands' = (videoCommands s) ++ commands
-        writeChar ptr off code attr = do
-            pokeByteOff ptr off code
-            pokeByteOff ptr (off+1) attr
-        readChar ptr off =
-            (,) <$> peekByteOff ptr off <*> peekByteOff ptr (off+1)
         clearScreen videoPtr ss attr =
-            mapM_ fillRow [s..e]
+            mapM_ fillRow rowRange
             where
                 defaultChar = 0x20 :: Uint8
-                s = fromIntegral $ scrollScreenTop ss
-                e = fromIntegral $ scrollScreenBottom ss
-                rowStart = fromIntegral $ scrollScreenLeft ss
-                rowEnd = fromIntegral $ scrollScreenRight ss
+                rowRange = [(fromIntegral $ scrollScreenTop ss)..(fromIntegral $ scrollScreenBottom ss)]
+                columnRange = [(fromIntegral $ scrollScreenLeft ss)..(fromIntegral $ scrollScreenRight ss)]
                 fillRow rowNum =
-                    mapM_ (\ pos -> liftIO $ writeChar videoPtr ((videoColumns * rowNum + pos)*2) defaultChar attr) [rowStart..rowEnd]
+                    mapM_ (\ column -> pokeVideoChar console videoPtr rowNum column (defaultChar, attr)) columnRange
         copyRow videoPtr ss srcRow dstRow = do
-                --liftIO $ putStrLn $ (show srcRow) ++ "->" ++ (show dstRow)
+                --putStrLn $ (show srcRow) ++ "->" ++ (show dstRow)
                 copyBytes ptr2 ptr1 toCopy
             where
-                toCopy = 2 * (fromIntegral $ scrollWidth ss)
-                ptr1 = plusPtr videoPtr $ (srcRow * videoColumns + (fromIntegral $ scrollScreenLeft ss)) * 2
-                ptr2 = plusPtr videoPtr $ (dstRow * videoColumns + (fromIntegral $ scrollScreenLeft ss)) * 2
+                toCopy = (videoConsoleCharSize console) * (fromIntegral $ scrollWidth ss)
+                ptr1 = plusPtr videoPtr $ videoConsoleMemOffset console srcRow (fromIntegral $ scrollScreenLeft ss)
+                ptr2 = plusPtr videoPtr $ videoConsoleMemOffset console dstRow (fromIntegral $ scrollScreenLeft ss)
         doScroll doUp = do
-            let vs = pcVideoShared $ pcVideoState bios
-            ptr <- liftIO $ atomically $ do
-                s <- readTVar vs
-                return $ videoMemory s
+            distance <- readOp al -- scroll distance in rows
+            blankAttr <- readOp bh -- attr for blank lines
+            top <- readOp ch -- top row scroll window
+            left <- readOp cl -- left column scroll window
+            bottom <- readOp dh -- bottom row scroll window
+            right <- readOp dl -- right column scroll window
+            let ss = ScrollScreen top bottom left right
             -- validate scroll
-            valAl <- readOp al -- scroll distance in rows
-            valBh <- readOp bh -- attr for blank lines
-            valCh <- readOp ch -- top row scroll window
-            valCl <- readOp cl -- left column scroll window
-            valDh <- readOp dh -- bottom row scroll window
-            valDl <- readOp dl -- right column scroll window
-            let ss = ScrollScreen valCh valDh valCl valDl
-            if valAl == 0 then -- clear screen when distance is 0
-                clearScreen ptr ss valBh
-                else do
-                    let (step, rowRange) = scrollCopyRange ss valAl doUp
-                    --liftIO $ putStrLn $ show rowRange ++ show step
-                    liftIO $ mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
-                    let (blankStart, blankEnd) = if doUp then
-                            ((scrollScreenTop ss + (scrollHeight ss) - valAl)+1, scrollScreenBottom ss)
-                            else
-                                (scrollScreenTop ss, scrollScreenTop ss + valAl - 1)
-                    clearScreen ptr (ss{scrollScreenTop = blankStart, scrollScreenBottom = blankEnd}) valBh
-                    return ()
-            {-liftIO $ do
-                putStrLn $ "  Distance (in rows): " ++ show valAl
-                putStrLn $ "  Attr for blank lines: " ++ show valBh
-                putStrLn $ "  Top row scroll window: " ++ show valCh
-                putStrLn $ "  Left column scroll window: " ++ show valCl
-                putStrLn $ "  Bottom row scroll window: " ++ show valDh
-                putStrLn $ "  Right column scroll window: " ++ show valDl
+            liftIO $ do
+            {-
+                putStrLn $ "  Distance (in rows): " ++ show distance
+                putStrLn $ "  Attr for blank lines: " ++ show blankAttr
+                putStrLn $ "  Top row scroll window: " ++ show top
+                putStrLn $ "  Left column scroll window: " ++ show left
+                putStrLn $ "  Bottom row scroll window: " ++ show bottom
+                putStrLn $ "  Right column scroll window: " ++ show right
                 -}
-            liftIO $ atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
+                let vs = pcVideoShared $ pcVideoState bios
+                ptr <- atomically $ videoMemory <$> readTVar vs
+                if distance == 0 then -- clear screen when distance is 0
+                    clearScreen ptr ss blankAttr
+                    else do
+                        let (step, rowRange) = scrollCopyRange ss distance doUp
+                        --putStrLn $ show rowRange ++ show step
+                        mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
+                        let (blankStart, blankEnd) = if doUp then
+                                ((scrollScreenTop ss + (scrollHeight ss) - distance)+1, scrollScreenBottom ss)
+                                else
+                                    (scrollScreenTop ss, scrollScreenTop ss + distance - 1)
+                        clearScreen ptr (ss{scrollScreenTop = blankStart, scrollScreenBottom = blankEnd}) blankAttr
+                        return ()
+                atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
             return ()
 
 processBiosClock :: PcBios -> PrismM PcBios

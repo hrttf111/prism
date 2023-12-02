@@ -1,5 +1,6 @@
-qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/144m/x86BOOT.img -S -s &
-gdb -ex 'target remote localhost:1234' -ex 'set disassembly-flavor intel' -ex 'set architecture i8086' -ex 'break *0x27b26'
+qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/144m/x86BOOT.img
+#qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/144m/x86BOOT.img -S -s &
+#gdb -ex 'target remote localhost:1234' -ex 'set disassembly-flavor intel' -ex 'set architecture i8086' -ex 'break *0x27b26'
 #gdb -ex 'target remote localhost:1234' \
 #    -ex 'set disassembly-flavor intel' \
 #    -ex 'set architecture i8086' \

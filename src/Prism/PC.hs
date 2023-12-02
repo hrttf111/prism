@@ -14,6 +14,9 @@ module Prism.PC (
         , VideoCursor (..)
         , PcDiskIndex (..), PcDisk (..), PcChs (..)
         , diskSizeToChs, diskFloppySizeToChs, maxFloppySize
+        , VideoConsole(..), VideoConsole80x25(..), peekVideoChar
+        , videoConsoleColumnsRange, videoConsoleRowsRange
+        , videoConsoleMemOffset
     ) where
 
 import Prism.PC.PC
