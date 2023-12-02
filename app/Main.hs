@@ -84,8 +84,8 @@ convertUint8ToChar :: Uint8 -> Char
 convertUint8ToChar = toEnum . fromEnum
 
 
-peekVideoColumn :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> IO [(Uint8, Uint8)]
-peekVideoColumn console videoMem row =
+peekVideoRow :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> IO [(Uint8, Uint8)]
+peekVideoRow console videoMem row =
     splitPairs [] <$> peekArray rowLengthBytes rowPtr
     where
         rowLengthBytes = (videoConsoleCharSize console) * (videoConsoleColumns console)
@@ -107,7 +107,7 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
                 <$> mapM drawRowNoAttr (videoConsoleRowsRange console)
             where
                 drawRowNoAttr rowN =
-                    (string defAttr . map (convertUint8ToChar . fst)) <$> peekVideoColumn console mem rowN
+                    (string defAttr . map (convertUint8ToChar . fst)) <$> peekVideoRow console mem rowN
                 drawRow rowN = do
                     horizCat <$> mapM (drawChar rowN) (videoConsoleColumnsRange console)
                 drawChar rowN columnN = do
@@ -289,7 +289,7 @@ runBinary opts = do
         decodeHaltCpu (decoder intM) comm
     case vty of
         Just v -> do
-            threadDelay 1000000
+            --threadDelay 1000000
             shutdown v
         _ -> return ()
     liftIO . putStrLn . show $ ctxNew

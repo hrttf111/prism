@@ -653,10 +653,10 @@ processBiosVideo bios = do
                     writeTVar vs $ s { videoCursor = c' }
                     return (videoMemory s, getVideoCursorPos s)
                 --putStrLn $ "Video char " ++ show char ++ " to row=" ++ (show row) ++ ", column=" ++ (show column)
-                pokeVideoChar console ptr row column (charCode, charAttr)
                 if char == '\r' || char == '\n' then
                     atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
-                    else
+                    else do
+                        pokeVideoChar console ptr row column (charCode, charAttr)
                         atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr), VideoUpdateCursor]
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
