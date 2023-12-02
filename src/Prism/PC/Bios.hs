@@ -443,7 +443,7 @@ processBiosKeyboard bios = do
     case valAh of
         0 -> do -- Get key
             -- suspend, wait for key
-            liftIO $ putStrLn "Wait key"
+            --liftIO $ putStrLn "Wait key"
             bios' <- waitKey bios
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios'
             case keys' of
@@ -761,32 +761,27 @@ processBiosClock bios = do
             return ()
     return bios
 
+regSegToOffset :: Uint16 -> Uint16 -> Int
+regSegToOffset segVal regVal = (shiftL (fromIntegral segVal) 4) + (fromIntegral regVal)
+
 getDiskOpReq :: PcBios -> PrismM (Maybe DiskOpReq)
 getDiskOpReq bios = do
-    valAl <- readOp al -- number of sectors
-    valCh <- readOp ch -- track number
-    valCl <- readOp cl -- sector number
-    valDh <- readOp dh -- head number
-    valDl <- readOp dl -- drive number
-    --let trackNum = ((shiftL (fromIntegral valCl :: Uint16) 2) .&. 0x30) + (fromIntegral valCh)
-    let trackNum = fromIntegral valCh
-        chs = PcChs trackNum (fromIntegral valDh :: Uint16) (fromIntegral (valCl .&. 0x3F) :: Uint16)
-        driveIndex = intToDiskIndex valDl
-        drive = Map.lookup driveIndex (pcDisks bios)
-        lenBytesSectors = sectorsToInt valAl
-        numSectors = valAl
-    --liftIO $ putStrLn $ show chs
-    case drive of
-        Just d -> do
+    numSectors <- readOp al
+    trackNum <- fromIntegral <$> readOp ch
+    sectorNum <- readOp cl
+    headNum <- fromIntegral <$> readOp dh
+    driveIndex <- intToDiskIndex <$> readOp dl -- drive number to driver index
+    case Map.lookup driveIndex $ pcDisks bios of
+        Just drive -> do
+            (MemMain memPtr) <- ctxMem <$> get
             --es:bx -- input buffer
-            valBx <- readOp bx
-            valEs <- readOp es
-            s <- get
-            let memOffset = (shiftL (fromIntegral valEs) 4) + (fromIntegral valBx)
-                (MemMain memPtr) = ctxMem s
-                memPtr' = plusPtr memPtr memOffset
-                offset = chsToOffset d chs
-            return $ Just $ DiskOpReq offset lenBytesSectors memOffset memPtr' numSectors d
+            memOffset <- regSegToOffset <$> readOp es <*> readOp bx
+            let memPtr' = plusPtr memPtr memOffset
+                --trackNum = ((shiftL (fromIntegral valCl :: Uint16) 2) .&. 0x30) + (fromIntegral valCh)
+                chs = PcChs trackNum headNum (fromIntegral (sectorNum .&. 0x3F) :: Uint16)
+                diskOffset = chsToOffset drive chs
+                diskDataLen = sectorsToInt numSectors
+            return $ Just $ DiskOpReq diskOffset diskDataLen memOffset memPtr' numSectors drive
         _ -> do
             return Nothing
 
@@ -796,17 +791,10 @@ processBiosDisk bios = do
     case valAh of
         2 -> do -- read sectors
             req <- getDiskOpReq bios
-            --liftIO $ putStrLn "--READ DISK--"
-            --liftIO $ putStrLn $ show req
             case req of
                 Just (DiskOpReq diskOffset dataLen memOffset memPtr numSectors drive) -> do
                     bs <- liftIO $ (pcDiskRead drive) diskOffset dataLen
-                    --liftIO $ putStrLn $ "MemOffset = " ++ (show memOffset) ++ " " ++ (show bs)
                     copyMainMem memOffset bs
-                    {-let (srcPtr, srcLen) = BI.toForeignPtr0 bs
-                    liftIO $ withForeignPtr srcPtr (\ srcPtr ->
-                        copyArray memPtr srcPtr srcLen
-                        )-}
                     writeOp al numSectors -- sectors read
                     return ()
                 _ -> do
