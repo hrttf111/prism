@@ -111,32 +111,26 @@ instance Operand MemPhy16 CpuTrans Uint16 where
 
 instance Operand MemPhyDir8 CpuTrans Uint8 where
     readOp (MemPhyDir8 offset) = do
-        s <- get
-        let (MemMain mm) = ctxMem s
+        MemMain mm <- ctxMem <$> get
         liftIO $ peekByteOff mm offset
     writeOp (MemPhyDir8 offset) val = do
-        s <- get
-        let (MemMain mm) = ctxMem s
+        MemMain mm <- ctxMem <$> get
         liftIO $ pokeByteOff mm offset val
 
 instance Operand MemPhyDir16 CpuTrans Uint16 where
     readOp (MemPhyDir16 offset) = do
-        s <- get
-        let (MemMain mm) = ctxMem s
+        MemMain mm <- ctxMem <$> get
         liftIO $ peekByteOff mm offset
     writeOp (MemPhyDir16 offset) val = do
-        s <- get
-        let (MemMain mm) = ctxMem s
+        MemMain mm <- ctxMem <$> get
         liftIO $ pokeByteOff mm offset val
 
 instance Operand MemPhyDir32 CpuTrans Uint32 where
     readOp (MemPhyDir32 offset) = do
-        s <- get
-        let (MemMain mm) = ctxMem s
+        MemMain mm <- ctxMem <$> get
         liftIO $ peekByteOff mm offset
     writeOp (MemPhyDir32 offset) val = do
-        s <- get
-        let (MemMain mm) = ctxMem s
+        MemMain mm <- ctxMem <$> get
         liftIO $ pokeByteOff mm offset val
 
 -------------------------------------------------------------------------------
