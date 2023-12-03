@@ -13,6 +13,7 @@ import Control.Monad.Trans.State
 import Control.Concurrent.STM
 import Control.Concurrent
 
+import Data.Char (toLower)
 import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
@@ -47,30 +48,135 @@ bootloaderStart = 0x7C00
 
 convertKeyToKeycode :: Key -> Uint8
 convertKeyToKeycode key = case key of
-    KEsc -> 110
-    KEnter -> 42
-    KLeft -> 79
-    KRight -> 89
-    KUp -> 83
-    KDown -> 84
-    KFun n | n <= 12 -> 111 + (fromIntegral n)
-    KBackTab -> 16
-    KPrtScr -> 124
-    KPause -> 126
-    KIns -> 75
-    KHome -> 80
-    KPageUp -> 85
-    KDel -> 76
-    KEnd -> 81
-    KPageDown -> 86
-    KBS -> 15 -- backspace
-    KChar c -> case c of
-        '1' -> 1
-        '2' -> 2
-        '3' -> 3
-        '4' -> 4
-        '5' -> 5
-        '6' -> 6
+    KEsc -> 0x01
+    KEnter -> 0x1C
+    KLeft -> 0x4B
+    KRight -> 0x4D
+    KUp -> 0x48
+    KDown -> 0x50
+    KFun n | n <= 10 -> 0x3A + (fromIntegral n)
+    KFun 11 -> 0x57
+    KFun 12 -> 0x58
+    KBackTab -> 0x0F
+    --KPrtScr -> 0
+    --KPause -> 0
+    KIns -> 0x52
+    KHome -> 0x47
+    KPageUp -> 0x49
+    KDel -> 0x53
+    KEnd -> 0x4F
+    KPageDown -> 0x51
+    KBS -> 0x0E -- backspace
+    KChar c -> case toLower c of
+        '`' -> 0x29
+        '~' -> 0x29
+        '1' -> 0x02
+        '!' -> 0x02
+        '2' -> 0x03
+        '@' -> 0x03
+        '3' -> 0x04
+        '#' -> 0x04
+        '4' -> 0x05
+        '$' -> 0x05
+        '5' -> 0x06
+        '%' -> 0x06
+        '6' -> 0x07
+        '^' -> 0x07
+        '7' -> 0x08
+        '&' -> 0x08
+        '8' -> 0x09
+        '*' -> 0x09
+        '9' -> 0x0A
+        '(' -> 0x0A
+        '0' -> 0x0B
+        ')' -> 0x0B
+        '-' -> 0x0C
+        '_' -> 0x0C
+        '=' -> 0x0D
+        '+' -> 0x0D
+        -- Backspace 0x0E/0x08
+        -- Tab 0x0F/0x09
+        'q' -> 0x10
+        'w' -> 0x11
+        'e' -> 0x12
+        'r' -> 0x13
+        't' -> 0x14
+        'y' -> 0x15
+        'u' -> 0x16
+        'i' -> 0x17
+        'o' -> 0x18
+        'p' -> 0x19
+        '[' -> 0x1A
+        '{' -> 0x1A
+        ']' -> 0x1B
+        '}' -> 0x1B
+        '|' -> 0x2B
+        '\\' -> 0x2B
+        -- Capslock 0x3A
+        'a' -> 0x1E
+        's' -> 0x1F
+        'd' -> 0x20
+        'f' -> 0x21
+        'g' -> 0x22
+        'h' -> 0x23
+        'j' -> 0x24
+        'k' -> 0x25
+        'l' -> 0x26
+        ';' -> 0x27
+        ':' -> 0x27
+        '\'' -> 0x28
+        '"' -> 0x28
+        -- Enter 0x1C/0x0D
+        -- L Shift 0x2A
+        'z' -> 0x2C
+        'x' -> 0x2D
+        'c' -> 0x2E
+        'v' -> 0x2F
+        'b' -> 0x30
+        'n' -> 0x31
+        'm' -> 0x32
+        ',' -> 0x33
+        '.' -> 0x34
+        '/' -> 0x35
+        -- R Shift 0x36
+        -- L Ctrl 0x1D
+        -- L Alt 0x38
+        ' ' -> 0x39
+        -- R Alt 0x38
+        -- R Ctrl 0x1D
+        -- Insert 0x52
+        -- Delete 0x53
+        -- Left 0x4B
+        -- Home 0x47
+        -- End 0x4F
+        -- Up 0x48
+        -- Down 0x50
+        -- Page Up 0x49
+        -- Page Down 0x51
+        -- Right 0x4D
+        -- Num Lock 0x45
+        -- 7/Home
+        -- 4/Left
+        -- 1/End
+        -- /
+        -- 8/Up
+        -- 5
+        -- 2/Down
+        -- 0/Ins
+        -- *
+        -- 9/PgUp
+        -- 6/Right
+        -- 3/PgDown
+        -- Del
+        -- -
+        -- +
+        -- Enter
+        -- Esc 0x01
+        -- F1-F12 0x3B-0x44 0x57 0x58
+        -- SysReq
+        -- Print Screen 0x2A
+        -- Scroll Lock 0x46
+        -- Pause
         _ -> 0
     _ -> 0
 

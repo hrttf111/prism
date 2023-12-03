@@ -415,7 +415,7 @@ TODO:
  - Implement test app which has bootloader area +
  - Halt for BIOS data memory +
  - Correct scroll code +
- - Key conversion
+ - Key conversion +
  - Implement bootloader logic in BIOS
 
 -------------------------------------------------------
