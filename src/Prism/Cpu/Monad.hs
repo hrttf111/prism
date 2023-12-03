@@ -108,8 +108,25 @@ instance RunCpu (CpuTransM Ctx IO a) Ctx IO where
 
 type CpuTrans = CpuTransM Ctx IO
 
-instance CpuDebug CpuTrans where
-    cpuLog = liftIO . putStrLn
+instance CpuDebugM CpuTrans Trace where
+    cpuLog level feature str = return ()
+    cpuDebugAction level feature a = return ()
+
+instance CpuDebugM CpuTrans Debug where
+    cpuLog level feature str = liftIO $ putStrLn str
+    cpuDebugAction level feature a = a
+
+instance CpuDebugM CpuTrans Info where
+    cpuLog level feature str = liftIO $ putStrLn str
+    cpuDebugAction level feature a = a
+
+instance CpuDebugM CpuTrans Warning where
+    cpuLog level feature str = liftIO $ putStrLn str
+    cpuDebugAction level feature a = a
+
+instance CpuDebugM CpuTrans Error where
+    cpuLog level feature str = liftIO $ putStrLn str
+    cpuDebugAction level feature a = a
 
 -------------------------------------------------------------------------------
 

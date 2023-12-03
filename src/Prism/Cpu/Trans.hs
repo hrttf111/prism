@@ -19,6 +19,8 @@ import Prism.Cpu.Peripherals
 
 -------------------------------------------------------------------------------
 
+instance CpuDebug CpuTrans
+
 instance CpuMonad CpuTrans where
     cpuHalt = modify (\s -> s { ctxStop = True } )
     cpuOverrideSegment regSeg = modify (\s -> s { ctxReplaceSeg = regSeg } )

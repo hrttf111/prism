@@ -21,7 +21,7 @@ module Prism.Cpu (
         , Flag (..), Flags (..)
         , EFlag (..), EFlags (..)
         , PrismInt (..), PrismIRQ (..)
-        , CpuDebug (..)
+        , CpuDebug (..), CpuDebugM (..)
         , InterruptDispatcher (..)
         , InterruptRun (..)
         , CpuMonad (..)
@@ -80,6 +80,9 @@ module Prism.Cpu (
         ------------------------------------------------------
         , pushP, popP, pushV, popV
         , modifyFlag
+        ------------------------------------------------------
+        , Trace (..), Debug (..), Info (..), Warning (..), Error (..)
+        , LogFeature (..)
         ------------------------------------------------------
     ) where
 

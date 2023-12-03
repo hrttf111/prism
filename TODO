@@ -591,3 +591,14 @@ counter components:
 0x61 - speaker (out pin?)
 
 -------------------------------------------------------
+
+class DebugLevel l where
+    debugLevelEnabled :: l -> Bool
+    debugLevelName :: l -> String
+    debugLevelNameT :: l -> Text
+
+class (Monad m) => CpuDebug d m where
+    cpuDebugLog :: (DebugLevel l) => d -> l -> String -> m ()
+    cpuDebugAction :: (DebugLevel l) => d -> l -> m () -> m ()
+
+-------------------------------------------------------

@@ -1,10 +1,12 @@
 module Prism.Instructions.Processor where
 
-import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad (when)
+
 import Numeric
 
 import Prism.Cpu
 import Prism.InstructionM
+import qualified Prism.Log as Log
 
 -------------------------------------------------------------------------------
 
@@ -45,21 +47,19 @@ nop = return ()
 
 -------------------------------------------------------------------------------
 
-int :: (CpuMonad m, MonadIO m) => FuncImm1 Imm8 m
+int :: (CpuMonad m) => FuncImm1 Imm8 m
 int i = do
-    --liftIO $ putStrLn $ "Int = 0x" ++ showHex i ""
-    if i == 0x24 then
-        liftIO $ putStrLn $ "  !!!! Int = 0x" ++ showHex i ""
-        else
-            return ()
+    Log.traceInterrupt i
+    when (i == 0x24) $ do
+        cpuLog Error Log.commonF "  !!!! Int = 0x24"
     raiseInterrupt . PrismInt $ i
 
-into :: (CpuMonad m, MonadIO m) => FuncImplicit m
+into :: (CpuMonad m) => FuncImplicit m
 into = int 4
 
-iret :: (CpuMonad m, MonadIO m) => FuncImplicit m
+iret :: (CpuMonad m) => FuncImplicit m
 iret = do
-    --liftIO $ putStrLn "Reti"
+    Log.traceRetInterrupt
     retInterrupt
 
 -------------------------------------------------------------------------------

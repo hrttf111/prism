@@ -161,8 +161,24 @@ data DirectCommand = DirectCommandU8 Uint8 deriving (Eq, Show)
 
 -------------------------------------------------------------------------------
 
-class (Monad m) => CpuDebug m where
-    cpuLog :: String -> m ()
+data Trace = Trace deriving (Show)
+data Debug = Debug deriving (Show)
+data Info = Info deriving (Show)
+data Warning = Warning deriving (Show)
+data Error = Error deriving (Show)
+
+newtype LogFeature = LogFeature1 Int deriving (Eq)
+
+class (Monad m) => CpuDebugM m level where
+    cpuLog :: level -> LogFeature -> String -> m ()
+    cpuDebugAction :: level -> LogFeature -> m () -> m ()
+
+class ( Monad m
+      , CpuDebugM m Trace
+      , CpuDebugM m Debug
+      , CpuDebugM m Info
+      , CpuDebugM m Warning
+      , CpuDebugM m Error ) => CpuDebug m
 
 -------------------------------------------------------------------------------
 
