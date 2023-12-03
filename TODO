@@ -1,25 +1,40 @@
- - prism BIOS
-    - set internal interrupts
-    - main app writes indexes of storages in main mem, BIOS reads them
-    - set correct modes to peripheral
-    - find bootable media
-    - start bootloader
+ - prism BIOS +
+    - set internal interrupts +
+    - main app writes indexes of storages in main mem, BIOS reads them +
+    - set correct modes to peripheral +
+    - start bootloader +
+    - test timers/video/keyboard +
     - initial CPU test
-    - test timers/video/keyboard
+    - find bootable media
+ - Debug infra
+    - Logger in CPU monad
+        - Needs to be disabled when not needed without changing the code
+        - Write logs to file
+    - Trace jumps
+    - Trace interrupts
+    - Trace BIOS calls
+    - Remove MonadIO from CPU monad
+ - Testing infra
+    - Compare values in memory after the test
+    - Use QEMU as a backend to compare results
+        - Find if it is possible to get QEMU memory after execution
+
+-------------------------------------------------------
+
+radare2 -e asm.bits=16 x86BOOT.img
+
+-------------------------------------------------------
+
  - peripheral
     - PPI (8255A)
     - keyboard (XT style)
     - video
     - DMA (intel 8237)
-    - flopy
+    - floppy
     - HDD
     - CMOS
  - later
     - keyboard (8042)
-
--------------------------------------------------------
-
-radare2 -e asm.bits=16 x86BOOT.img
 
 -------------------------------------------------------
 
