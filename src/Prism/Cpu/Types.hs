@@ -167,7 +167,7 @@ data Info = Info deriving (Show)
 data Warning = Warning deriving (Show)
 data Error = Error deriving (Show)
 
-newtype LogFeature = LogFeature1 Int deriving (Eq)
+newtype LogFeature = LogFeature Int deriving (Eq, Show)
 
 class (Monad m) => CpuDebugM m level where
     cpuLog :: level -> LogFeature -> String -> m ()
