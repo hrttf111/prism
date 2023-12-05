@@ -16,6 +16,7 @@ module Prism.Log (
     , logFeatureTree, logFeatureCount
     , showFeatures
     , featureArray
+    , setFeatureLevel, (.=)
 -------------------------------------------------------------------------------
     , traceJmpIntra, traceJmpInter
     , traceCallNear, traceCallIntra, traceCallInter
@@ -23,7 +24,7 @@ module Prism.Log (
     , traceInterrupt, traceRetInterrupt
 ) where
 
-import Data.Array (Array, array, accumArray, (!), bounds)
+import Data.Array (Array, array, accumArray, (!), bounds, (//))
 import Data.Typeable (typeOf)
 import Data.Bits (shiftL)
 import Numeric (showHex)
@@ -198,29 +199,6 @@ mkLevel feature bm = do
     b <- bm
     return $ LFeaturePair (LFeatureLevel feature b (LogFeature n)) ()
 
-{-
-data Cpu = Cpu deriving (Show)
-data Instruction = Instruction deriving (Show)
-data Jmp = Jmp deriving (Show)
-
-data Pc = Pc deriving (Show)
-data Bios = Bios deriving (Show)
-data Video = Video deriving (Show)
-data Timer = Timer deriving (Show)
-
-logFeatureTree = LFeatureTree $ evalState (mkLevel Cpu (
-                                               mkLevel Instruction (
-                                                    mkLeaf Jmp
-                                               )
-                                          ) .>>>
-                                          mkLevel Pc (
-                                               mkLevel Bios (
-                                                    mkLeaf Video .>>>
-                                                    mkLeaf Timer
-                                               )
-                                          )) 0
--}
-
 data CpuJmp = CpuJmp deriving (Show)
 data CpuInt = CpuInt deriving (Show)
 
@@ -244,9 +222,16 @@ logFeatureTree = fst logFeatures
 logFeatureCount = snd logFeatures
 
 featureArray :: Array Int Int
-featureArray = setLogLevel 0
+featureArray = newArray $ fromEnum Error
 
-setLogLevel :: Int -> Array Int Int
-setLogLevel level = array (1, logFeatureCount) [(i, level) | i <- [1..logFeatureCount]]
+newArray :: Int -> Array Int Int
+newArray level = array (1, logFeatureCount) [(i, level) | i <- [1..logFeatureCount]]
+
+setFeatureLevel feature level ar = ar // [(featureIndex, levelIndex)]
+    where
+        levelIndex = fromEnum level
+        (LogFeature featureIndex) = logFeatureTree ..>> feature
+
+feature .= level = \ ar -> setFeatureLevel feature level ar
 
 --------------------------------------------------------------------------------
