@@ -6,7 +6,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
 module Prism.Cpu.Monad (
-          Ctx (..), IOCtx (..)
+          Ctx (..), IOCtx (..), DebugCtx(..)
         , MemReg (..), MemMain (..)
         , RunCpu (..)
         , PrismInterrupts (..)
@@ -68,6 +68,36 @@ instance Show IOCtx where
 
 -------------------------------------------------------------------------------
 
+data DebugCtx = DebugCtx {
+        debugCtxPrint :: Int -> Int -> String -> IO (), -- level -> feature -> msg
+        debugCtxLevelEnable :: Int -> Int -> Bool -- level -> feature
+    }
+
+instance Show DebugCtx where
+    show _ = "DebugCtx"
+
+printLog :: (Enum level) => level -> LogFeature -> String -> CpuTrans ()
+printLog level (LogFeature index) msg = do
+    (DebugCtx printF _) <- ctxDebug <$> get
+    liftIO $ printF levelIndex index msg
+    where
+        levelIndex = fromEnum level
+
+execDebugAction :: (Enum level) => level -> LogFeature -> CpuTrans () -> CpuTrans ()
+execDebugAction level (LogFeature index) a = do
+    (DebugCtx _ enabledF) <- ctxDebug <$> get
+    if enabledF levelIndex index then
+        a
+        else
+            return ()
+    where
+        levelIndex = fromEnum level
+
+ignoreLog _ _ _ = return ()
+ignoreAction _ _ _ = return ()
+
+-------------------------------------------------------------------------------
+
 data Ctx = Ctx {
         ctxReg :: MemReg,
         ctxMem :: MemMain,
@@ -78,7 +108,8 @@ data Ctx = Ctx {
         ctxCycles :: CpuCycles,
         ctxCyclesP :: CpuCyclesDelta,
         ctxInterrupts :: PrismInterrupts,
-        ctxIO :: IOCtx
+        ctxIO :: IOCtx,
+        ctxDebug :: DebugCtx
     } deriving (Show)
 
 -------------------------------------------------------------------------------
@@ -108,25 +139,27 @@ instance RunCpu (CpuTransM Ctx IO a) Ctx IO where
 
 type CpuTrans = CpuTransM Ctx IO
 
+-------------------------------------------------------------------------------
+
 instance CpuDebugM CpuTrans Trace where
-    cpuLog level feature str = return ()
-    cpuDebugAction level feature a = return ()
+    cpuLog = ignoreLog
+    cpuDebugAction = ignoreAction
 
 instance CpuDebugM CpuTrans Debug where
-    cpuLog level feature str = liftIO $ putStrLn str
-    cpuDebugAction level feature a = a
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
 
 instance CpuDebugM CpuTrans Info where
-    cpuLog level feature str = liftIO $ putStrLn str
-    cpuDebugAction level feature a = a
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
 
 instance CpuDebugM CpuTrans Warning where
-    cpuLog level feature str = liftIO $ putStrLn str
-    cpuDebugAction level feature a = a
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
 
 instance CpuDebugM CpuTrans Error where
-    cpuLog level feature str = liftIO $ putStrLn str
-    cpuDebugAction level feature a = a
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
 
 -------------------------------------------------------------------------------
 
@@ -186,8 +219,8 @@ noStop = False
 minCycles = CpuCycles 0
 maxCycles = maxBound :: CpuCyclesDelta
 
-makeCtx :: MemReg -> MemMain -> IOCtx -> Ctx
-makeCtx memReg memMain ioCtx =
+makeCtx :: MemReg -> MemMain -> IOCtx -> DebugCtx -> Ctx
+makeCtx memReg memMain ioCtx debugCtx =
     Ctx memReg
         memMain
         clearFlags
@@ -198,6 +231,7 @@ makeCtx memReg memMain ioCtx =
         maxCycles
         emptyPrismInterrupts
         ioCtx
+        debugCtx
 
 makeTransM :: Ctx -> CpuTrans ()
 makeTransM ctx = put ctx

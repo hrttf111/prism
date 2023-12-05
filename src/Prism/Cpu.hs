@@ -37,7 +37,7 @@ module Prism.Cpu (
         , RunPeripheralsM (..)
         , emptyPage, emptyHandler
         , findMemIndex, findPortIndex
-        , IOCtx (..)
+        , IOCtx (..), DebugCtx(..)
         , PrismInterrupts (..)
         ------------------------------------------------------
         , al, cl, dl, bl, ah, ch, dh, bh

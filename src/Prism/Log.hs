@@ -24,7 +24,7 @@ module Prism.Log (
     , traceInterrupt, traceRetInterrupt
 ) where
 
-import Data.Array (Array, array, accumArray, (!), bounds, (//))
+import Data.Array (Array, array, (//))
 import Data.Typeable (typeOf)
 import Data.Bits (shiftL)
 import Numeric (showHex)

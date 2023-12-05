@@ -17,6 +17,7 @@ import Data.Char (toLower)
 import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
+import Data.Array (Array, (!), bounds)
 import System.IO (FilePath, Handle, openFile, hSeek, hFileSize, IOMode(..), SeekMode(..))
 
 import Options.Applicative
@@ -355,6 +356,21 @@ buildPC opts = do
             in
                 IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
+debugCtx = DebugCtx debugPrint fEnable
+    where
+        featureArray =
+            Log.BiosTimer .= Error
+            $ Log.CpuJmp .= Warning
+            $ Log.BiosVideo .= Error
+            $ Log.featureArray
+        debugPrint level feature msg =
+            if fEnable level feature then
+                putStrLn msg
+                else
+                    return ()
+        fEnable level feature =
+            (featureArray ! feature) <= level
+
 runBinary :: AppOpts -> IO ()
 runBinary opts = do
     let binPath_ = binPath opts
@@ -383,7 +399,7 @@ runBinary opts = do
     when (not $ floppyMode opts) $ do
         readCodeToPtr binPath_ ptrMem 0
         return ()
-    let ctx = makeCtx memReg memMain ioCtx
+    let ctx = makeCtx memReg memMain ioCtx debugCtx
     intM <- configureInterrupts memMain 0xFF000 intList
     ctxNew <- runPrismM ctx $ do
         clearRegs
