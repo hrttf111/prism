@@ -4,14 +4,18 @@
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{-# LANGUAGE FlexibleContexts #-}
+-- {-# LANGUAGE TypeFamilies #-}
+
 module Prism.Log (
-    commonF
+    cpuLogT, cpuDebugActionT
 -------------------------------------------------------------------------------
-    , Cpu(..), Instruction(..), Jmp(..)
-    , Pc, Bios, Video, Timer
-    , logFeatureTree
+    , CpuJmp(..), CpuInt(..)
+    , BiosGeneric(..), BiosVideo(..), BiosTimer(..), BiosDisk(..), BiosKeyboard(..)
+-------------------------------------------------------------------------------
+    , logFeatureTree, logFeatureCount
     , showFeatures
-    , (..>>), (..>)
+    , featureArray
 -------------------------------------------------------------------------------
     , traceJmpIntra, traceJmpInter
     , traceCallNear, traceCallIntra, traceCallInter
@@ -19,6 +23,8 @@ module Prism.Log (
     , traceInterrupt, traceRetInterrupt
 ) where
 
+import Data.Array (Array, array, accumArray, (!), bounds)
+import Data.Typeable (typeOf)
 import Data.Bits (shiftL)
 import Numeric (showHex)
 
@@ -28,8 +34,21 @@ import Prism.Cpu
 
 -------------------------------------------------------------------------------
 
-commonF = LogFeature 0
-showFeatures = putStrLn $ show logFeatureTree
+showFeatures = show logFeatureTree
+
+-------------------------------------------------------------------------------
+
+--cpuLogT :: (CpuMonad m, GetLogFeatureVal res, GetLogFeature c1 feature res) => level -> feature -> String -> m ()
+--cpuLogT :: (CpuMonad m, CpuDebugM m level) => level -> feature -> String -> m ()
+--cpuLogT :: (CpuMonad m, CpuDebugM m level, GetLogFeatureVal res, GetLogFeature c1 feature res) => level -> feature -> String -> m ()
+--cpuLogT :: (c1 ~ typeOf logFeatureTree, CpuMonad m, CpuDebugM m level, GetLogFeatureVal res, GetLogFeature c1 feature res) => level -> feature -> String -> m ()
+cpuLogT level feature str = cpuLog level featureId str
+    where
+        featureId = logFeatureTree ..>> feature
+
+cpuDebugActionT level feature m = cpuDebugAction level featureId m
+    where
+        featureId = logFeatureTree ..>> feature
 
 -------------------------------------------------------------------------------
 
@@ -38,7 +57,7 @@ regsToOffset csVal ipVal = ((shiftL (fromIntegral csVal) 4) + (fromIntegral ipVa
 
 traceJmp :: (CpuMonad m) => Uint16 -> Uint16 -> Uint16 -> Uint16 -> String -> m ()
 traceJmp ipValFrom csValFrom ipVal csVal msg =
-    cpuLog Trace commonF $ msg ++ ": "
+    cpuLogT Trace CpuJmp $ msg ++ ": "
                              ++ "(ip=0x" ++ (showHex ipValFrom "")
                              ++ ";cs=0x" ++ (showHex csValFrom "")
                              ++ ";off=" ++ (show offsetFrom)
@@ -53,27 +72,27 @@ traceJmp ipValFrom csValFrom ipVal csVal msg =
 
 traceJmpIntra :: (CpuMonad m) => Uint16 -> m ()
 traceJmpIntra ipVal =
-    cpuDebugAction Trace commonF $ do
+    cpuDebugActionT Trace CpuJmp $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
         traceJmp ipValFrom csValFrom ipVal csValFrom "JMP[Intra]"
 
 traceJmpInter :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceJmpInter ipVal csVal =
-    cpuDebugAction Trace commonF $ do
+    cpuDebugActionT Trace CpuJmp $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
         traceJmp ipValFrom csValFrom ipVal csVal "JMP[Inter]"
 
 traceCallNear :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceCallNear ipValFrom valPlus =
-    cpuDebugAction Trace commonF $ do
+    cpuDebugActionT Trace CpuJmp $ do
         csValFrom <- readOp cs
         traceJmp ipValFrom csValFrom (ipValFrom + valPlus) csValFrom "Call[Near]"
 
 traceCallIntra :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceCallIntra ipValFrom ipVal =
-    cpuDebugAction Trace commonF $ do
+    cpuDebugActionT Trace CpuJmp $ do
         csValFrom <- readOp cs
         traceJmp ipValFrom csValFrom ipVal csValFrom "Call[Intra]"
 
@@ -83,14 +102,14 @@ traceCallInter ipValFrom csValFrom ipVal csVal =
 
 traceRetIntra :: (CpuMonad m) => Uint16 -> m ()
 traceRetIntra ipVal =
-    cpuDebugAction Trace commonF $ do
+    cpuDebugActionT Trace CpuJmp $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
         traceJmp ipValFrom csValFrom ipVal csValFrom "Ret[Intra]"
 
 traceRetInter :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceRetInter ipVal csVal =
-    cpuDebugAction Trace commonF $ do
+    cpuDebugActionT Trace CpuJmp $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
         traceJmp ipValFrom csValFrom ipVal csVal "Ret[Inter]"
@@ -99,10 +118,10 @@ traceRetInter ipVal csVal =
 
 traceInterrupt :: (CpuMonad m) => Uint8 -> m ()
 traceInterrupt int =
-    cpuLog Trace commonF $ "Interrupt = 0x" ++ showHex int ""
+    cpuLogT Trace CpuInt $ "Interrupt = 0x" ++ showHex int ""
 
 traceRetInterrupt :: (CpuMonad m) => m ()
-traceRetInterrupt = cpuLog Trace commonF "Reti"
+traceRetInterrupt = cpuLogT Trace CpuInt "Reti"
 
 -------------------------------------------------------------------------------
 
@@ -179,6 +198,7 @@ mkLevel feature bm = do
     b <- bm
     return $ LFeaturePair (LFeatureLevel feature b (LogFeature n)) ()
 
+{-
 data Cpu = Cpu deriving (Show)
 data Instruction = Instruction deriving (Show)
 data Jmp = Jmp deriving (Show)
@@ -199,5 +219,34 @@ logFeatureTree = LFeatureTree $ evalState (mkLevel Cpu (
                                                     mkLeaf Timer
                                                )
                                           )) 0
+-}
+
+data CpuJmp = CpuJmp deriving (Show)
+data CpuInt = CpuInt deriving (Show)
+
+data BiosGeneric = BiosGeneric deriving (Show)
+data BiosVideo = BiosVideo deriving (Show)
+data BiosTimer = BiosTimer deriving (Show)
+data BiosDisk = BiosDisk deriving (Show)
+data BiosKeyboard = BiosKeyboard deriving (Show)
+
+logFeatures = runState (
+                        mkLeaf CpuJmp .>>>
+                        mkLeaf CpuInt .>>>
+                        mkLeaf BiosGeneric .>>>
+                        mkLeaf BiosVideo .>>>
+                        mkLeaf BiosTimer .>>>
+                        mkLeaf BiosDisk .>>>
+                        mkLeaf BiosKeyboard
+                       ) 0
+
+logFeatureTree = fst logFeatures
+logFeatureCount = snd logFeatures
+
+featureArray :: Array Int Int
+featureArray = setLogLevel 0
+
+setLogLevel :: Int -> Array Int Int
+setLogLevel level = array (1, logFeatureCount) [(i, level) | i <- [1..logFeatureCount]]
 
 --------------------------------------------------------------------------------

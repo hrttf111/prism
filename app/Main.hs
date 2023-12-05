@@ -39,7 +39,6 @@ import Prism.Instructions
 import Prism.GDB
 import Prism.PC
 import qualified Prism.Log as Log
-import Prism.Log ((..>>), (..>))
 
 -------------------------------------------------------------------------------
 
@@ -431,7 +430,8 @@ runBinary opts = do
 
 main :: IO ()
 main = do
-    putStrLn $ show $ Log.logFeatureTree ..> Log.Cpu ..>> Log.Instruction
+    --putStrLn $ show $ Log.logFeatureTree ..> Log.Cpu ..>> Log.Instruction
+    --putStrLn $ show $ Log.logFeatureTree ..> Log.Instruction
     opts <- execParser optsParser
     runBinary opts
     return ()

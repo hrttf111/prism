@@ -167,6 +167,26 @@ data Info = Info deriving (Show)
 data Warning = Warning deriving (Show)
 data Error = Error deriving (Show)
 
+instance Enum Trace where
+    fromEnum _ = 0
+    toEnum _ = Trace
+
+instance Enum Debug where
+    fromEnum _ = 1
+    toEnum _ = Debug
+
+instance Enum Info where
+    fromEnum _ = 2
+    toEnum _ = Info
+
+instance Enum Warning where
+    fromEnum _ = 3
+    toEnum _ = Warning
+
+instance Enum Error where
+    fromEnum _ = 4
+    toEnum _ = Error
+
 newtype LogFeature = LogFeature Int deriving (Eq, Show)
 
 class (Monad m) => CpuDebugM m level where

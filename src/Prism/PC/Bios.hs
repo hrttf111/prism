@@ -24,6 +24,7 @@ import System.CPUTime (getCPUTime)
 
 import Prism.Cpu
 import Prism.Peripherals
+import Prism.Log
 
 -------------------------------------------------------------------------------
 
@@ -271,8 +272,8 @@ writeDiskParamsTables = mapM_ writeTable
                 (MemMain memPtr) = ctxMem s
                 memPtr' = plusPtr memPtr memOffset
                 (srcPtr, srcLen) = BI.toForeignPtr0 content
-            --liftIO $ putStrLn $ "memOffset = " ++ (show memOffset)
-            --liftIO $ putStrLn $ "srcLen = " ++ (show srcLen)
+            cpuLogT Trace BiosDisk $ "memOffset = " ++ (show memOffset)
+                                     ++ "srcLen = " ++ (show srcLen)
             liftIO $ withForeignPtr srcPtr (\ srcPtr ->
                 copyArray memPtr' srcPtr srcLen
                 )
@@ -348,28 +349,27 @@ mkBiosInterrupts = map mkBiosInterrupt [8, 9, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15
 
 processBiosTimerISR :: PcBios -> PrismM PcBios
 processBiosTimerISR bios = do
-    --liftIO $ putStrLn "Int 8 ISR"
     ticks <- liftIO getCPUTime
     let timerPeriod = 54900 -- 54.9 ms ~ 18.2 Hz
         ticksUs = fromIntegral $ div ticks 1000000 -- ps -> us
         diff = ticksUs - (pcTimerLastInt8 $ pcTimer bios)
         timerTicks = pcTimerTicks $ pcTimer bios
         timerTicks' = timerTicks + 1
-    --liftIO $ putStrLn $ "Ticks = " ++ (show timerTicks')
-    --liftIO $ putStrLn $ "Diff = " ++ (show diff)
+    cpuLogT Trace BiosTimer $ "Int 8 ISR"
+                              ++ ",t=" ++ (show timerTicks')
+                              ++ ",d=" ++ (show diff)
     --TODO: check that timer ticks are correct
     writeOp (biosMem32 0x6C) $ fromIntegral timerTicks' -- update timer count
     if diff > timerPeriod then do
-        --liftIO $ putStrLn "Raise interrupt 0x1c"
+        cpuLogT Trace BiosTimer "Raise interrupt 0x1c"
         raiseInterrupt $ PrismInt 0x1c
         return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
         else do
-            --liftIO $ putStrLn "Continue"
             return $ bios { pcTimer = PcTimer (pcTimerLastInt8 $ pcTimer bios) timerTicks }
 
 processBiosKeyboardISR :: PcBios -> PrismM PcBios
 processBiosKeyboardISR bios = do
-    --liftIO $ putStrLn "Int 9 ISR"
+    cpuLogT Trace BiosKeyboard "Int 9 ISR"
     let keyboard = pcBiosKeyboard bios
         shared = pcKeyboardShared keyboard
     res <- liftIO $ atomically $
@@ -443,7 +443,7 @@ processBiosKeyboard bios = do
     case valAh of
         0 -> do -- Get key
             -- suspend, wait for key
-            --liftIO $ putStrLn "Wait key"
+            cpuLogT Trace BiosKeyboard "Wait key"
             bios' <- waitKey bios
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios'
             case keys' of
@@ -477,7 +477,7 @@ processBiosKeyboard bios = do
             writeOp ah valAh
             return bios
         c -> do
-            liftIO $ putStrLn $ "Unsupported keyboard: " ++ show c
+            cpuLogT Error BiosKeyboard $ "Unsupported keyboard: " ++ show c
             return bios
 
 -------------------------------------------------------------------------------
@@ -577,7 +577,6 @@ scrollCopyRange ss distance False =
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
-    --liftIO $ putStrLn $ "Video = " ++ show valAh
     case valAh of
         0 -> do -- Set video mode
             writeOp al 0x30 -- text mode is set
@@ -595,7 +594,7 @@ processBiosVideo bios = do
             row <- fromIntegral <$> readOp dh
             column <- fromIntegral <$> readOp dl
             let vs = pcVideoShared $ pcVideoState bios
-            --liftIO $ putStrLn $ "Set cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
+            cpuLogT Trace BiosVideo $ "Set cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
             liftIO $ atomically $ do
                 s <- readTVar vs
                 let c = videoCursor s
@@ -611,11 +610,9 @@ processBiosVideo bios = do
             writeOp dh $ fromIntegral $ videoCursorColumn cursor
             writeOp dl $ fromIntegral $ videoCursorRow cursor
         6 -> do -- Scroll up
-            --liftIO $ putStrLn "Scroll UP"
             doScroll True
             return ()
         7 -> do -- Scroll down
-            --liftIO $ putStrLn "Scroll DOWN"
             doScroll False
             return ()
         8 -> do -- Get char
@@ -652,7 +649,6 @@ processBiosVideo bios = do
                     let c' = updateCursorPosition console (videoCursor s) char
                     writeTVar vs $ s { videoCursor = c' }
                     return (videoMemory s, getVideoCursorPos s)
-                --putStrLn $ "Video char " ++ show char ++ " to row=" ++ (show row) ++ ", column=" ++ (show column)
                 if char == '\r' || char == '\n' then
                     atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
                     else do
@@ -662,7 +658,7 @@ processBiosVideo bios = do
             writeOp al 3 -- mode (CGA test)
             writeOp ah $ fromIntegral $ videoConsoleColumns console -- number of columns
             writeOp bh 0 -- page
-        c -> liftIO $ putStrLn $ "Unsupported video: " ++ show c
+        c -> cpuLogT Error BiosVideo $ "Unsupported video: " ++ show c
     writeVideoToRam $ pcVideoState bios
     return bios
     where
@@ -680,7 +676,6 @@ processBiosVideo bios = do
                 fillRow rowNum =
                     mapM_ (\ column -> pokeVideoChar console videoPtr rowNum column (defaultChar, attr)) columnRange
         copyRow videoPtr ss srcRow dstRow = do
-                --putStrLn $ (show srcRow) ++ "->" ++ (show dstRow)
                 copyBytes ptr2 ptr1 toCopy
             where
                 toCopy = (videoConsoleCharSize console) * (fromIntegral $ scrollWidth ss)
@@ -695,22 +690,20 @@ processBiosVideo bios = do
             right <- readOp dl -- right column scroll window
             let ss = ScrollScreen top bottom left right
             -- validate scroll
+            cpuDebugActionT Trace BiosVideo $ do
+                cpuLogT Trace BiosVideo $ "  Distance (in rows): " ++ show distance
+                cpuLogT Trace BiosVideo $ "  Attr for blank lines: " ++ show blankAttr
+                cpuLogT Trace BiosVideo $ "  Top row scroll window: " ++ show top
+                cpuLogT Trace BiosVideo $ "  Left column scroll window: " ++ show left
+                cpuLogT Trace BiosVideo $ "  Bottom row scroll window: " ++ show bottom
+                cpuLogT Trace BiosVideo $ "  Right column scroll window: " ++ show right
             liftIO $ do
-            {-
-                putStrLn $ "  Distance (in rows): " ++ show distance
-                putStrLn $ "  Attr for blank lines: " ++ show blankAttr
-                putStrLn $ "  Top row scroll window: " ++ show top
-                putStrLn $ "  Left column scroll window: " ++ show left
-                putStrLn $ "  Bottom row scroll window: " ++ show bottom
-                putStrLn $ "  Right column scroll window: " ++ show right
-                -}
                 let vs = pcVideoShared $ pcVideoState bios
                 ptr <- atomically $ videoMemory <$> readTVar vs
                 if distance == 0 then -- clear screen when distance is 0
                     clearScreen ptr ss blankAttr
                     else do
                         let (step, rowRange) = scrollCopyRange ss distance doUp
-                        --putStrLn $ show rowRange ++ show step
                         mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
                         let (blankStart, blankEnd) = if doUp then
                                 ((scrollScreenTop ss + (scrollHeight ss) - distance)+1, scrollScreenBottom ss)
@@ -724,7 +717,6 @@ processBiosVideo bios = do
 processBiosClock :: PcBios -> PrismM PcBios
 processBiosClock bios = do
     valAh <- readOp ah
-    --liftIO $ putStrLn $ "     BIOS CLOCK " ++ (show valAh)
     case valAh of
         0 -> do -- Get ticks
             let ticks = pcTimerTicks $ pcTimer bios
@@ -757,7 +749,6 @@ processBiosClock bios = do
             writeOp dl day
             return ()
         c -> do
-            --liftIO $ putStrLn $ "Unsupported clock: " ++ show c
             return ()
     return bios
 
@@ -914,7 +905,7 @@ processBiosDisk bios = do
             writeOp ah 0
             return ()
         c -> do
-            --liftIO $ putStrLn $ "Unsupported disk: " ++ show c
+            cpuLogT Trace BiosDisk $ "Unsupported disk: " ++ show c
             return ()
     writeDiskToRam $ pcDisks bios
     return bios
@@ -936,14 +927,12 @@ processBiosPrinter bios = do
 
 processBiosEquipment :: PcBios -> PrismM PcBios
 processBiosEquipment bios = do
-    --liftIO $ putStrLn "     GetEquipment"
     let val = 0x0021 -- 80x25 color mode + 1 diskette
     writeOp ax val
     return bios
 
 processBiosGetMemorySize :: PcBios -> PrismM PcBios
 processBiosGetMemorySize bios = do
-    --liftIO $ putStrLn "      GetMemorySize"
     --writeOp ax 0x280 -- 640K
     writeOp ax 0x27f -- 640K
     return bios
@@ -968,14 +957,12 @@ processBiosReboot bios = do
 processBiosTest :: PcBios -> PrismM PcBios
 processBiosTest bios = do
     valAh <- readOp ah
-    liftIO $ putStrLn "BIOS test interrupt"
-    liftIO $ putStrLn $ "BIOS AH: " ++ (show valAh)
+    cpuLogT Trace BiosGeneric $ "BIOS test interrupt, AH=: " ++ (show valAh)
     writeOp al 89
     return bios
 
 processBiosUserTimerDummy :: PcBios -> PrismM PcBios
 processBiosUserTimerDummy bios = do
-    --liftIO $ putStrLn "User dummy timer interrupt"
     return bios
 
 processBios :: PcBios -> Uint8 -> PrismM PcBios
