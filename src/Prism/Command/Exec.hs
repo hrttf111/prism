@@ -13,6 +13,7 @@ import Foreign.Marshal.Array (pokeArray, copyArray)
 
 import Prism.Cpu
 import Prism.Command.Types
+import qualified Prism.Log as Log
 
 -------------------------------------------------------------------------------
 
@@ -40,7 +41,7 @@ updateComm comm offset = do
     if member offset (commBreakpoints comm) then do
             if commWaitResponse comm then processComm comm
                 else do
-                    liftIO $ putStrLn $ "Break " ++ (show offset)
+                    Log.cpuLogT Warning Log.PrismCommand $ "Break " ++ (show offset)
                     sendCpuMsgIO (commRspQueue comm) PRspCont
                     cpuProcessPause comm
         else

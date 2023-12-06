@@ -18,6 +18,7 @@ import Prism.Peripherals
 import Prism.PC.Pic
 import Prism.PC.Pit
 import Prism.PC.Bios
+import qualified Prism.Log as Log
 
 -------------------------------------------------------------------------------
 
@@ -87,7 +88,7 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
             doHalt = pcHalt $ localPeripherals pcCtx
         put $ cpuCtx' { ctxIO = ioCtx, ctxCyclesP = cyclesP }
         when doHalt $ do
-            liftIO $ putStrLn "HALT"
+            Log.cpuLogT Warning Log.PrismPc "HALT"
             cpuHalt
         return res
         where

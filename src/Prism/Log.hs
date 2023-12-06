@@ -3,14 +3,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE UndecidableInstances #-}
-
 {-# LANGUAGE FlexibleContexts #-}
--- {-# LANGUAGE TypeFamilies #-}
 
 module Prism.Log (
     cpuLogT, cpuDebugActionT
 -------------------------------------------------------------------------------
-    , CpuJmp(..), CpuInt(..)
+    , PrismCommand(..), PrismRun(..), PrismPc(..)
+    , CpuJmpInter(..), CpuJmpIntra(..), CpuCallInter(..), CpuCallIntra(..), CpuInt(..)
     , BiosGeneric(..), BiosVideo(..), BiosTimer(..), BiosDisk(..), BiosKeyboard(..)
 -------------------------------------------------------------------------------
     , logFeatureTree, logFeatureCount
@@ -39,10 +38,6 @@ showFeatures = show logFeatureTree
 
 -------------------------------------------------------------------------------
 
---cpuLogT :: (CpuMonad m, GetLogFeatureVal res, GetLogFeature c1 feature res) => level -> feature -> String -> m ()
---cpuLogT :: (CpuMonad m, CpuDebugM m level) => level -> feature -> String -> m ()
---cpuLogT :: (CpuMonad m, CpuDebugM m level, GetLogFeatureVal res, GetLogFeature c1 feature res) => level -> feature -> String -> m ()
---cpuLogT :: (c1 ~ typeOf logFeatureTree, CpuMonad m, CpuDebugM m level, GetLogFeatureVal res, GetLogFeature c1 feature res) => level -> feature -> String -> m ()
 cpuLogT level feature str = cpuLog level featureId str
     where
         featureId = logFeatureTree ..>> feature
@@ -56,9 +51,8 @@ cpuDebugActionT level feature m = cpuDebugAction level featureId m
 regsToOffset :: Uint16 -> Uint16 -> Int
 regsToOffset csVal ipVal = ((shiftL (fromIntegral csVal) 4) + (fromIntegral ipVal)) :: Int
 
-traceJmp :: (CpuMonad m) => Uint16 -> Uint16 -> Uint16 -> Uint16 -> String -> m ()
-traceJmp ipValFrom csValFrom ipVal csVal msg =
-    cpuLogT Trace CpuJmp $ msg ++ ": "
+traceJmp feature ipValFrom csValFrom ipVal csVal msg =
+    cpuLogT Trace feature $ msg ++ ": "
                              ++ "(ip=0x" ++ (showHex ipValFrom "")
                              ++ ";cs=0x" ++ (showHex csValFrom "")
                              ++ ";off=" ++ (show offsetFrom)
@@ -73,47 +67,47 @@ traceJmp ipValFrom csValFrom ipVal csVal msg =
 
 traceJmpIntra :: (CpuMonad m) => Uint16 -> m ()
 traceJmpIntra ipVal =
-    cpuDebugActionT Trace CpuJmp $ do
+    cpuDebugActionT Trace CpuJmpIntra $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
-        traceJmp ipValFrom csValFrom ipVal csValFrom "JMP[Intra]"
+        traceJmp CpuJmpIntra ipValFrom csValFrom ipVal csValFrom "JMP[Intra]"
 
 traceJmpInter :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceJmpInter ipVal csVal =
-    cpuDebugActionT Trace CpuJmp $ do
+    cpuDebugActionT Trace CpuJmpInter $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
-        traceJmp ipValFrom csValFrom ipVal csVal "JMP[Inter]"
+        traceJmp CpuJmpInter ipValFrom csValFrom ipVal csVal "JMP[Inter]"
 
 traceCallNear :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceCallNear ipValFrom valPlus =
-    cpuDebugActionT Trace CpuJmp $ do
+    cpuDebugActionT Trace CpuJmpIntra $ do
         csValFrom <- readOp cs
-        traceJmp ipValFrom csValFrom (ipValFrom + valPlus) csValFrom "Call[Near]"
+        traceJmp CpuJmpIntra ipValFrom csValFrom (ipValFrom + valPlus) csValFrom "Call[Near]"
 
 traceCallIntra :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceCallIntra ipValFrom ipVal =
-    cpuDebugActionT Trace CpuJmp $ do
+    cpuDebugActionT Trace CpuCallIntra $ do
         csValFrom <- readOp cs
-        traceJmp ipValFrom csValFrom ipVal csValFrom "Call[Intra]"
+        traceJmp CpuCallIntra ipValFrom csValFrom ipVal csValFrom "Call[Intra]"
 
 traceCallInter :: (CpuMonad m) => Uint16 -> Uint16 -> Uint16 -> Uint16 -> m ()
 traceCallInter ipValFrom csValFrom ipVal csVal =
-    traceJmp ipValFrom csValFrom ipVal csVal "Call[Inter]"
+    traceJmp CpuCallInter ipValFrom csValFrom ipVal csVal "Call[Inter]"
 
 traceRetIntra :: (CpuMonad m) => Uint16 -> m ()
 traceRetIntra ipVal =
-    cpuDebugActionT Trace CpuJmp $ do
+    cpuDebugActionT Trace CpuCallIntra $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
-        traceJmp ipValFrom csValFrom ipVal csValFrom "Ret[Intra]"
+        traceJmp CpuCallIntra ipValFrom csValFrom ipVal csValFrom "Ret[Intra]"
 
 traceRetInter :: (CpuMonad m) => Uint16 -> Uint16 -> m ()
 traceRetInter ipVal csVal =
-    cpuDebugActionT Trace CpuJmp $ do
+    cpuDebugActionT Trace CpuCallInter $ do
         csValFrom <- readOp cs
         ipValFrom <- readOp ip
-        traceJmp ipValFrom csValFrom ipVal csVal "Ret[Inter]"
+        traceJmp CpuCallInter ipValFrom csValFrom ipVal csVal "Ret[Inter]"
 
 -------------------------------------------------------------------------------
 
@@ -199,7 +193,14 @@ mkLevel feature bm = do
     b <- bm
     return $ LFeaturePair (LFeatureLevel feature b (LogFeature n)) ()
 
-data CpuJmp = CpuJmp deriving (Show)
+data PrismCommand = PrismCommand deriving (Show)
+data PrismRun = PrismRun deriving (Show)
+data PrismPc = PrismPc deriving (Show)
+
+data CpuJmpInter = CpuJmpInter deriving (Show)
+data CpuJmpIntra = CpuJmpIntra deriving (Show)
+data CpuCallInter = CpuCallInter deriving (Show)
+data CpuCallIntra = CpuCallIntra deriving (Show)
 data CpuInt = CpuInt deriving (Show)
 
 data BiosGeneric = BiosGeneric deriving (Show)
@@ -209,8 +210,14 @@ data BiosDisk = BiosDisk deriving (Show)
 data BiosKeyboard = BiosKeyboard deriving (Show)
 
 logFeatures = runState (
-                        mkLeaf CpuJmp .>>>
+                        mkLeaf PrismCommand .>>>
+                        mkLeaf PrismRun .>>>
+                        mkLeaf PrismPc .>>>
+                        mkLeaf CpuJmpInter .>>>
+                        mkLeaf CpuJmpIntra .>>>
                         mkLeaf CpuInt .>>>
+                        mkLeaf CpuCallInter .>>>
+                        mkLeaf CpuCallIntra .>>>
                         mkLeaf BiosGeneric .>>>
                         mkLeaf BiosVideo .>>>
                         mkLeaf BiosTimer .>>>

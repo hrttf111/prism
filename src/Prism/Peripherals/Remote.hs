@@ -41,7 +41,7 @@ type RemoteTrans p = RemoteTransM (PeripheralsRemote p) IO
 
 runRemotePeripherals :: IOQueue -> Peripheral (RemoteTrans p) p -> RemoteTrans p () -> IO ()
 runRemotePeripherals queue peripherals actions = do
-    putStrLn "Tread start"
+    putStrLn "Thread start"
     ((runStateT . runRemote $ actions) remote)
     putStrLn "Thread end"
     where

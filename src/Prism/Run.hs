@@ -10,6 +10,7 @@ import Numeric (showHex)
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Command
+import qualified Prism.Log as Log
 
 -------------------------------------------------------------------------------
 
@@ -29,7 +30,7 @@ runCpuInstruction dec offset = do
     instr <- peekInstrBytesM offset
     let (b1, _, _, _, _, _) = instr
         func = instrFunc $ (decInstr dec) ! b1
-    --liftIO $ putStrLn $ "0x" ++ (showHex offset "") ++ ": " ++ (showHex b1 "")
+    Log.cpuLogT Trace Log.PrismRun $ "0x" ++ (showHex offset "") ++ ": " ++ (showHex b1 "")
     func instr
 
 {-# INLINE runCpuInstruction #-}

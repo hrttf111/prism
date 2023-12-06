@@ -6,14 +6,13 @@
     - test timers/video/keyboard +
     - initial CPU test
     - find bootable media
- - Debug infra
-    - Logger in CPU monad
-        - Needs to be disabled when not needed without changing the code
-        - Write logs to file
-    - Trace jumps
-    - Trace interrupts
-    - Trace BIOS calls
-    - Remove MonadIO from CPU monad
+ - Debug infra +
+    - Logger in CPU monad +
+        - Needs to be disabled when not needed without changing the code +
+        - Write logs to file +
+    - Trace jumps +
+    - Trace interrupts +
+    - Trace BIOS calls +
  - Testing infra
     - Compare values in memory after the test
     - Use QEMU as a backend to compare results

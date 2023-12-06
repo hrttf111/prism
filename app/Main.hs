@@ -5,8 +5,9 @@ module Main where
 import Control.Monad (foldM, when)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Data.Semigroup ((<>))
-import Data.Maybe (maybeToList)
+import Data.Maybe (maybeToList, maybe)
 import qualified Data.Map.Strict (fromList)
+import Data.List (intercalate)
 
 import Control.Monad.Logger (LogLevel(..))
 import Control.Monad.Trans.State
@@ -18,7 +19,7 @@ import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import Data.Array (Array, (!), bounds)
-import System.IO (FilePath, Handle, openFile, hSeek, hFileSize, IOMode(..), SeekMode(..))
+import System.IO (FilePath, Handle, openFile, hClose, hPutStrLn, hSeek, hFileSize, IOMode(..), SeekMode(..))
 
 import Options.Applicative
 import Options.Applicative.Types
@@ -330,7 +331,8 @@ data AppOpts = AppOpts {
         pauseGDB :: !Bool,
         disableVty :: !Bool,
         floppyMode :: !Bool,
-        logLevelGDB :: !String
+        logLevelGDB :: !String,
+        externalLog :: !Bool
     }
 
 buildPC :: (MonadIO m) => AppOpts -> m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
@@ -356,16 +358,24 @@ buildPC opts = do
             in
                 IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
 
-debugCtx = DebugCtx debugPrint fEnable
+debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
     where
         featureArray =
             Log.BiosTimer .= Error
-            $ Log.CpuJmp .= Warning
+            $ Log.CpuJmpInter .= Trace
+            $ Log.CpuCallInter .= Trace
+            $ Log.CpuInt .= Error
             $ Log.BiosVideo .= Error
+            $ Log.PrismPc .= Warning
             $ Log.featureArray
         debugPrint level feature msg =
             if fEnable level feature then
                 putStrLn msg
+                else
+                    return ()
+        debugPrintToFile handle = \level feature msg ->
+            if fEnable level feature then
+                hPutStrLn handle msg
                 else
                     return ()
         fEnable level feature =
@@ -375,6 +385,11 @@ runBinary :: AppOpts -> IO ()
 runBinary opts = do
     let binPath_ = binPath opts
         enableGDB_ = enableGDB opts
+        logPath = "./prism-log"
+    logFile <- if (externalLog opts) then
+        Just <$> openFile logPath AppendMode
+        else
+            return Nothing
     comm <- newPrismComm enableGDB_
     when enableGDB_ (do
         when (pauseGDB opts) (do
@@ -399,7 +414,7 @@ runBinary opts = do
     when (not $ floppyMode opts) $ do
         readCodeToPtr binPath_ ptrMem 0
         return ()
-    let ctx = makeCtx memReg memMain ioCtx debugCtx
+    let ctx = makeCtx memReg memMain ioCtx (debugCtx logFile)
     intM <- configureInterrupts memMain 0xFF000 intList
     ctxNew <- runPrismM ctx $ do
         clearRegs
@@ -417,7 +432,8 @@ runBinary opts = do
             shutdown v
         _ -> return ()
     liftIO . putStrLn . show $ ctxNew
-    printRegs $ ctxReg ctxNew
+    putStrLn =<< ((intercalate "\n") <$> (printRegs $ ctxReg ctxNew))
+    mapM_ hClose logFile
     where
         doRunVty = not $ disableVty opts
         startVtyThread queue keyboard video =
@@ -461,6 +477,7 @@ main = do
                     switch (long "pause" <> help "Pause after start") <*>
                     switch (long "no-vty" <> help "Disable vty") <*>
                     switch (long "floppy" <> help "Floppy mode") <*>
-                    strOption (long "gdb-log" <> help "GDB log level: debug, info, error" <> value "debug")
+                    strOption (long "gdb-log" <> help "GDB log level: debug, info, error" <> value "debug") <*>
+                    switch (long "external-log" <> help "Write logs to an external file")
 
 -------------------------------------------------------------------------------

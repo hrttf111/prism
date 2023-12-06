@@ -225,21 +225,23 @@ showRegIP memReg = do
     val <- readRegIP memReg
     return $ "IP = 0x" ++ showHex val ""
 
-printRegs :: MonadIO m => MemReg -> m ()
-printRegs memReg = do
-    (liftIO . putStrLn) =<< showRegs3 memReg al ah ax
-    (liftIO . putStrLn) =<< showRegs3 memReg bl bh bx
-    (liftIO . putStrLn) =<< showRegs3 memReg cl ch cx
-    (liftIO . putStrLn) =<< showRegs3 memReg dl dh dx
-    (liftIO . putStrLn) =<< showReg16 memReg sp
-    (liftIO . putStrLn) =<< showReg16 memReg bp
-    (liftIO . putStrLn) =<< showReg16 memReg si
-    (liftIO . putStrLn) =<< showReg16 memReg di
-    (liftIO . putStrLn) =<< showRegSeg memReg es
-    (liftIO . putStrLn) =<< showRegSeg memReg cs
-    (liftIO . putStrLn) =<< showRegSeg memReg ss
-    (liftIO . putStrLn) =<< showRegSeg memReg ds
-    (liftIO . putStrLn) =<< showRegIP memReg
+printRegs :: MonadIO m => MemReg -> m [String]
+printRegs memReg =
+    mapM (\a -> a) [
+        showRegs3 memReg al ah ax,
+        showRegs3 memReg bl bh bx,
+        showRegs3 memReg cl ch cx,
+        showRegs3 memReg dl dh dx,
+        showReg16 memReg sp,
+        showReg16 memReg bp,
+        showReg16 memReg si,
+        showReg16 memReg di,
+        showRegSeg memReg es,
+        showRegSeg memReg cs,
+        showRegSeg memReg ss,
+        showRegSeg memReg ds,
+        showRegIP memReg
+        ]
 
 -------------------------------------------------------------------------------
 
