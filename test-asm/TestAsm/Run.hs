@@ -88,13 +88,14 @@ createTestEnv1 ioCtx threadId instrList intList preStartAction = liftIO $ do
                 (execNative asmTest ptrA)
                 (execP memReg memMain decoder)
     where
+        debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
         memSize = 65000
         codeStart = 12000 :: Uint16
         intHandlersOffset = 60000
         execNative asmTest ptrA mainCode =
             MemReg <$> execCode asmTest mainCode ptrA
         execP memReg memMain decoder mainCode runner = do
-            let ctx = makeCtx memReg memMain ioCtx
+            let ctx = makeCtx memReg memMain ioCtx debugCtx
                 instrEnd = fromIntegral codeStart + B.length mainCode
             runPrismM ctx $ func1 decoder mainCode instrEnd runner
         func1 decoder mainCode instrEnd runner = do
