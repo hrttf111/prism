@@ -20,6 +20,7 @@
         - Find how to run arbitrary binary in QEMU
             - -bios
             - -device loader
+            - qemu-system-i386 -drive file=boot.img,index=0,media=disk,format=raw -boot c -net none
         - Find if it is possible to get QEMU memory after execution
             - https://wiki.qemu.org/Documentation/QMP
             - memsave
