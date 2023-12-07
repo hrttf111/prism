@@ -10,3 +10,4 @@ data/bios_test
 data/*.map
 data/*.list
 prism-log
+mem.data

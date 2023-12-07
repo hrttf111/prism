@@ -14,9 +14,19 @@
     - Trace interrupts +
     - Trace BIOS calls +
  - Testing infra
+    - Create custom code which runs in QEMU
     - Compare values in memory after the test
     - Use QEMU as a backend to compare results
+        - Find how to run arbitrary binary in QEMU
+            - -bios
+            - -device loader
         - Find if it is possible to get QEMU memory after execution
+            - https://wiki.qemu.org/Documentation/QMP
+            - memsave
+              { 'command': 'memsave',
+                'data': {'val': 'int', 'size': 'int', 'filename': 'str', '*cpu-index': 'int'} }
+            - -qmp tcp:localhost:4444,server,wait=off
+            - -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram
 
 -------------------------------------------------------
 
