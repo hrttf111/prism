@@ -19,7 +19,7 @@ import Data.Word (Word8)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import Data.Array (Array, (!), bounds)
-import System.IO (FilePath, Handle, openFile, hClose, hPutStrLn, hSeek, hFileSize, IOMode(..), SeekMode(..))
+import System.IO (FilePath, Handle, openFile, hClose, hSetBuffering, BufferMode(..), hPutStrLn, hSeek, hFileSize, IOMode(..), SeekMode(..))
 
 import Options.Applicative
 import Options.Applicative.Types
@@ -366,6 +366,8 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             $ Log.CpuCallInter .= Trace
             $ Log.CpuInt .= Error
             $ Log.BiosVideo .= Error
+            $ Log.BiosDisk .= Debug
+            $ Log.PrismCommand .= Debug
             $ Log.PrismPc .= Warning
             $ Log.featureArray
         debugPrint level feature msg =
@@ -387,7 +389,12 @@ runBinary opts = do
         enableGDB_ = enableGDB opts
         logPath = "./prism-log"
     logFile <- if (externalLog opts) then
-        Just <$> openFile logPath AppendMode
+        Just <$> do
+            h <- openFile logPath AppendMode
+            --hSetBuffering h NoBuffering
+            hSetBuffering h LineBuffering
+            hPutStrLn h "Start log"
+            return h
         else
             return Nothing
     comm <- newPrismComm enableGDB_
@@ -403,7 +410,9 @@ runBinary opts = do
                             "error" -> LevelError
                             "no" -> LevelOther $ T.pack "no"
                             _ -> LevelError
-        forkIO $ gdbThread logLevel $ GDBState True 1000 0 (commCmdQueue comm) (commRspQueue comm)
+            gdbAddress = "127.0.0.1"
+            gdbPort = 20001
+        forkIO $ gdbThread logLevel logFile gdbAddress gdbPort $ GDBState True 1000 0 (commCmdQueue comm) (commRspQueue comm)
         return ()
         )
     memReg <- allocMemReg

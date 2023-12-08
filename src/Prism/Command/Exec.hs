@@ -6,6 +6,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Data.ByteString as B
 import Data.ByteString.Internal (createUptoN)
 import Data.Word (Word32, Word16, Word8)
+import Data.Maybe (isJust)
 import Data.Set
 
 import Foreign.Ptr
@@ -41,7 +42,7 @@ updateComm comm offset = do
     if member offset (commBreakpoints comm) then do
             if commWaitResponse comm then processComm comm
                 else do
-                    Log.cpuLogT Warning Log.PrismCommand $ "Break " ++ (show offset)
+                    Log.cpuLogT Debug Log.PrismCommand $ "Break " ++ (show offset)
                     sendCpuMsgIO (commRspQueue comm) PRspCont
                     cpuProcessPause comm
         else
@@ -50,6 +51,7 @@ updateComm comm offset = do
 processComm :: PrismComm -> PrismM PrismComm
 processComm comm = do
     msg <- tryRecvCpuMsgIO (commCmdQueue comm)
+    when (isJust msg) $ Log.cpuLogT Debug Log.PrismCommand $ show msg
     case msg of
         Just m -> case m of
             PCmdBreak addr -> cpuProcessBreak comm addr
@@ -105,7 +107,7 @@ cpuProcessCont comm =
     return $ comm {commWaitResponse = False}
 
 cpuProcessStop :: PrismComm -> PrismM PrismComm
-cpuProcessStop comm = cpuHalt >> return comm
+cpuProcessStop comm = cpuHalt >> (return $ comm {commWaitResponse = False})
 
 cpuProcessMemWrite :: PrismComm -> Int -> [Word8] -> PrismM PrismComm
 cpuProcessMemWrite comm addr bytes = do

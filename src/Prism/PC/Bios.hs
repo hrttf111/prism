@@ -130,7 +130,7 @@ instance Show PcVideo where
     show _ = "PcVideo"
 
 data PcChs = PcChs {
-    pcChsCylinder :: Uint16,
+    pcChsCylinder :: Uint16, -- track
     pcChsHead :: Uint16,
     pcChsSector :: Uint16
 } deriving (Show)
@@ -772,6 +772,7 @@ getDiskOpReq bios = do
                 chs = PcChs trackNum headNum (fromIntegral (sectorNum .&. 0x3F) :: Uint16)
                 diskOffset = chsToOffset drive chs
                 diskDataLen = sectorsToInt numSectors
+            cpuLogT Debug BiosDisk $ "CHS = " ++ (show chs)
             return $ Just $ DiskOpReq diskOffset diskDataLen memOffset memPtr' numSectors drive
         _ -> do
             return Nothing
@@ -779,23 +780,27 @@ getDiskOpReq bios = do
 processBiosDisk :: PcBios -> PrismM PcBios
 processBiosDisk bios = do
     valAh <- readOp ah
+    cpuLogT Debug BiosDisk $ "DiskCmd = " ++ (show valAh)
     case valAh of
         2 -> do -- read sectors
             req <- getDiskOpReq bios
             case req of
-                Just (DiskOpReq diskOffset dataLen memOffset memPtr numSectors drive) -> do
+                Just op@(DiskOpReq diskOffset dataLen memOffset memPtr numSectors drive) -> do
+                    cpuLogT Debug BiosDisk $ "Read op=" ++ (show op)
                     bs <- liftIO $ (pcDiskRead drive) diskOffset dataLen
                     copyMainMem memOffset bs
                     writeOp al numSectors -- sectors read
                     return ()
                 _ -> do
+                    cpuLogT Debug BiosDisk "Wrong read op"
                     writeOp al 0 -- sectors read
                     writeOp ah 15 -- no drive
                     return ()
         3 -> do -- write sectors
             req <- getDiskOpReq bios
             case req of
-                Just (DiskOpReq diskOffset dataLen memOffset memPtr numSectors drive) -> do
+                Just op@(DiskOpReq diskOffset dataLen memOffset memPtr numSectors drive) -> do
+                    cpuLogT Debug BiosDisk $ "Write op=" ++ (show op)
                     memData <- liftIO $ BI.create dataLen (\ dataPtr ->
                         copyArray dataPtr memPtr dataLen
                         )
@@ -803,6 +808,7 @@ processBiosDisk bios = do
                     writeOp al numSectors -- sectors read
                     return ()
                 _ -> do
+                    cpuLogT Debug BiosDisk "Wrong write op"
                     writeOp al 0 -- sectors read
                     writeOp ah 15 -- no drive
                     return ()

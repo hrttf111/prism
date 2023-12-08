@@ -21,22 +21,25 @@ CPU 8086
     pop ax
 %endmacro
 
-SECTION bootloader start=7C00h
+;SECTION bootloader start=7C00h
+SECTION bootloader start=0
 ;mov sp, 0xf00
 ;mov ss, sp
 mov sp, 0
 mov ss, sp
 mov sp, 0x7C00
 ;
-mov bx, 0x7C00
+mov bx, 8000h
 mov ax, 0
 mov es, ax
 mov ah, 2
-mov al, 255 ; number of sectors
-mov ch, 3   ; track
-mov cl, 9   ; sector
+mov al, 63 ; number of sectors
+;mov ch, 3   ; track
+;mov cl, 9   ; sector
+mov ch, 1   ; track
+mov cl, 29  ; sector
 mov dh, 0   ; head
-mov dl, 1   ; drive
+mov dl, 0   ; drive
 int 0x13
 ;mov al, 10
 jmp 1000h:START

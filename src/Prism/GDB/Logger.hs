@@ -10,7 +10,7 @@ import Data.Time.Format
 import qualified Data.Time.Clock.POSIX as PTime
 import qualified Data.Text as T
 
-import System.IO (FilePath, stdout, Handle, withFile, IOMode(..))
+import System.IO (FilePath, Handle, withFile, IOMode(..))
 import System.Log.FastLogger (fromLogStr)
 
 -------------------------------------------------------------------------------
@@ -61,8 +61,8 @@ logToStdout h loc src level msg = do
   where
     ls = fromLogStr $ makeLogStr loc src level msg
 
-runMyLoggingT :: MonadIO m => LogLevel -> LoggingT m a -> m a
-runMyLoggingT logLevel = (`runLoggingT` logToStdout stdout) . filterLogger filterL
+runMyLoggingT :: MonadIO m => LogLevel -> Handle -> LoggingT m a -> m a
+runMyLoggingT logLevel logFile = (`runLoggingT` logToStdout logFile) . filterLogger filterL
     where
         filterL _ level = logLevel <= level
 
