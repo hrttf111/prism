@@ -141,7 +141,7 @@ chsToOffset disk (PcChs c' h' s') = ((c * n_heads + h) * n_sectors + (s - 1)) * 
         dp = pcDiskParams disk
         n_heads = fromIntegral $ pcChsHead dp
         n_sectors = fromIntegral $ pcChsSector dp
-        c = fromIntegral c'
+        c = fromIntegral c' -- track
         h = fromIntegral h'
         s = fromIntegral s'
 
@@ -214,7 +214,6 @@ maxFloppySize = 1440 * 1024
 
 diskFloppySizeToChs :: Int -> Maybe PcChs
 diskFloppySizeToChs diskSize | diskSize > maxFloppySize = Nothing
---diskFloppySizeToChs _ = Just $ PcChs 160 1 18
 diskFloppySizeToChs _ = Just $ PcChs 80 2 18
 
 diskParamTableContent :: PcDiskIndex -> PcDisk -> B.ByteString

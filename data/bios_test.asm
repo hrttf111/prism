@@ -23,24 +23,56 @@ CPU 8086
 
 ;SECTION bootloader start=7C00h
 SECTION bootloader start=0
-;mov sp, 0xf00
-;mov ss, sp
-mov sp, 0
-mov ss, sp
+mov ax, 0
+mov ss, ax
 mov sp, 0x7C00
+sti
 ;
-mov bx, 8000h
+mov ah, 0xe
+mov al, '1'
+int 0x10
+;
+mov bx, 0x8000
+mov ax, 0
+mov es, ax
+mov ah, 2  ; read
+mov al, 10  ; number of sectors
+mov ch, 1  ; track
+mov cl, 11 ; sector
+mov dh, 1  ; head
+int 0x13
+mov [0x7E00], al
+mov [0x7E01], ah
+;
+mov bx, 9000h
 mov ax, 0
 mov es, ax
 mov ah, 2
-mov al, 66 ; number of sectors
-;mov ch, 3   ; track
-;mov cl, 9   ; sector
-mov ch, 1   ; track
-mov cl, 29  ; sector
+mov al, 18  ; number of sectors
+mov ch, 2   ; track
+mov cl, 1   ; sector
 mov dh, 0   ; head
 mov dl, 0   ; drive
 int 0x13
+mov [0x7E00], al
+mov [0x7E01], ah
+;
+mov bx, 0
+mov ax, 1000h
+mov es, ax
+mov ah, 2
+mov al, 3   ; number of sectors
+mov ch, 3   ; track
+mov cl, 3   ; sector
+mov dh, 1   ; head
+mov dl, 0   ; drive
+int 0x13
+mov [0x7E00], al
+mov [0x7E01], ah
+;ELP:
+;sti
+;hlt
+;    jmp ELP
 ;mov al, 10
 jmp 1000h:START
 times 510-($-$$) db 0
@@ -52,6 +84,30 @@ str_test db "1234567890abcdef",0
 str_int db "Timer interrupt",0
 str_end db "End",0
 str_empty db 0
+
+SECTION other start=8200h
+str21 db "0000",0
+
+SECTION other start=8400h
+str22 db "1111",0
+
+SECTION other start=8400h
+str23 db "2222",0
+
+SECTION other start=8600h
+str24 db "3333",0
+
+SECTION other start=8800h
+str25 db "4444",0
+
+SECTION other start=8a00h
+str26 db "5555",0
+
+SECTION other start=8c00h
+str27 db "6666",0
+
+SECTION other start=8e00h
+str28 db "7777",0
 
 SECTION .data start=9000h
 str1 db "11110---112333",0

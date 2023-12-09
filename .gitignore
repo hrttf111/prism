@@ -6,6 +6,7 @@ data/test_1
 prism.cabal
 *.cabal
 **.swp
+**.img
 data/bios_test
 data/*.map
 data/*.list
