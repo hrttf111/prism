@@ -33,7 +33,7 @@ mov bx, 8000h
 mov ax, 0
 mov es, ax
 mov ah, 2
-mov al, 63 ; number of sectors
+mov al, 66 ; number of sectors
 ;mov ch, 3   ; track
 ;mov cl, 9   ; sector
 mov ch, 1   ; track
