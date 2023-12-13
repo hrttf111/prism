@@ -21,6 +21,29 @@ CPU 8086
     pop ax
 %endmacro
 
+%macro read_disk 3
+    mov ax, %2
+    mov es, ax
+    mov ah, 2  ; read
+    mov bx, WORD [%1]
+    mov al, [bx+0x7C00+disk_offset.num_sect]
+    mov ch, [bx+0x7C00+disk_offset.track]
+    mov cl, [bx+0x7C00+disk_offset.sector]
+    mov dh, [bx+0x7C00+disk_offset.head]
+    mov dl, 0   ; drive
+    mov bx, %3
+    int 0x13
+    mov [0x7E00], al
+    mov [0x7E01], ah
+%endmacro
+
+struc disk_offset
+    .track: resb 1
+    .sector: resb 1
+    .head: resb 1
+    .num_sect resb 1
+endstruc
+
 ;SECTION bootloader start=7C00h
 SECTION bootloader start=0
 mov ax, 0
@@ -29,54 +52,73 @@ mov sp, 0x7C00
 sti
 ;
 mov ah, 0xe
-mov al, '1'
+mov al, 'R'
 int 0x10
 ;
-mov bx, 0x8000
-mov ax, 0
-mov es, ax
-mov ah, 2  ; read
-mov al, 10  ; number of sectors
-mov ch, 1  ; track
-mov cl, 11 ; sector
-mov dh, 1  ; head
+mov dl, 0 ; diskette 0
+mov ah, 8 ; read params
 int 0x13
-mov [0x7E00], al
-mov [0x7E01], ah
+mov [0x7E00], bl ; type, 04 - 1.44
+mov [0x7E01], ch ; tracks
+mov [0x7E03], cl ; sectors
+mov [0x7E04], dh ; heads
+
+cmp cl, 36
+jne OFF18
+mov [ptr_offset1], WORD offset1_36
+mov [ptr_offset2], WORD offset2_36
+jmp READ_DISK
+OFF18:
+mov [ptr_offset1], WORD offset1_18
+mov [ptr_offset2], WORD offset2_18
+READ_DISK:
+
+read_disk ptr_offset1, 0, 0x8000
+read_disk ptr_offset2, 0x1000, 0
 ;
-mov bx, 9000h
-mov ax, 0
-mov es, ax
-mov ah, 2
-mov al, 18  ; number of sectors
-mov ch, 2   ; track
-mov cl, 1   ; sector
-mov dh, 0   ; head
-mov dl, 0   ; drive
-int 0x13
-mov [0x7E00], al
-mov [0x7E01], ah
-;
-mov bx, 0
-mov ax, 1000h
-mov es, ax
-mov ah, 2
-mov al, 3   ; number of sectors
-mov ch, 3   ; track
-mov cl, 3   ; sector
-mov dh, 1   ; head
-mov dl, 0   ; drive
-int 0x13
-mov [0x7E00], al
-mov [0x7E01], ah
-;ELP:
-;sti
-;hlt
-;    jmp ELP
-;mov al, 10
+
 jmp 1000h:START
+
+ELP:
+sti
+hlt
+    jmp ELP
+
+ptr_offset1 dw 1
+ptr_offset2 dw 1
+
+offset1_18:
+    istruc disk_offset
+        at disk_offset.track,    db 1
+        at disk_offset.sector,   db 11
+        at disk_offset.head,     db 1
+        at disk_offset.num_sect, db 16
+    iend
+offset2_18:
+    istruc disk_offset
+        at disk_offset.track,    db 3
+        at disk_offset.sector,   db 3
+        at disk_offset.head,     db 1
+        at disk_offset.num_sect, db 3
+    iend
+offset1_36:
+    istruc disk_offset
+        at disk_offset.track,    db 0
+        at disk_offset.sector,   db 29
+        at disk_offset.head,     db 1
+        at disk_offset.num_sect, db 16
+    iend
+offset2_36:
+    istruc disk_offset
+        at disk_offset.track,    db 1
+        at disk_offset.sector,   db 21
+        at disk_offset.head,     db 1
+        at disk_offset.num_sect, db 3
+    iend
 times 510-($-$$) db 0
 dw 0xAA55
+
+;absolute 0x7E10
 
 SECTION other start=8000h
 str2 db "2322",0
@@ -85,30 +127,30 @@ str_int db "Timer interrupt",0
 str_end db "End",0
 str_empty db 0
 
-SECTION other start=8200h
-str21 db "0000",0
-
-SECTION other start=8400h
-str22 db "1111",0
-
-SECTION other start=8400h
-str23 db "2222",0
-
-SECTION other start=8600h
-str24 db "3333",0
-
-SECTION other start=8800h
-str25 db "4444",0
-
-SECTION other start=8a00h
-str26 db "5555",0
-
-SECTION other start=8c00h
-str27 db "6666",0
-
-SECTION other start=8e00h
-str28 db "7777",0
-
+;SECTION other start=8200h
+;str21 db "0000",0
+;
+;SECTION other start=8400h
+;str22 db "1111",0
+;
+;SECTION other start=8400h
+;str23 db "2222",0
+;
+;SECTION other start=8600h
+;str24 db "3333",0
+;
+;SECTION other start=8800h
+;str25 db "4444",0
+;
+;SECTION other start=8a00h
+;str26 db "5555",0
+;
+;SECTION other start=8c00h
+;str27 db "6666",0
+;
+;SECTION other start=8e00h
+;str28 db "7777",0
+;
 SECTION .data start=9000h
 str1 db "11110---112333",0
 numbers db "0123456789abcdef",0
@@ -289,7 +331,8 @@ mov ax, 0
 mov ax, WORD [int_counter]
 mov bx, WORD [counter_1]
 mov dx, 0
-hlt
+;hlt
+jmp 0000h:ELP
 
 TIMER_INT:
 push cx

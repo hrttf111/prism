@@ -95,6 +95,48 @@ asmMacros = [untrimming|
     %endmacro
 |]
 -------------------------------------------------------------------------------
+asmMacros16 = [untrimming|
+    BITS 16
+    CPU 8086
+
+    %macro save_regs 0
+        push ax
+        push bx
+        push cx
+        push dx
+        push di
+        push si
+        push bp
+        push sp
+    %endmacro
+
+    %macro load_regs 0
+        pop sp
+        pop bp
+        pop si
+        pop di
+        pop dx
+        pop cx
+        pop bx
+        pop ax
+    %endmacro
+
+    %macro set_regs 1
+        mov WORD [%1], ax
+        mov WORD [%1+2], cx
+        mov WORD [%1+4], dx
+        mov WORD [%1+6], bx
+        mov WORD [%1+8], sp
+        mov WORD [%1+10], bp
+        mov WORD [%1+12], si
+        mov WORD [%1+14], di
+        mov WORD [%1+32], es
+        mov WORD [%1+34], cs
+        mov WORD [%1+36], ss
+        mov WORD [%1+38], ds
+    %endmacro
+|]
+-------------------------------------------------------------------------------
 asmHeader = [untrimming|
     save_regs
     push rdi

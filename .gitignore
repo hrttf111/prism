@@ -8,6 +8,7 @@ prism.cabal
 **.swp
 **.img
 data/bios_test
+data/test_exec
 data/*.map
 data/*.list
 prism-log
