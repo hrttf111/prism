@@ -1,27 +1,8 @@
 BITS 16
 CPU 8086
 
-%macro save_regs 0
-    push ax
-    push bx
-    push cx
-    push dx
-    push di
-    push si
-    push bp
-    push sp
-%endmacro
-
-%macro load_regs 0
-    pop sp
-    pop bp
-    pop si
-    pop di
-    pop dx
-    pop cx
-    pop bx
-    pop ax
-%endmacro
+;------------------------------------------------------------------------------;
+;Macros and defines
 
 %macro save_regs 1
     mov WORD [%1], ax
@@ -38,48 +19,111 @@ CPU 8086
     mov WORD [%1+38], ds
 %endmacro
 
-REG_AREA equ 0x7E04
+%macro detect_disk 1
+    mov dl, 0 ; diskette 0
+    mov ah, 8 ; read params
+    int 0x13
+    ;
+    cmp cl, 36
+    jne OFF18
+    mov [%1], WORD offset1_36
+    jmp DETECT_DONE
+    OFF18:
+    mov [%1], WORD offset1_18
+    DETECT_DONE:
+%endmacro
 
+%macro read_disk 3
+    mov ax, %2
+    mov es, ax
+    mov ah, 2  ; read
+    mov bx, WORD [%1]
+    mov al, [bx+BOOTLOADER_START+disk_offset.num_sect]
+    mov ch, [bx+BOOTLOADER_START+disk_offset.track]
+    mov cl, [bx+BOOTLOADER_START+disk_offset.sector]
+    mov dh, [bx+BOOTLOADER_START+disk_offset.head]
+    mov dl, 0   ; drive
+    mov bx, %3
+    int 0x13
+    mov [disk_res], al
+    mov [disk_res+1], ah
+%endmacro
+
+BOOTLOADER_START equ 0x7C00
+REG_AREA equ 0x7E10
+MAGIC_1 equ 0xEE88
+MAGIC_2 equ 0xFF99
+
+struc disk_offset
+    .track: resb 1
+    .sector: resb 1
+    .head: resb 1
+    .num_sect resb 1
+endstruc
+
+;------------------------------------------------------------------------------;
 ;Bootloader
 
 SECTION bootloader start=0
 mov ax, 0
 mov ss, ax
-mov sp, 0x7C00
+mov sp, BOOTLOADER_START
 sti
-;
-;read disk
-mov bx, 0
-mov ax, 1000h
-mov es, ax
-mov ah, 2
-mov al, 3   ; number of sectors
-mov ch, 3   ; track
-mov cl, 3   ; sector
-mov dh, 1   ; head
-mov dl, 0   ; drive
-int 0x13
-mov [0x7E00], al
-mov [0x7E01], ah
-;jmp 1000h:START
-jmp far [START]
+
+;read test to memory
+detect_disk ptr_offset1
+read_disk ptr_offset1, 0x1000, 0
+
+;start test
+;cli
+jmp 1000h:START
 
 STOP:
-;save_reg REG_AREA
-mov WORD [magic_num], 0xEE88
-mov WORD [magic_num+2], 0xFF99
+mov WORD [magic_num], MAGIC_1
+save_regs REG_AREA
+mov WORD [magic_num+2], MAGIC_2
+
 FINISHED:
     sti
     hlt
     jmp FINISHED
+
+;------------------------------------------------------------------------------;
+;Constants
+
+offset1_18:
+    istruc disk_offset
+        at disk_offset.track,    db 3
+        at disk_offset.sector,   db 3
+        at disk_offset.head,     db 1
+        at disk_offset.num_sect, db 3
+    iend
+offset1_36:
+    istruc disk_offset
+        at disk_offset.track,    db 1
+        at disk_offset.sector,   db 21
+        at disk_offset.head,     db 1
+        at disk_offset.num_sect, db 3
+    iend
 times 510-($-$$) db 0
 dw 0xAA55
 
+;------------------------------------------------------------------------------;
+;Vars
+
 absolute 0x7E00
 magic_num resw 2
+disk_res resb 2
+ptr_offset1 resw 1
 
+;------------------------------------------------------------------------------;
 ;Test section
 
 SECTION .text start=10000h
 START:
-    jmp 0:STOP
+    mov ax, 1
+    mov bx, 2
+    mov cx, 3
+    mov dx, 4
+    ;return to bootloader
+    jmp 0:(STOP+BOOTLOADER_START)
