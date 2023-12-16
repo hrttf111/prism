@@ -17,11 +17,10 @@
     - Create custom code which runs in QEMU
     - Compare values in memory after the test
     - Use QEMU as a backend to compare results
-        - Find how to run arbitrary binary in QEMU
-            - -bios
+        - Find how to run arbitrary binary in QEMU +
             - -device loader
-            - qemu-system-i386 -drive file=boot.img,index=0,media=disk,format=raw -boot c -net none
-            - create bootable FD image
+            - qemu-system-i386 -drive file=boot.img,index=0,media=disk,format=raw -boot c -net none +
+            - create bootable FD image +
                 - create prologue which loads test body and intializes registers. Starts at 0x7C00
                 - test body will be loaded at 0x8000 address
                 - at 0x7E00 there will be area for dumped registers
@@ -30,29 +29,28 @@
                 - epilogue will dump all registers and flags to "dump area"
                 - epilogue will write magic value to specific location
                 - epilogue will end wilh loop of hlt
-        - Find if it is possible to get QEMU memory after execution
+        - Find if it is possible to get QEMU memory after execution +
+            - -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram +
             - https://wiki.qemu.org/Documentation/QMP
             - memsave
               { 'command': 'memsave',
                 'data': {'val': 'int', 'size': 'int', 'filename': 'str', '*cpu-index': 'int'} }
             - -qmp tcp:localhost:4444,server,wait=off
-            - -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram
         - Test sequence
+            - make bootable image +
+                - take into account that qemu may not be able to detect FD type +
+                - boot sectors will always be 512 bytes +
+                - but tracks might be arbitrary big +
             - make two types of test application
                 - one to run in prism
                 - second to run at qemu
-            - make bootable iso image
-                - take into account that qemu may not be able to detect FD type
-                - boot sectors will always be 512 bytes
-                - but tracks might be arbitrary big
-                - maybe implement code to detect geometry?
             - start qemu
-            - wait until qemu finishes running test
-                - wait 500ms
+            - wait until qemu finishes running test +
+                - wait 500ms +
                 - alternative is to implement TCP client(JSON API) which periodically checks magic number in qemu
-            - stop qemu via "kill 15"
+            - stop qemu via "kill 15" +
                 - alternative is to stop it via JSON API
-            - read test memory area + dump area from RAM file
+            - read test memory area + dump area from RAM file +
                 - alternative is to read memory directly from qemu via JSON API
 
 -------------------------------------------------------
