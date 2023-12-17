@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module TestTransfer where
 
@@ -15,6 +16,185 @@ import TestAsm.Common
 import NeatInterpolation
 
 -------------------------------------------------------------------------------
+
+testMov1 env =
+    describe "MOV [8] REG <- IMM" $ do
+        it "All regs" $ do
+            runTest env ([untrimming|
+                mov al, 11
+                mov bl, 12
+                mov cl, 13
+                mov dl, 14
+                mov ah, 15
+                mov bh, 16
+                mov ch, 17
+                mov dh, 18
+            |]) $ do
+                cmpOperandsSources [al, bl, cl, dl, ah, bh, ch, dh]
+        it "All regs1" $ do
+            runTest env ([text|
+                mov al, 11
+                mov bl, al
+                mov cl, bl
+                mov dl, dl
+                mov ah, dl
+                mov bh, ah
+                mov ch, bh
+                mov dh, ch
+                mov al, dh
+            |]) $ do
+                cmpOperandsSources [al, bl, cl, dl, ah, bh, ch, dh]
+        it "MOV IMM16 to Reg16" $ do
+            runTest env ([text|
+                mov ax, 0x1001
+                mov bx, 0x2002
+                mov cx, 0x3003
+                mov dx, 0x4004
+            |]) $ do
+                cmpOperandsSources [ax, bx, cx, dx]
+        it "MOV IMM16 to SP, BP, SI, DI" $ do
+            runTest env ([text|
+                mov sp, 0x1001
+                mov bp, 0x1002
+                mov si, 0x1003
+                mov di, 0x1004
+            |]) $ do
+                cmpOperandVal sp 0x1001
+                cmpOperandVal bp 0x1002
+                cmpOperandVal si 0x1003
+                cmpOperandVal di 0x1004
+        it "MOV REG to SP, BP, SI, DI" $ do
+            runTest env ([text|
+                mov ax, 0x1001
+                mov bx, 0x1002
+                mov cx, 0x1003
+                mov dx, 0x1004
+                mov sp, ax
+                mov bp, bx
+                mov si, cx
+                mov di, dx
+            |]) $ do
+                cmpOperandVal sp 0x1001
+                cmpOperandVal bp 0x1002
+                cmpOperandVal si 0x1003
+                cmpOperandVal di 0x1004
+        it "XCHG to accumulator Reg8" $ do
+            runTest env ([text|
+                mov al, 0x10
+                mov bl, 0x20
+                mov cl, 0x30
+                mov dl, 0x40
+                xchg al, bl
+                xchg cl, dl
+            |]) $ do
+                cmpOperandsSources [al, bl, cl, dl]
+        it "XCHG to accumulator Reg16" $ do
+            runTest env ([text|
+                mov ax, 0x1001
+                mov bx, 0x2002
+                mov cx, 0x3003
+                mov dx, 0x4004
+                xchg ax, bx
+                xchg cx, dx
+            |]) $ do
+                cmpOperandsSources [ax, bx, cx, dx]
+        it "PUSH Reg16" $ do
+            runTest env ([text|
+                mov ax, 0x1001
+                mov bx, 0x2002
+                mov cx, 0x3003
+                mov dx, 0x4004
+                push ax
+                push bx
+                push cx
+                push dx
+                pop ax
+                pop bx
+                pop cx
+                pop dx
+            |]) $ do
+                cmpOperandsSources [ax, bx, cx, dx]
+        it "PUSH BP" $ do
+            runTest env ([text|
+                mov bp, 0x1010
+                mov bx, 0x2002
+                mov cx, 0x3003
+                mov dx, 0x4004
+                push bp
+                ;push bx
+                ;push cx
+                ;push dx
+                pop ax
+                ;pop bx
+                ;pop cx
+                ;pop dx
+            |]) $ do
+                cmpOperandsSources [ax, bx, cx, dx]
+        it "Test LEA" $ do
+            runTest env ([text|
+                mov bx, 0x2002
+                lea ax, [bx + 120]
+            |]) $ do
+                cmpOperandVal ax (0x2002 + 120)
+                cmpOperandSources ax
+        it "Test LEA disp16" $ do
+            runTest env ([text|
+                mov bx, 0x2002
+                lea ax, [bx + 0x1001]
+            |]) $ do
+                cmpOperandVal ax (0x2002 + 0x1002)
+                cmpOperandSources ax
+        it "Test LEA neg disp" $ do
+            runTest env ([text|
+                mov bx, 0x2002
+                lea ax, WORD [bx - 1]
+            |]) $ do
+                cmpOperandVal ax (0x2002 - 1)
+                cmpOperandSources ax
+        it "Test LEA neg disp16" $ do
+            runTest env ([text|
+                mov bx, 0x2002
+                lea ax, WORD [bx - 0x1000]
+            |]) $ do
+                cmpOperandVal ax (0x2002 - 0x1000)
+                cmpOperandSources ax
+        it "Test LES" $ do
+            runTest env ([text|
+                absolute 0x100
+                    reg_mem    resw    1
+                    seg_mem    resw    1
+                section .text
+                org 0
+                    mov ax, 0
+                    mov es, ax
+                    mov ds, ax
+                    mov [reg_mem], WORD 0x1234
+                    mov [seg_mem], WORD 0x0060
+                    les ax, [reg_mem]
+                    mov dx, es
+            |]) $ do
+                cmpOperandVal ax 0x1234
+                cmpOperandVal dx 0x0060
+                cmpOperandsSources [ax, dx]
+        {-it "Test LDS" $ do
+            runTest env ([text|
+                absolute 0x100
+                    reg_mem    resw    1
+                    seg_mem    resw    1
+                section .text
+                org 0
+                    mov ax, 0
+                    mov es, ax
+                    mov ds, ax
+                    mov [reg_mem], WORD 0x1234
+                    mov [seg_mem], WORD 0x0060
+                    lds ax, [reg_mem]
+                    mov dx, ds
+            |]) $ do
+                cmpOperandVal ax 0x1234
+                cmpOperandVal dx 0x0060
+                cmpOperandsSources [ax, dx]
+                -}
 
 testMov env = 
     describe "MOV [8] REG <- IMM" $ do

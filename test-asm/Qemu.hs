@@ -183,7 +183,7 @@ execQemu binPath memFile = do
         Nothing ->
             return Nothing
     where
-        sleepTime = 500000 -- 500ms
+        sleepTime = 200000 -- 200ms
         waitEndTime = 100000 -- 100ms
         execQemu_ = executeFile "qemu-system-i386" True qemuOpts Nothing
         qemuOpts = ["-fda", binPath,

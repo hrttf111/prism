@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 import Test.Hspec
 import Test.Hspec.Core.Runner
@@ -9,10 +10,6 @@ import NeatInterpolation
 import Data.Text (Text)
 
 import Prism.Instructions
-
-import Assembler
-import qualified Qemu
-import qualified ExecPrism as Ep
 
 import TestAsm.Run
 import TestAsm.Common
@@ -29,11 +26,12 @@ import TestPC
 
 --For QEMU
 import Prism.Cpu
-import Prism.Run
 
 -------------------------------------------------------------------------------
 
 doTests env = do
+        let maker2 = PrismQemuEnvMaker
+        testMov1 maker2
         testMov env
         testMovMem env
         testAdd env
@@ -52,8 +50,8 @@ doTests env = do
         testPC x86InstrList
         describe "New tests" $ do
             it "Test1" $ do
-                env <- makeEnv1
-                execPrism1 env ([untrimming|
+                env <- makeTestEnv PrismEnvMaker
+                execTestEnv env ([untrimming|
                     mov ax, 1
                     mov bx, 2
                     mov cx, 3
@@ -71,12 +69,10 @@ doTests env = do
                     showOperandVal (MemPhy8 (0x1000 + 8000))
                     showOperandVal (MemPhy16 (0x1000 + 8000))
                     showOperandVal (MemRange (0x1000 + 8000) (0x1000 + 8020))
-                    --cmpOperandVal dx 4
-                    --cmpOperandVal (MemPhy8 0x8012) 13
                 putStrLn "End newTests"
             it "Qemu" $ do
-                let env = TestEnv1 Qemu.assembleQemu Qemu.ExecutorQemu
-                execPrism1 env ([untrimming|
+                env <- makeTestEnv QemuEnvMaker
+                execTestEnv env ([untrimming|
                     mov WORD [0x9800], 0x1234
                     mov ax, 1
                     mov bx, 2
@@ -90,15 +86,12 @@ doTests env = do
                     showOperandVal ds
                     showOperandVal ss
                     showOperandVal sp
-                    --showOperandVal (MemPhy8 (0x1000 + 8000))
                     showOperandVal (MemPhy16 0x9800)
                     showOperandVal (MemRange 0x7E00 0x7E20)
                 putStrLn "End newTests"
             it "Both" $ do
-                let runner = decodeMemIp
-                prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
-                let env = TestEnv2 makeAsmStr16 prismExec Qemu.assembleQemu Qemu.ExecutorQemu
-                execPrism2 env ([untrimming|
+                env <- makeTestEnv PrismQemuEnvMaker
+                execTestEnv env ([untrimming|
                     mov WORD [0x9800], 0x1234
                     mov ax, 1
                     mov bx, 2

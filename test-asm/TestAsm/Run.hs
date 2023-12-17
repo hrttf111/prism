@@ -30,6 +30,7 @@ import Prism.Instructions (internalInstrList, x86InstrList)
 import TestAsm.Common
 import Assembler
 
+import qualified Qemu
 import qualified ExecPrism as Ep
 
 -------------------------------------------------------------------------------
@@ -208,21 +209,61 @@ execCodeTest asmTest (MemReg ptrA) code = liftIO $ do
 
 -------------------------------------------------------------------------------
 
-makeEnv1 :: IO (TestEnv1 Ep.ExecutorPrism)
-makeEnv1 = do
-    prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
-    return $ TestEnv1 makeAsmStr16 prismExec
+data PrismEnvMaker = PrismEnvMaker
+
+instance TestEnvMaker PrismEnvMaker (TestEnv1 Ep.ExecutorPrism) where
+    makeTestEnv _ = do
+        prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
+        return $ TestEnv1 Nothing makeAsmStr16 prismExec
+        where
+            runner = decodeMemIp
+
+data QemuEnvMaker = QemuEnvMaker
+
+instance TestEnvMaker QemuEnvMaker (TestEnv1 Qemu.ExecutorQemu) where
+    makeTestEnv _ = do
+        return $ TestEnv1 Nothing Qemu.assembleQemu Qemu.ExecutorQemu
+
+data PrismQemuEnvMaker = PrismQemuEnvMaker
+
+instance TestEnvMaker PrismQemuEnvMaker (TestEnv2 Ep.ExecutorPrism Qemu.ExecutorQemu) where
+    makeTestEnv _ = do
+        prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
+        return $ TestEnv2 makeAsmStr16 prismExec Qemu.assembleQemu Qemu.ExecutorQemu
+        where
+            runner = decodeMemIp
+
+-------------------------------------------------------------------------------
+
+makePrismPeripheralsEnv :: (MonadIO m, PeripheralsTestCreator mL pL) =>
+                            pR ->
+                            [PeripheralPort (RemoteTrans pR)] ->
+                            [PeripheralMem (RemoteTrans pR)] ->
+                            pL ->
+                            [PeripheralPort mL] ->
+                            [PeripheralMem mL] ->
+                            [InterruptHandlerLocation] ->
+                            PrismComm ->
+                            PrismM () ->
+                            m (TestEnv1 Ep.ExecutorPrism)
+makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList comm preStartAction = do
+    queue <- liftIO $ createIOQueue
+    let ioCtx = createTestPeripherals peripheralL queue
+    threadId <- liftIO . forkIO $ runRemotePeripherals queue peripheralR execPeripheralsOnce
+    prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx runner
+    return $ TestEnv1 (Just threadId) makeAsmStr16 prismExec
     where
-        runner = decodeMemIp
-
-execPrism1 env program seq = do
-    code <- (testEnv1Assemble env) program
-    res <- execProgram (testEnv1Executor env) code
-    runSeq (res, ()) seq
-
-execPrism2 env program seq = do
-    code1 <- (testEnv2Assemble1 env) program
-    res1 <- execProgram (testEnv2Executor1 env) code1
-    code2 <- (testEnv2Assemble2 env) program
-    res2 <- execProgram (testEnv2Executor2 env) code2
-    runSeq (res1, res2) seq
+        debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
+        runner decoder _ = do
+            preStartAction
+            decodeHaltCpu decoder comm
+        memSize = 1024 * 1024
+        pageSize = 1024
+        (peripheralR, peripheralL) = createPeripheralsLR devR
+                                                         devL
+                                                         memSize
+                                                         pageSize
+                                                         portsR
+                                                         memsR
+                                                         portsL
+                                                         memsL

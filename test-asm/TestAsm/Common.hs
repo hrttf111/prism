@@ -44,6 +44,7 @@ data TestEnv = TestEnv {
     }
 
 data TestEnv1 executor = TestEnv1 {
+        testEnv1PeripheralThreadId :: Maybe ThreadId,
         testEnv1Assemble :: (Text -> IO B.ByteString),
         testEnv1Executor :: executor
     }
@@ -54,6 +55,32 @@ data TestEnv2 executor1 executor2 = TestEnv2 {
         testEnv2Assemble2 :: (Text -> IO B.ByteString),
         testEnv2Executor2 :: executor2
     }
+
+class TestEnvE env s m | env -> s where
+    execTestEnv :: env -> Text -> SeqM s () -> m ()
+
+instance (ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, ()) IO where
+    execTestEnv env program seq = do
+        code <- (testEnv1Assemble env) program
+        res <- execProgram (testEnv1Executor env) code
+        runSeq (res, ()) seq
+        return ()
+
+instance (ProgramExecutor exec1 res1 IO, ProgramExecutor exec2 res2 IO) => TestEnvE (TestEnv2 exec1 exec2) (res1, res2) IO where
+    execTestEnv env program seq = do
+        code1 <- (testEnv2Assemble1 env) program
+        res1 <- execProgram (testEnv2Executor1 env) code1
+        code2 <- (testEnv2Assemble2 env) program
+        res2 <- execProgram (testEnv2Executor2 env) code2
+        runSeq (res1, res2) seq
+        return ()
+
+class TestEnvMaker maker env | maker -> env where
+    makeTestEnv :: maker -> IO env
+
+runTest maker program seq = do
+    env <- makeTestEnv maker
+    execTestEnv env program seq
 
 -------------------------------------------------------------------------------
 
