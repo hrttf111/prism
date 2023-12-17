@@ -26,11 +26,12 @@ import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import qualified Data.ByteString as B
 import Data.Either (either)
+import Data.List (intercalate)
 
 import Prism.Cpu
 
 import Assembler (makeAsm)
-import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..))
+import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..), AllRegs(..))
 
 -------------------------------------------------------------------------------
 
@@ -306,5 +307,11 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy16 Uint16 m where
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m where
     readSourceOp epr (MemRange start end) =
         MemRangeRes <$> mapM (\mem -> readSourceOp epr $ MemPhy8 $ fromIntegral mem) [start..end]
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes AllRegs String m where
+    readSourceOp er _ = liftIO $
+        B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
+            (intercalate "\n") <$> (printRegs $ MemReg $ castPtr ptr)
+            )
 
 -------------------------------------------------------------------------------

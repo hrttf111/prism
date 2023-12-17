@@ -215,7 +215,6 @@ makeEnv1 = do
     where
         runner = decodeMemIp
 
---execPrism1 :: (HasCallStack) => TestEnv -> Text -> Expectation
 execPrism1 env program seq = do
     code <- (testEnv1Assemble env) program
     res <- execProgram (testEnv1Executor env) code

@@ -27,13 +27,9 @@ import TestString
 import TestPeripherals
 import TestPC
 
-import Prism.Run
-
 --For QEMU
-import qualified Data.ByteString as B
-import Data.List (intercalate)
-import Foreign.Ptr (castPtr)
 import Prism.Cpu
+import Prism.Run
 
 -------------------------------------------------------------------------------
 
@@ -96,7 +92,7 @@ doTests env = do
                     showOperandVal sp
                     --showOperandVal (MemPhy8 (0x1000 + 8000))
                     showOperandVal (MemPhy16 0x9800)
-                    --showOperandVal (MemRange (0x1000 + 8000) (0x1000 + 8020))
+                    showOperandVal (MemRange 0x7E00 0x7E20)
                 putStrLn "End newTests"
             it "Both" $ do
                 let runner = decodeMemIp
@@ -109,6 +105,8 @@ doTests env = do
                     mov cx, 3
                     mov dx, WORD [0x9800]
                 |]) $ do
+                    showAllRegs
+                    showAllRegsR
                     cmpOperandVal ax 1
                     cmpOperandSources ax
                     cmpOperandsSources [ax, bx, cx, dx]
@@ -119,13 +117,5 @@ main = do
     env <- createTestEnv x86InstrList
     runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
     return ()
-    where
-        {-printRes (Right (Qemu.AsmRes regs _ _)) = do
-            B.useAsCStringLen regs (\(ptr, len) ->
-                putStrLn =<< ((intercalate "\n") <$> (printRegs $ MemReg $ castPtr ptr))
-                )
-        printRes (Left err) =
-            putStrLn err
-            -}
 
 -------------------------------------------------------------------------------

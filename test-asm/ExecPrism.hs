@@ -6,6 +6,8 @@ module ExecPrism where
 import Control.Monad.Trans (MonadIO, liftIO)
 import qualified Data.ByteString as B
 
+import Data.List (intercalate)
+
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Run
@@ -13,7 +15,7 @@ import Prism.Command
 import Prism.Peripherals
 import Prism.Instructions (internalInstrList)
 
-import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..))
+import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..), AllRegs(..))
 
 -------------------------------------------------------------------------------
 
@@ -101,5 +103,9 @@ instance (MonadIO m) => OperandSupport ExecutorPrismRes MemPhy16 Uint16 m where
 instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRange MemRangeRes m where
     readSourceOp epr (MemRange start end) =
         MemRangeRes <$> mapM (\mem -> readOpRaw (eprMemMain epr) $ MemPhy8 $ fromIntegral mem) [start..end]
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes AllRegs String m where
+    readSourceOp epr _ =
+        (intercalate "\n") <$> (printRegs $ eprMemReg epr)
 
 -------------------------------------------------------------------------------

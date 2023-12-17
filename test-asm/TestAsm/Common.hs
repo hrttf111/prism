@@ -66,6 +66,8 @@ instance Show MemRangeRes where
         where
             printHex s b = "0x" ++ (showHex b "") ++ ", " ++ s
 
+data AllRegs = AllRegs deriving (Show, Eq)
+
 -------------------------------------------------------------------------------
 
 class (MemRegManipulator a MemReg v) => RegTest a v | a -> v where
@@ -105,6 +107,21 @@ class (Monad m) => HasSourceR s m | m -> s where
 
 class (Monad m) => OperandSupport source oper val m | oper -> val where
     readSourceOp :: source -> oper -> m val
+
+showAllRegsL :: (HasCallStack, HasSourceL sl m, OperandSupport sl AllRegs String m, MonadIO m) => m ()
+showAllRegsL = do
+    sourceL <- getSourceL
+    val <- readSourceOp sourceL AllRegs
+    liftIO $ putStrLn val
+
+showAllRegsR :: (HasCallStack, HasSourceR sr m, OperandSupport sr AllRegs String m, MonadIO m) => m ()
+showAllRegsR = do
+    sourceR <- getSourceR
+    val <- readSourceOp sourceR AllRegs
+    liftIO $ putStrLn val
+
+showAllRegs :: (HasCallStack, HasSourceL sl m, OperandSupport sl AllRegs String m, MonadIO m) => m ()
+showAllRegs = showAllRegsL
 
 showOperandVal :: (HasCallStack, Show op, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> m ()
 showOperandVal op = do
