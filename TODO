@@ -52,6 +52,53 @@
                 - alternative is to stop it via JSON API
             - read test memory area + dump area from RAM file +
                 - alternative is to read memory directly from qemu via JSON API
+        - New testing infra
+            - Align addresses between Prism and QEMU tests
+            - New infra to check state of CPU after the test
+                - Allow testing registers
+                - Allow testing values in memory
+                - Allow to compare values between Prism and Native/QEMU
+
+-------------------------------------------------------
+
+execAndCmp env text cmpSeq
+
+execAndCmp env $ [text|
+    mov al, 1
+    mov bl, 2
+    mov cl, 3
+    mov dl, 4
+|] $ do
+    cmpRegAll
+    cmpRegAllExcept [dl, cl]
+    cmpRegs [al, bl]
+    cmpMem word 0x8000
+    cmpMemRange 0x9000 0x9004
+    cmpMemRanges [(0x1000, 0x1100), (0x2000, 0x2345)]
+    cmpFlags [if, af]
+    cmpFlagsExcept [zf]
+    al `shouldEq` 2
+    (MemWord 0x9000) `shouldEq` 0x1234
+    (MemRange 0x8010 0x8234) `shouldEq` [0, 1, 2, 3, ...]
+    (Flags [if, zf]) `shouldEq` [True, False]
+
+class HasSourceL s m where
+    getSourceL :: m s
+
+class HasSourceR s m where
+    getSourceR :: m s
+
+cmpReg :: (HasSourceL sl m, HasSourceR sr m, MonadIO m, RegRead sl Reg, RegRead sr m) => Reg -> m a
+cmpReg reg = do
+    sourceL <- getSourceL
+    sourceR <- getSourceR
+    regL <- readReg sourceL reg
+    regR <- readReg sourceR reg
+    liftIO $ regL `shouldBe` regR
+
+execCmpSeq :: Env -> Seq a -> Expectation
+execCmpSeq env seq = do
+    runSeq seq
 
 -------------------------------------------------------
 

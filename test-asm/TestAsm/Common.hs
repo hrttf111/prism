@@ -1,6 +1,15 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+
+{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
+
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module TestAsm.Common where
 
@@ -8,6 +17,9 @@ import Test.Hspec
 import Test.Hspec.Expectations
 
 import Control.Concurrent
+import Control.Monad (when)
+import Control.Monad.Trans (MonadIO, liftIO)
+import Control.Monad.State.Strict
 
 import Data.Text (Text)
 import qualified Data.ByteString as B
@@ -27,6 +39,11 @@ data TestEnv = TestEnv {
         assembleNative16 :: (Text -> IO B.ByteString),
         executeNative :: (B.ByteString -> IO MemReg),
         executePrism :: (B.ByteString -> PrismRunner -> IO Ctx)
+    }
+
+data TestEnv1 executor = TestEnv1 {
+        testEnv1Assemble :: (Text -> IO B.ByteString),
+        testEnv1Executor :: executor
     }
 
 -------------------------------------------------------------------------------
@@ -57,5 +74,68 @@ flagsShouldEq :: (HasCallStack) => Flags -> MemReg -> Expectation
 flagsShouldEq flags memReg = do
     (flagsN, _) <- readRegRaw memReg flagsInternal
     flags `shouldBe` flagsN
+
+-------------------------------------------------------------------------------
+
+class (Monad m) => HasSourceL s m | m -> s where
+    getSourceL :: m s
+
+class (Monad m) => HasSourceR s m | m -> s where
+    getSourceR :: m s
+
+class (Monad m) => OperandSupport source oper val m | oper -> val where
+    readSourceOp :: source -> oper -> m val
+
+cmpOperandVal :: (HasCallStack, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> val -> m ()
+cmpOperandVal op val = do
+    sourceL <- getSourceL
+    valL <- readSourceOp sourceL op
+    liftIO $ valL `shouldBe` val
+
+cmpOperandsVals :: (HasCallStack, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => [op] -> [val] -> m ()
+cmpOperandsVals ops vals = do
+    when ((length ops) /= (length vals)) $
+        liftIO $ expectationFailure $ "OPs len != VALs len: " ++ (show $ length ops) ++ " != " ++ (show $ length vals)
+    mapM_ (\(op, val) -> cmpOperandVal op val) $ zip ops vals
+
+cmpOperandSources :: (HasCallStack, Show val, Eq val, HasSourceL sl m, HasSourceR sr m, OperandSupport sl op val m, OperandSupport sr op val m, MonadIO m) => op -> m ()
+cmpOperandSources op = do
+    sourceL <- getSourceL
+    sourceR <- getSourceR
+    valL <- readSourceOp sourceL op
+    valR <- readSourceOp sourceR op
+    liftIO $ valL `shouldBe` valR
+
+cmpOperandsSources :: (HasCallStack, Show val, Eq val, HasSourceL sl m, HasSourceR sr m, OperandSupport sl op val m, OperandSupport sr op val m, MonadIO m) => [op] -> m ()
+cmpOperandsSources ops =
+    mapM_ cmpOperandSources ops
+
+-------------------------------------------------------------------------------
+
+class ProgramExecutor exec res m | exec m -> res where
+    execProgram :: exec -> B.ByteString -> m res
+
+-------------------------------------------------------------------------------
+
+newtype SeqTransM s m a = SeqTransM {
+    runSeqTM  :: (StateT s m) a
+} deriving (Monad, Applicative, Functor, MonadState s)
+
+instance MonadTrans (SeqTransM s) where
+    lift = SeqTransM . lift
+
+instance MonadIO m => MonadIO (SeqTransM s m) where
+    liftIO = lift . liftIO
+
+type SeqM s = SeqTransM s IO
+
+instance (s ~ (s1, s2)) => HasSourceL s1 (SeqM s) where
+    getSourceL = fst <$> get
+
+instance (s ~ (s1, s2)) => HasSourceR s2 (SeqM s) where
+    getSourceR = snd <$> get
+
+runSeq :: (HasCallStack) => s -> SeqM s () -> IO s
+runSeq s m = snd <$> (runStateT $ runSeqTM m) s
 
 -------------------------------------------------------------------------------

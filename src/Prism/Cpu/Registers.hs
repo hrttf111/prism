@@ -251,4 +251,10 @@ instance MemRegManipulator Reg8 MemReg Uint8 where
 instance MemRegManipulator Reg16 MemReg Uint16 where
     readRegRaw = readReg16
 
+instance MemOpManipulator Reg8 MemReg Uint8 where
+    readOpRaw = readReg8
+
+instance MemOpManipulator Reg16 MemReg Uint16 where
+    readOpRaw = readReg16
+
 -------------------------------------------------------------------------------

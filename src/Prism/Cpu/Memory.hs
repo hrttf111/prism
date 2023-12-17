@@ -133,6 +133,12 @@ instance Operand MemPhyDir32 CpuTrans Uint32 where
         MemMain mm <- ctxMem <$> get
         liftIO $ pokeByteOff mm offset val
 
+instance MemOpManipulator MemPhy8 MemMain Uint8 where
+    readOpRaw (MemMain mm) (MemPhy8 offset) = liftIO $ peekByteOff mm offset
+
+instance MemOpManipulator MemPhy16 MemMain Uint16 where
+    readOpRaw (MemMain mm) (MemPhy16 offset) = liftIO $ peekByteOff mm offset
+
 -------------------------------------------------------------------------------
 
 instance MemAddress MemSeg8 CpuTrans Uint8 where

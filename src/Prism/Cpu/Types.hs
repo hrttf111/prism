@@ -62,6 +62,9 @@ class RegDecoder a where
 class MemRegManipulator a p v | a p -> v where
     readRegRaw :: (MonadIO m) => p -> a -> m v
 
+class MemOpManipulator a p v | a p -> v where
+    readOpRaw :: (MonadIO m) => p -> a -> m v
+
 type OperandReg a m v = (RegDecoder a, Operand a m v)
 
 -------------------------------------------------------------------------------

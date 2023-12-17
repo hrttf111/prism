@@ -51,6 +51,19 @@ doTests env = do
         testProcessor env
         testPeripheral x86InstrList
         testPC x86InstrList
+        describe "New tests" $ do
+            it "Test1" $ do
+                env <- makeEnv1
+                execPrism1 env ([untrimming|
+                    ;mov [0x12], 12
+                    mov ax, 1
+                    mov bx, 2
+                    mov cx, 3
+                    mov dx, 4
+                |]) $ do
+                    cmpOperandVal dx 4
+                    --cmpOperandVal (MemPhy8 0x8012) 13
+                putStrLn "End newTests"
 
 main :: IO ()
 main = do

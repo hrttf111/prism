@@ -25,10 +25,12 @@ import Prism.Decoder
 import Prism.Run
 import Prism.Command
 import Prism.Peripherals
-import Prism.Instructions (internalInstrList)
+import Prism.Instructions (internalInstrList, x86InstrList)
 
 import TestAsm.Common
 import Assembler
+
+import qualified ExecPrism as Ep
 
 -------------------------------------------------------------------------------
 
@@ -205,3 +207,16 @@ execCodeTest asmTest (MemReg ptrA) code = liftIO $ do
     return $ MemReg ptrA
 
 -------------------------------------------------------------------------------
+
+makeEnv1 :: IO (TestEnv1 Ep.ExecutorPrism)
+makeEnv1 = do
+    prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
+    return $ TestEnv1 makeAsmStr16 prismExec
+    where
+        runner = decodeMemIp
+
+--execPrism1 :: (HasCallStack) => TestEnv -> Text -> Expectation
+execPrism1 env program seq = do
+    code <- (testEnv1Assemble env) program
+    res <- execProgram (testEnv1Executor env) code
+    runSeq (res, ()) seq
