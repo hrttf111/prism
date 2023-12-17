@@ -13,7 +13,7 @@ import Prism.Command
 import Prism.Peripherals
 import Prism.Instructions (internalInstrList)
 
-import TestAsm.Common (ProgramExecutor(..), OperandSupport(..))
+import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..))
 
 -------------------------------------------------------------------------------
 
@@ -36,12 +36,13 @@ instance (MonadIO m) => ProgramExecutor ExecutorPrism ExecutorPrismRes m where
         let run = epRunner ep
             decoder = epDecoder ep
             codeStart = epCodeStart ep
+            dataSegment = 8000
         runPrismM (epPrismCtx ep) $ do
             clearRegs
             copyMainMem (fromIntegral codeStart) mainCode
             writeOp ss 1000
             writeOp sp 640
-            writeOp ds (div 8000 16)
+            writeOp ds (div dataSegment 16)
             writeOp cs (div codeStart 16)
             run decoder $ (fromIntegral codeStart + B.length mainCode)
         return $ ExecutorPrismRes (ctxReg $ epPrismCtx ep) (ctxMem $ epPrismCtx ep)
@@ -79,11 +80,15 @@ createPrismExecutorNoIO instrList runner = do
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes Reg8 Uint8 m where
     readSourceOp epr reg =
-        readRegRaw (eprMemReg epr) reg
+        readOpRaw (eprMemReg epr) reg
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes Reg16 Uint16 m where
     readSourceOp epr reg =
-        readRegRaw (eprMemReg epr) reg
+        readOpRaw (eprMemReg epr) reg
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes RegSeg Uint16 m where
+    readSourceOp epr reg =
+        readOpRaw (eprMemReg epr) reg
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes MemPhy8 Uint8 m where
     readSourceOp epr mem =
@@ -92,5 +97,9 @@ instance (MonadIO m) => OperandSupport ExecutorPrismRes MemPhy8 Uint8 m where
 instance (MonadIO m) => OperandSupport ExecutorPrismRes MemPhy16 Uint16 m where
     readSourceOp epr mem =
         readOpRaw (eprMemMain epr) mem
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRange MemRangeRes m where
+    readSourceOp epr (MemRange start end) =
+        MemRangeRes <$> mapM (\mem -> readOpRaw (eprMemMain epr) $ MemPhy8 $ fromIntegral mem) [start..end]
 
 -------------------------------------------------------------------------------

@@ -220,3 +220,10 @@ execPrism1 env program seq = do
     code <- (testEnv1Assemble env) program
     res <- execProgram (testEnv1Executor env) code
     runSeq (res, ()) seq
+
+execPrism2 env program seq = do
+    code1 <- (testEnv2Assemble1 env) program
+    res1 <- execProgram (testEnv2Executor1 env) code1
+    code2 <- (testEnv2Assemble2 env) program
+    res2 <- execProgram (testEnv2Executor2 env) code2
+    runSeq (res1, res2) seq

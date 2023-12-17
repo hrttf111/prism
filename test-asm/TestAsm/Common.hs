@@ -21,6 +21,8 @@ import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict
 
+import Numeric (showHex)
+
 import Data.Text (Text)
 import qualified Data.ByteString as B
 
@@ -45,6 +47,24 @@ data TestEnv1 executor = TestEnv1 {
         testEnv1Assemble :: (Text -> IO B.ByteString),
         testEnv1Executor :: executor
     }
+
+data TestEnv2 executor1 executor2 = TestEnv2 {
+        testEnv2Assemble1 :: (Text -> IO B.ByteString),
+        testEnv2Executor1 :: executor1,
+        testEnv2Assemble2 :: (Text -> IO B.ByteString),
+        testEnv2Executor2 :: executor2
+    }
+
+-------------------------------------------------------------------------------
+
+data MemRange = MemRange Uint32 Uint32 deriving (Show, Eq)
+newtype MemRangeRes = MemRangeRes [Uint8] deriving (Eq)
+
+instance Show MemRangeRes where
+    show (MemRangeRes range) =
+        foldl printHex "" range
+        where
+            printHex s b = "0x" ++ (showHex b "") ++ ", " ++ s
 
 -------------------------------------------------------------------------------
 
@@ -85,6 +105,12 @@ class (Monad m) => HasSourceR s m | m -> s where
 
 class (Monad m) => OperandSupport source oper val m | oper -> val where
     readSourceOp :: source -> oper -> m val
+
+showOperandVal :: (HasCallStack, Show op, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> m ()
+showOperandVal op = do
+    sourceL <- getSourceL
+    valL <- readSourceOp sourceL op
+    liftIO $ putStrLn $ (show op) ++ " = " ++ (show valL)
 
 cmpOperandVal :: (HasCallStack, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> val -> m ()
 cmpOperandVal op val = do

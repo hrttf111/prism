@@ -1,28 +1,36 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Qemu (
     execQemu, execQemuBin
     , execCode
-    , asmBiosHeader, asmBiosFooter
-    , AsmRes(..)
+    , assembleQemu
+    , ExecutorQemu(..), ExecutorQemuRes(..)
 ) where
 
 import NeatInterpolation
 
 import Control.Concurrent (threadDelay)
 
+import Control.Monad.Trans (MonadIO, liftIO)
+
 import System.IO (withFile, IOMode( ReadMode, WriteMode ) )
 import System.Posix.Process (ProcessStatus( Exited ), executeFile, forkProcess, getProcessStatus)
 import System.Posix.Signals (signalProcess, sigTERM)
 import System.Directory (removeFile)
 
-import Foreign.Ptr (plusPtr)
+import Foreign.Ptr (plusPtr, castPtr)
 
 import qualified Data.Text as T
 import Data.Text.Encoding (encodeUtf8)
 import qualified Data.ByteString as B
+import Data.Either (either)
+
+import Prism.Cpu
 
 import Assembler (makeAsm)
+import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..))
 
 -------------------------------------------------------------------------------
 
@@ -198,21 +206,27 @@ execQemuBin bin = do
 
 -------------------------------------------------------------------------------
 
-data AsmRes = AsmRes {
-    asmResRegs :: B.ByteString,
-    asmResMem :: B.ByteString,
-    asmResMemStart :: Int
+data ExecutorQemuRes = ExecutorQemuRes {
+    eqrMemReg :: B.ByteString,
+    eqrMemMain :: B.ByteString,
+    eqrMemMainOffset :: Int
 } deriving (Show)
 
-execCode :: T.Text -> IO (Either String AsmRes)
-execCode programText = do
-    progBin <- makeAsm $ encodeUtf8 fullText
-    resMem <- execQemuBin progBin
+data ExecutorQemu = ExecutorQemu
+
+assembleQemu :: T.Text -> IO B.ByteString
+assembleQemu programText =
+    makeAsm $ encodeUtf8 fullText
+    where
+        fullText = asmBiosHeader `T.append` programText `T.append` asmBiosFooter
+
+execCode :: B.ByteString -> IO (Either String ExecutorQemuRes)
+execCode mainCode = do
+    resMem <- execQemuBin mainCode
     case resMem of
         Just mem -> makeRes mem
         Nothing -> return $ Left "Could not execute QEMU"
     where
-        fullText = asmBiosHeader `T.append` programText `T.append` asmBiosFooter
         regAreaStart = 0x7E10
         regAreaSize = 42
         magic1Offset = 0x7E00
@@ -248,8 +262,49 @@ execCode programText = do
                             dataPtr = plusPtr ptr programDataOffset
                         regs <- B.packCStringLen (regPtr, regAreaSize)
                         progData <- B.packCStringLen (dataPtr, programDataSize)
-                        return $ Right $ AsmRes regs progData programDataOffset
+                        return $ Right $ ExecutorQemuRes regs progData programDataOffset
                         )
                 Left err -> return $ Left err
+
+instance (MonadIO m) => ProgramExecutor ExecutorQemu ExecutorQemuRes m where
+    execProgram _ mainCode = liftIO $ do
+        res <- execCode mainCode
+        return $ either (\_ -> ExecutorQemuRes B.empty B.empty 0) id res
+
+-------------------------------------------------------------------------------
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes Reg8 Uint8 m where
+    readSourceOp er reg = liftIO $
+        B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
+            readOpRaw (MemReg $ castPtr ptr) reg
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes Reg16 Uint16 m where
+    readSourceOp er reg = liftIO $
+        B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
+            readOpRaw (MemReg $ castPtr ptr) reg
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes RegSeg Uint16 m where
+    readSourceOp er reg = liftIO $
+        B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
+            readOpRaw (MemReg $ castPtr ptr) reg
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy8 Uint8 m where
+    readSourceOp er (MemPhy8 offset) = liftIO $
+        B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
+            readOpRaw (MemMain $ castPtr ptr) $ MemPhy8 $ offset + (eqrMemMainOffset er)
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy16 Uint16 m where
+    readSourceOp er (MemPhy16 offset) = liftIO $
+        B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
+            readOpRaw (MemMain $ castPtr ptr) $ MemPhy16 $ offset + (eqrMemMainOffset er)
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m where
+    readSourceOp epr (MemRange start end) =
+        MemRangeRes <$> mapM (\mem -> readSourceOp epr $ MemPhy8 $ fromIntegral mem) [start..end]
 
 -------------------------------------------------------------------------------
