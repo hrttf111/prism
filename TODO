@@ -53,11 +53,11 @@
             - read test memory area + dump area from RAM file +
                 - alternative is to read memory directly from qemu via JSON API
         - New testing infra
+            - New infra to check state of CPU after the test +
+                - Allow testing registers +
+                - Allow testing values in memory +
+                - Allow to compare values between Prism and Native/QEMU +
             - Align addresses between Prism and QEMU tests
-            - New infra to check state of CPU after the test
-                - Allow testing registers
-                - Allow testing values in memory
-                - Allow to compare values between Prism and Native/QEMU
 
 -------------------------------------------------------
 

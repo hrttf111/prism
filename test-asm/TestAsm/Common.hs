@@ -57,8 +57,11 @@ data TestEnv2 executor1 executor2 = TestEnv2 {
 
 -------------------------------------------------------------------------------
 
-data MemRange = MemRange Uint32 Uint32 deriving (Show, Eq)
+data MemRange = MemRange Uint32 Uint32 deriving (Eq)
 newtype MemRangeRes = MemRangeRes [Uint8] deriving (Eq)
+
+instance Show MemRange where
+    show (MemRange start end) = "MemRange 0x" ++ (showHex start "") ++ " 0x" ++ (showHex end "")
 
 instance Show MemRangeRes where
     show (MemRangeRes range) =

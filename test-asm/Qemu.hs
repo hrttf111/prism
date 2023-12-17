@@ -295,13 +295,13 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes RegSeg Uint16 m where
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy8 Uint8 m where
     readSourceOp er (MemPhy8 offset) = liftIO $
         B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
-            readOpRaw (MemMain $ castPtr ptr) $ MemPhy8 $ offset + (eqrMemMainOffset er)
+            readOpRaw (MemMain $ castPtr ptr) $ MemPhy8 $ (eqrMemMainOffset er) - offset
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy16 Uint16 m where
     readSourceOp er (MemPhy16 offset) = liftIO $
         B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
-            readOpRaw (MemMain $ castPtr ptr) $ MemPhy16 $ offset + (eqrMemMainOffset er)
+            readOpRaw (MemMain $ castPtr ptr) $ MemPhy16 $ (eqrMemMainOffset er) - offset
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m where
