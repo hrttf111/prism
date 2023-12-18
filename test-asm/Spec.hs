@@ -30,9 +30,10 @@ import Prism.Cpu
 -------------------------------------------------------------------------------
 
 doTests env = do
-        let maker2 = PrismQemuEnvMaker
-        testMov1 maker2
-        testAdd1 maker2
+        let makerPQ = PrismQemuEnvMaker
+            makerPN = PrismNativeEnvMaker
+        testMov1 makerPQ
+        testAdd1 makerPN
         testMov env
         testMovMem env
         testAdd env

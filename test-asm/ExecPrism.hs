@@ -21,7 +21,9 @@ import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), Me
 
 data ExecutorPrismRes = ExecutorPrismRes {
     eprMemReg :: MemReg,
-    eprMemMain :: MemMain
+    eprMemMain :: MemMain,
+    eprFlags :: Flags,
+    eprEFlags :: EFlags
 }
 
 type PrismRunner = PrismDecoder -> Int -> PrismM ()
@@ -39,7 +41,7 @@ instance (MonadIO m) => ProgramExecutor ExecutorPrism ExecutorPrismRes m where
             decoder = epDecoder ep
             codeStart = epCodeStart ep
             dataSegment = 8000
-        runPrismM (epPrismCtx ep) $ do
+        ctx <- runPrismM (epPrismCtx ep) $ do
             clearRegs
             copyMainMem (fromIntegral codeStart) mainCode
             writeOp ss 1000
@@ -47,7 +49,10 @@ instance (MonadIO m) => ProgramExecutor ExecutorPrism ExecutorPrismRes m where
             writeOp ds (div dataSegment 16)
             writeOp cs (div codeStart 16)
             run decoder $ (fromIntegral codeStart + B.length mainCode)
-        return $ ExecutorPrismRes (ctxReg $ epPrismCtx ep) (ctxMem $ epPrismCtx ep)
+        return $ ExecutorPrismRes (ctxReg ctx)
+                                  (ctxMem ctx)
+                                  (ctxFlags ctx)
+                                  (ctxEFlags ctx)
 
 -------------------------------------------------------------------------------
 
@@ -107,15 +112,16 @@ instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRange MemRangeRes m w
 instance (MonadIO m) => OperandSupport ExecutorPrismRes AllRegs String m where
     readSourceOp epr _ = do
         sr <- (intercalate "\n") <$> (printRegs $ eprMemReg epr)
-        sf <- (intercalate "\n") <$> (printFlags $ eprMemReg epr)
-        return $ sr ++ "\n" ++ sf
+        let sff = (showFlags $ eprFlags epr)
+            sfe = (showEFlags $ eprEFlags epr)
+        return $ sr ++ "\n" ++ sff ++ "\n" ++ sfe
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes Flag Bool m where
-    readSourceOp epr reg =
-        readOpRaw (eprMemReg epr) reg
+    readSourceOp epr flag =
+        return $ getFlagVal flag (eprFlags epr)
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes EFlag Bool m where
-    readSourceOp epr reg =
-        readOpRaw (eprMemReg epr) reg
+    readSourceOp epr flag =
+        return $ getEFlagVal flag (eprEFlags epr)
 
 -------------------------------------------------------------------------------

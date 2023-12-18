@@ -32,6 +32,7 @@ import Assembler
 
 import qualified Qemu
 import qualified ExecPrism as Ep
+import qualified ExecNative
 
 -------------------------------------------------------------------------------
 
@@ -230,6 +231,15 @@ instance TestEnvMaker PrismQemuEnvMaker (TestEnv2 Ep.ExecutorPrism Qemu.Executor
     makeTestEnv _ = do
         prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
         return $ TestEnv2 makeAsmStr16 prismExec Qemu.assembleQemu Qemu.ExecutorQemu
+        where
+            runner = decodeMemIp
+
+data PrismNativeEnvMaker = PrismNativeEnvMaker
+
+instance TestEnvMaker PrismNativeEnvMaker (TestEnv2 Ep.ExecutorPrism ExecNative.ExecutorNative) where
+    makeTestEnv _ = do
+        prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
+        return $ TestEnv2 makeAsmStr16 prismExec ExecNative.assembleNative ExecNative.ExecutorNative
         where
             runner = decodeMemIp
 
