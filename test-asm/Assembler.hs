@@ -21,6 +21,7 @@ import Data.Text.Encoding (encodeUtf8)
 
 import Control.Exception
 
+import System.Posix.IO (stdOutput, stdError, dupTo, openFd, OpenMode(WriteOnly), defaultFileFlags)
 import System.Posix.Process (ProcessStatus( Exited ), executeFile, forkProcess, getProcessStatus)
 import System.Posix.Temp(mkstemp)
 import qualified Control.Exception as E
@@ -197,7 +198,11 @@ makeAsm input =
         processStatus path (Just (Exited ExitSuccess)) =
             Just <$> withFile path ReadMode B.hGetContents
         processStatus _ _ = return Nothing
-        openAsm path pathLib = executeFile "yasm" True (opts path pathLib) Nothing
+        openAsm path pathLib = do
+            nullFd <- openFd "/dev/null" WriteOnly Nothing defaultFileFlags
+            dupTo nullFd stdOutput
+            dupTo nullFd stdError
+            executeFile "yasm" True (opts path pathLib) Nothing
         opts path pathLib = ["-f", "bin", "-p", "nasm", path, "-o", pathLib]
 
 -------------------------------------------------------------------------------

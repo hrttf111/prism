@@ -16,6 +16,7 @@ import Control.Concurrent (threadDelay)
 import Control.Monad.Trans (MonadIO, liftIO)
 
 import System.IO (withFile, IOMode( ReadMode, WriteMode ) )
+import System.Posix.IO (stdOutput, stdError, dupTo, openFd, OpenMode(WriteOnly), defaultFileFlags)
 import System.Posix.Process (ProcessStatus( Exited ), executeFile, forkProcess, getProcessStatus)
 import System.Posix.Signals (signalProcess, sigTERM)
 import System.Directory (removeFile)
@@ -185,7 +186,11 @@ execQemu binPath memFile = do
     where
         sleepTime = 200000 -- 200ms
         waitEndTime = 100000 -- 100ms
-        execQemu_ = executeFile "qemu-system-i386" True qemuOpts Nothing
+        execQemu_ = do
+            nullFd <- openFd "/dev/null" WriteOnly Nothing defaultFileFlags
+            dupTo nullFd stdOutput
+            dupTo nullFd stdError
+            executeFile "qemu-system-i386" True qemuOpts Nothing
         qemuOpts = ["-fda", binPath,
                      "-m", "1M",
                      "-object", "memory-backend-file,id=pc.ram,size=1M,mem-path="++memFile++",prealloc=on,share=on",
