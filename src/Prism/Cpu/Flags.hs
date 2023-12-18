@@ -103,45 +103,45 @@ calcOFSub before val after =
 
 -------------------------------------------------------------------------------
 
+getFlagVal :: Flag -> Flags -> Bool
+getFlagVal CF = flagCF
+getFlagVal PF = flagPF
+getFlagVal AF = flagAF
+getFlagVal ZF = flagZF
+getFlagVal SF = flagSF
+getFlagVal OF = flagOF
+
+setFlagVal :: Flag -> Bool -> Flags -> Flags
+setFlagVal CF v flags = flags { flagCF = v }
+setFlagVal PF v flags = flags { flagPF = v }
+setFlagVal AF v flags = flags { flagAF = v }
+setFlagVal ZF v flags = flags { flagZF = v }
+setFlagVal SF v flags = flags { flagSF = v }
+setFlagVal OF v flags = flags { flagOF = v }
+
+getEFlagVal :: EFlag -> EFlags -> Bool
+getEFlagVal TF = eflagTF
+getEFlagVal IF = eflagIF
+getEFlagVal DF = eflagDF
+
+setEFlagVal :: EFlag -> Bool -> EFlags -> EFlags
+setEFlagVal TF v flags = flags { eflagTF = v }
+setEFlagVal IF v flags = flags { eflagIF = v }
+setEFlagVal DF v flags = flags { eflagDF = v }
+
+-------------------------------------------------------------------------------
+
 instance CpuFlag Flag CpuTrans where
-    getFlag CF =
-        (flagCF . ctxFlags) <$> get
-    getFlag PF =
-        (flagPF . ctxFlags) <$> get
-    getFlag AF =
-        (flagAF . ctxFlags) <$> get
-    getFlag ZF =
-        (flagZF . ctxFlags) <$> get
-    getFlag SF =
-        (flagSF . ctxFlags) <$> get
-    getFlag OF =
-        (flagOF . ctxFlags) <$> get
-    setFlag CF b =
-        modify (\s -> s { ctxFlags = (ctxFlags s) { flagCF = b } } )
-    setFlag PF b =
-        modify (\s -> s { ctxFlags = (ctxFlags s) { flagPF = b } } )
-    setFlag AF b =
-        modify (\s -> s { ctxFlags = (ctxFlags s) { flagAF = b } } )
-    setFlag ZF b =
-        modify (\s -> s { ctxFlags = (ctxFlags s) { flagZF = b } } )
-    setFlag SF b =
-        modify (\s -> s { ctxFlags = (ctxFlags s) { flagSF = b } } )
-    setFlag OF b =
-        modify (\s -> s { ctxFlags = (ctxFlags s) { flagOF = b } } )
+    getFlag flag =
+        ((getFlagVal flag) . ctxFlags) <$> get
+    setFlag flag v =
+        modify (\s -> s { ctxFlags = setFlagVal flag v (ctxFlags s) } )
 
 instance CpuFlag EFlag CpuTrans where
-    getFlag TF =
-        (eflagTF . ctxEFlags) <$> get
-    getFlag IF =
-        (eflagIF . ctxEFlags) <$> get
-    getFlag DF =
-        (eflagDF . ctxEFlags) <$> get
-    setFlag TF b =
-        modify (\s -> s { ctxEFlags = (ctxEFlags s) { eflagTF = b } } )
-    setFlag IF b =
-        modify (\s -> s { ctxEFlags = (ctxEFlags s) { eflagIF = b } } )
-    setFlag DF b =
-        modify (\s -> s { ctxEFlags = (ctxEFlags s) { eflagDF = b } } )
+    getFlag eflag =
+        ((getEFlagVal eflag) . ctxEFlags) <$> get
+    setFlag eflag v =
+        modify (\s -> s { ctxEFlags = setEFlagVal eflag v (ctxEFlags s) } )
 
 -------------------------------------------------------------------------------
 
@@ -159,5 +159,39 @@ type AllFlags = (Flags, EFlags)
 
 instance MemRegManipulator RegSpec MemReg AllFlags where
     readRegRaw memReg _ = readFlags memReg
+
+instance MemOpManipulator RegSpec MemReg AllFlags where
+    readOpRaw memReg _ = readFlags memReg
+
+instance MemOpManipulator Flag MemReg Bool where
+    readOpRaw memReg flag = do
+        (getFlagVal flag) . fst <$> readFlags memReg
+
+instance MemOpManipulator EFlag MemReg Bool where
+    readOpRaw memReg flag = do
+        (getEFlagVal flag) . snd <$> readFlags memReg
+
+-------------------------------------------------------------------------------
+
+showFlags :: Flags -> String
+showFlags (Flags cf pf af zf sf of_) = "CF=" ++ (show cf) ++
+                                       ", PF=" ++ (show pf) ++
+                                       ", AF=" ++ (show af) ++
+                                       ", ZF=" ++ (show zf) ++
+                                       ", SF=" ++ (show sf) ++
+                                       ", OF=" ++ (show of_)
+
+showEFlags :: EFlags -> String
+showEFlags (EFlags tf if_ df) = "TF=" ++ (show tf) ++
+                                       ", IF=" ++ (show if_) ++
+                                       ", DF=" ++ (show df)
+
+printFlags :: MonadIO m => MemReg -> m [String]
+printFlags memReg = do
+    (flags, eflags) <- readFlags memReg
+    return [
+        showFlags flags,
+        showEFlags eflags
+        ]
 
 -------------------------------------------------------------------------------

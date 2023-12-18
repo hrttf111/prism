@@ -69,6 +69,7 @@ module Prism.Cpu (
         , valToFlags, valToEFlags
         , regToFlags
         , readFlags
+        , printFlags
         ------------------------------------------------------
         , negV
         , signExtendWordN

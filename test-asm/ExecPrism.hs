@@ -105,7 +105,17 @@ instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRange MemRangeRes m w
         MemRangeRes <$> mapM (\mem -> readOpRaw (eprMemMain epr) $ MemPhy8 $ fromIntegral mem) [start..end]
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes AllRegs String m where
-    readSourceOp epr _ =
-        (intercalate "\n") <$> (printRegs $ eprMemReg epr)
+    readSourceOp epr _ = do
+        sr <- (intercalate "\n") <$> (printRegs $ eprMemReg epr)
+        sf <- (intercalate "\n") <$> (printFlags $ eprMemReg epr)
+        return $ sr ++ "\n" ++ sf
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes Flag Bool m where
+    readSourceOp epr reg =
+        readOpRaw (eprMemReg epr) reg
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes EFlag Bool m where
+    readSourceOp epr reg =
+        readOpRaw (eprMemReg epr) reg
 
 -------------------------------------------------------------------------------

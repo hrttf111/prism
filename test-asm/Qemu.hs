@@ -310,8 +310,22 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m wh
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes AllRegs String m where
     readSourceOp er _ = liftIO $
+        B.useAsCStringLen (eqrMemReg er) (\(ptr, len) -> do
+            sr <- (intercalate "\n") <$> (printRegs $ MemReg $ castPtr ptr)
+            sf <- (intercalate "\n") <$> (printFlags $ MemReg $ castPtr ptr)
+            return $ sr ++ "\n" ++ sf
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes Flag Bool m where
+    readSourceOp er reg = liftIO $
         B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
-            (intercalate "\n") <$> (printRegs $ MemReg $ castPtr ptr)
+            readOpRaw (MemReg $ castPtr ptr) reg
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes EFlag Bool m where
+    readSourceOp er reg = liftIO $
+        B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
+            readOpRaw (MemReg $ castPtr ptr) reg
             )
 
 -------------------------------------------------------------------------------
