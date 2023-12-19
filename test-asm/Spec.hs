@@ -40,6 +40,7 @@ doTests env = do
         testArithOther makerPN
         testArithMuldiv makerPN
         testArithAAA makerPQ
+        testControl1 makerPQ
         testMov env
         testMovMem env
         --testAdd env
