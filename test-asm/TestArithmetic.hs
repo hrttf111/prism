@@ -13,7 +13,7 @@ import TestAsm.Common
 import NeatInterpolation
 
 -------------------------------------------------------------------------------
-testAdd1 env = do
+testAdd env = do
     describe "ADD [8] ACC REG <- IMM" $ do
         it "Simple add" $ do
             runTest env ([untrimming|
@@ -147,7 +147,7 @@ testAdd1 env = do
                 shouldEqSources bx
                 shouldEqSourcesAllFlags
 
-testInc1 env = do
+testInc env = do
     describe "INC [8] REG" $ do
         it "Simple inc" $ do
             runTest env ([untrimming|
@@ -252,7 +252,7 @@ testInc1 env = do
                 shouldEqSources [ax, bx, cx, dx]
                 shouldEqSourcesAllFlags
 
-testSub1 env = do
+testSub env = do
     describe "SUB [8] ACC REG <- IMM" $ do
         it "Simple sub" $ do
             runTest env ([untrimming|
@@ -352,7 +352,7 @@ testSub1 env = do
                 shouldEqSources ax
                 shouldEqSourcesAllFlags
 
-testArithOther1 env = do
+testArithOther env = do
     describe "CBW/CWD" $ do
         it "cbw no sign" $ do
             runTest env ([untrimming|
@@ -407,15 +407,17 @@ testArithOther1 env = do
             |]) $ do
                 shouldEqSources ax
                 shouldEqSourcesAllFlags
-    {-describe "AAA" $ do
+
+testArithAAA env = do
+    describe "AAA" $ do
         it "simple" $ do
             runTest env ([untrimming|
                 mov al, 99
                 aaa
             |]) $ do
-                shouldEqSources ax-}
+                shouldEqSources ax
 
-testArithMuldiv1 env = do
+testArithMuldiv env = do
     describe "MUL" $ do
         it "8 no OF/CF" $ do
             runTest env ([untrimming|

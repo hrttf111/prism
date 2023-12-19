@@ -34,11 +34,12 @@ doTests env = do
             makerPN = PrismNativeEnvMaker
         testMov1 makerPQ
         --testMovMem
-        testAdd1 makerPN
-        testInc1 makerPN
-        testSub1 makerPN
-        testArithOther1 makerPN
-        testArithMuldiv1 makerPN
+        testAdd makerPN
+        testInc makerPN
+        testSub makerPN
+        testArithOther makerPN
+        testArithMuldiv makerPN
+        testArithAAA makerPQ
         testMov env
         testMovMem env
         --testAdd env
