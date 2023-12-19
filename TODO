@@ -58,6 +58,7 @@
                 - Allow testing values in memory +
                 - Allow to compare values between Prism and Native/QEMU +
                 - Compare flags
+                - Implement readable aliases
             - Align addresses between Prism and QEMU tests
 
 -------------------------------------------------------
@@ -100,6 +101,11 @@ cmpReg reg = do
 execCmpSeq :: Env -> Seq a -> Expectation
 execCmpSeq env seq = do
     runSeq seq
+
+shouldEq :: op -> val -> m ()
+
+class ShouldEq op val where
+    shouldEq1 :: op -> val -> m ()
 
 -------------------------------------------------------
 

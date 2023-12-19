@@ -11,6 +11,8 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module TestAsm.Common where
 
 import Test.Hspec
@@ -158,6 +160,33 @@ showOperandVal op = do
     sourceL <- getSourceL
     valL <- readSourceOp sourceL op
     liftIO $ putStrLn $ (show op) ++ " = " ++ (show valL)
+
+type family OpVal o where
+    OpVal Reg8 = Uint8
+    OpVal Reg16 = Uint16
+    OpVal RegSeg = Uint16
+    OpVal Flag = Bool
+    OpVal EFlag = Bool
+    OpVal MemPhy8 = Uint8
+    OpVal MemPhy16 = Uint16
+
+class ShouldEq op val m where
+    shouldEq1 :: (HasCallStack) => op -> val -> m ()
+
+instance {-# OVERLAPS #-} (Show val, Eq val, HasSourceL sl m, OperandSupport sl op (OpVal op) m, val ~ (OpVal op), MonadIO m) => ShouldEq [op] [val] m where
+    shouldEq1 = cmpOperandsVals
+
+instance {-# OVERLAPPABLE #-} (Show val, Eq val, HasSourceL sl m, OperandSupport sl op (OpVal op) m, val ~ (OpVal op), MonadIO m) => ShouldEq op val m where
+    shouldEq1 = cmpOperandVal
+
+class ShouldEqSources op m where
+    shouldEqSources :: (HasCallStack) => op -> m ()
+
+instance {-# OVERLAPS #-} (HasSourceL sl m, Show (OpVal op), Eq (OpVal op), HasSourceR sr m, OperandSupport sl op (OpVal op) m, OperandSupport sr op (OpVal op) m, MonadIO m) => ShouldEqSources [op] m where
+    shouldEqSources ops = cmpOperandsSources ops
+
+instance {-# OVERLAPPABLE #-} (HasSourceL sl m, Show (OpVal op), Eq (OpVal op), HasSourceR sr m, OperandSupport sl op (OpVal op) m, OperandSupport sr op (OpVal op) m, MonadIO m) => ShouldEqSources op m where
+    shouldEqSources op = cmpOperandSources op
 
 cmpOperandVal :: (HasCallStack, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> val -> m ()
 cmpOperandVal op val = do

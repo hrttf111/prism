@@ -28,12 +28,12 @@ testAdd1 env = do
                 mov al, 1
                 add al, -1
             |]) $ do
-                cmpOperandVal al 0
-                cmpOperandSources al
-                cmpOperandsSources [CF, PF, AF, ZF, SF, OF]
-                cmpOperandVal CF True
-                cmpOperandVal ZF True
-                --cmpOperandsVals [CF, PF, AF, ZF, SF, OF] [True, False, False, True, False, False]
+                shouldEq1 al 0
+                shouldEqSources al
+                shouldEqSources [CF, PF, AF, ZF, SF, OF]
+                shouldEq1 CF True
+                shouldEq1 ZF True
+                shouldEq1 [CF, ZF] [True, True]
         it "Add negative CF and OF" $ do
             runTest env ([untrimming|
                 mov al, -127
