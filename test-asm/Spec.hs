@@ -33,14 +33,19 @@ doTests env = do
         let makerPQ = PrismQemuEnvMaker
             makerPN = PrismNativeEnvMaker
         testMov1 makerPQ
+        --testMovMem
         testAdd1 makerPN
+        testInc1 makerPN
+        testSub1 makerPN
+        testArithOther1 makerPN
+        testArithMuldiv1 makerPN
         testMov env
         testMovMem env
-        testAdd env
-        testInc env
-        testSub env
-        testArithOther env
-        testArithMuldiv env
+        --testAdd env
+        --testInc env
+        --testSub env
+        --testArithOther env
+        --testArithMuldiv env
         testLog env
         testControl env
         testString env

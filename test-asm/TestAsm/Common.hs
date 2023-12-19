@@ -188,6 +188,9 @@ instance {-# OVERLAPS #-} (HasSourceL sl m, Show (OpVal op), Eq (OpVal op), HasS
 instance {-# OVERLAPPABLE #-} (HasSourceL sl m, Show (OpVal op), Eq (OpVal op), HasSourceR sr m, OperandSupport sl op (OpVal op) m, OperandSupport sr op (OpVal op) m, MonadIO m) => ShouldEqSources op m where
     shouldEqSources op = cmpOperandSources op
 
+shouldEqSourcesAllFlags :: (ShouldEqSources [Flag] m) => m ()
+shouldEqSourcesAllFlags = shouldEqSources [CF, PF, AF, ZF, SF, OF]
+
 cmpOperandVal :: (HasCallStack, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> val -> m ()
 cmpOperandVal op val = do
     sourceL <- getSourceL
