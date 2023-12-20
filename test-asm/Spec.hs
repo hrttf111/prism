@@ -32,6 +32,7 @@ import Prism.Cpu
 doTests env = do
         let makerPQ = PrismQemuEnvMaker
             makerPN = PrismNativeEnvMaker
+        testMovMem2 PrismEnvMaker
         testMov makerPQ
         testMovLDS PrismEnvMaker
         testMovMem1 PrismEnvMaker
@@ -50,7 +51,6 @@ doTests env = do
         testString PrismEnvMaker
         testProcessor PrismEnvMaker
         --
-        testMovMem env
         testPeripheral x86InstrList
         testPC x86InstrList
         describe "New tests" $ do
