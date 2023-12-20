@@ -112,13 +112,6 @@ createTestEnv1 ioCtx threadId instrList intList preStartAction = liftIO $ do
             preStartAction
             runner decoder instrEnd
 
-createTestEnv :: (MonadIO m) => [PrismInstruction] -> m TestEnv
-createTestEnv instrList = do
-    (ioCtx, _) <- liftIO $ makeDummyIO (1024*1024) devicesStub
-    createTestEnv1 ioCtx Nothing instrList [] (return ())
-    where
-        devicesStub = 0 :: Int
-
 createPeripheralsTestEnv1 :: (MonadIO m, PeripheralsTestCreator mL pL) =>
                             [PrismInstruction] ->
                             pR ->
@@ -163,13 +156,6 @@ createPeripheralsTestEnv instrList devR portsR memsR devL portsL memsL intList =
 -------------------------------------------------------------------------------
 
 type RegEqFunc = MemReg -> Expectation
-
-execPrism :: (HasCallStack) => [RegEqFunc] -> TestEnv -> Text -> Expectation
-execPrism regs env cd = do
-    code16 <- (assembleNative16 env) cd
-    ctx <- (executePrism env) code16 decodeMemIp
-    let memRegP = ctxReg ctx
-    mapM_ (\f -> f memRegP) regs
 
 execPrismHalt :: (HasCallStack) => [RegEqFunc] -> TestEnv -> PrismComm -> Text -> Expectation
 execPrismHalt regs env comm cd = do

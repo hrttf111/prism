@@ -29,7 +29,7 @@ import Prism.Cpu
 
 -------------------------------------------------------------------------------
 
-doTests env = do
+doTests = do
         let makerPQ = PrismQemuEnvMaker
             makerPN = PrismNativeEnvMaker
         testMovMem2 PrismEnvMaker
@@ -112,8 +112,7 @@ doTests env = do
 
 main :: IO ()
 main = do
-    env <- createTestEnv x86InstrList
-    runSpec (doTests env) defaultConfig {configConcurrentJobs=(Just 1)}
+    runSpec doTests defaultConfig {configConcurrentJobs=(Just 1)}
     return ()
 
 -------------------------------------------------------------------------------
