@@ -57,7 +57,7 @@
                 - Allow testing registers +
                 - Allow testing values in memory +
                 - Allow to compare values between Prism and Native/QEMU +
-                - Compare flags
+                - Compare flags +
                 - Implement readable aliases
             - Align addresses between Prism and QEMU tests
 

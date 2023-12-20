@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module TestProcessor where
 
@@ -17,7 +18,7 @@ import NeatInterpolation
 testProcessor env = do
     describe "Software interrupts" $ do
         it "Int 5" $ do
-            execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xFFAA), (cx `shouldEq` 0xDDFF)] env $ [text|
+            runTest env ([untrimming|
                 xor ax, ax
                 xor cx, cx
                 mov ds, cx
@@ -40,7 +41,10 @@ testProcessor env = do
 
                 END1:
                 mov bx, 0xFFAA
-            |]
+            |]) $ do
+                shouldEq1 ax 0xFFAA
+                shouldEq1 bx 0xFFAA
+                shouldEq1 cx 0xDDFF
         {-it "Single Step" $ do
             execPrism [(ax `shouldEq` 0xFFAA), (bx `shouldEq` 0xFFAA), (cx `shouldEq` 5)] env $ [text|
                 xor ax, ax

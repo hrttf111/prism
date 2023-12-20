@@ -56,6 +56,10 @@ asmBiosHeader = [untrimming|
         mov WORD [%1+34], cs
         mov WORD [%1+36], ss
         mov WORD [%1+38], ds
+        ;mov WORD[%1+40], ip
+        pushf
+        pop dx
+        mov WORD[%1+42], dx
     %endmacro
 
     %macro detect_disk 1
@@ -114,7 +118,7 @@ asmBiosHeader = [untrimming|
     read_disk ptr_offset1, 0x1000, 0
 
     ;start test
-    ;cli
+    cli
     jmp 1000h:START
 
     STOP:
@@ -322,15 +326,15 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes AllRegs String m where
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes Flag Bool m where
-    readSourceOp er reg = liftIO $
+    readSourceOp er flag = liftIO $
         B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
-            readOpRaw (MemReg $ castPtr ptr) reg
+            readOpRaw (MemReg $ castPtr ptr) flag
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes EFlag Bool m where
-    readSourceOp er reg = liftIO $
+    readSourceOp er flag = liftIO $
         B.useAsCStringLen (eqrMemReg er) (\(ptr, len) ->
-            readOpRaw (MemReg $ castPtr ptr) reg
+            readOpRaw (MemReg $ castPtr ptr) flag
             )
 
 -------------------------------------------------------------------------------

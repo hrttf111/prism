@@ -1,4 +1,5 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module TestString where
 
@@ -16,7 +17,7 @@ import NeatInterpolation
 testString env = do
     describe "String" $ do
         it "MOVS8 DF=0" $ do
-            execPrism [(al `shouldEq` 0xFF), (bl `shouldEq` 0xAA), (di `shouldEq` 2), (si `shouldEq` 102)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov si, 100
                 mov [si], BYTE 0xFF
@@ -25,9 +26,13 @@ testString env = do
                 movsb
                 mov al, [es:0]
                 mov bl, [es:1]
-            |]
+            |]) $ do
+                shouldEq1 al 0xFF
+                shouldEq1 bl 0xAA
+                shouldEq1 di 2
+                shouldEq1 si 102
         it "MOVS8 DF=1" $ do
-            execPrism [(al `shouldEq` 0xFF), (bl `shouldEq` 0xAA), (di `shouldEq` 48), (si `shouldEq` 98)] env [text|
+            runTest env ([untrimming|
                 mov di, 50
                 mov si, 99
                 mov [si], BYTE 0xFF
@@ -38,9 +43,13 @@ testString env = do
                 movsb
                 mov bl, [es:50]
                 mov al, [es:49]
-            |]
+            |]) $ do
+                shouldEq1 al 0xFF
+                shouldEq1 bl 0xAA
+                shouldEq1 di 48
+                shouldEq1 si 98
         it "MOVS16 DF=0" $ do
-            execPrism [(ax `shouldEq` 0xFFDD), (bx `shouldEq` 0xAAEE), (di `shouldEq` 4), (si `shouldEq` 104)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov si, 100
                 mov [si], WORD 0xFFDD
@@ -49,9 +58,13 @@ testString env = do
                 movsw
                 mov ax, WORD [es:0]
                 mov bx, WORD [es:2]
-            |]
+            |]) $ do
+                shouldEq1 ax 0xFFDD
+                shouldEq1 bx 0xAAEE
+                shouldEq1 di 4
+                shouldEq1 si 104
         it "MOVS16 DF=1" $ do
-            execPrism [(ax `shouldEq` 0xFFDD), (bx `shouldEq` 0xAAEE), (di `shouldEq` 46), (si `shouldEq` 96)] env [text|
+            runTest env ([untrimming|
                 mov di, 50
                 mov si, 98
                 mov [si], WORD 0xFFDD
@@ -62,9 +75,13 @@ testString env = do
                 movsw
                 mov bx, WORD [es:50]
                 mov ax, WORD [es:48]
-            |]
+            |]) $ do
+                shouldEq1 ax 0xFFDD
+                shouldEq1 bx 0xAAEE
+                shouldEq1 di 46
+                shouldEq1 si 96
         it "CMPS8 DF=0" $ do
-            execPrism [(al `shouldEq` 1), (bl `shouldEq` 0), (di `shouldEq` 2), (si `shouldEq` 102)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov si, 100
                 mov [si], BYTE 0xFF
@@ -81,9 +98,13 @@ testString env = do
                 jz EQ
                 mov bl, 0
                 EQ:
-            |]
+            |]) $ do
+                shouldEq1 al 1
+                shouldEq1 bx 0
+                shouldEq1 di 2
+                shouldEq1 si 102
         it "SCAS8 DF=0" $ do
-            execPrism [(bl `shouldEq` 1), (cl `shouldEq` 0), (di `shouldEq` 2)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov [es:di], BYTE 0xFF
                 mov [es:di+1], BYTE 0xAB
@@ -98,9 +119,12 @@ testString env = do
                 jz EQ
                 mov cl, 0
                 EQ:
-            |]
+            |]) $ do
+                shouldEq1 bl 1
+                shouldEq1 cl 0
+                shouldEq1 di 2
         it "lods8 DF=0" $ do
-            execPrism [(al `shouldEq` 0xAA), (bl `shouldEq` 0xFF), (si `shouldEq` 102)] env [text|
+            runTest env ([untrimming|
                 mov si, 100
                 mov [si], BYTE 0xFF
                 mov [si+1], BYTE 0xAA
@@ -108,9 +132,12 @@ testString env = do
                 lodsb
                 mov bl, al
                 lodsb
-            |]
+            |]) $ do
+                shouldEq1 al 0xAA
+                shouldEq1 bl 0xFF
+                shouldEq1 si 102
         it "STOS8 DF=0" $ do
-            execPrism [(al `shouldEq` 0xFF), (bl `shouldEq` 0xAA), (di `shouldEq` 50)] env [text|
+            runTest env ([untrimming|
                 mov di, 48
                 mov al, 0xFF
                 stosb
@@ -118,10 +145,13 @@ testString env = do
                 stosb
                 mov bl, [es:49]
                 mov al, [es:48]
-            |]
+            |]) $ do
+                shouldEq1 al 0xFF
+                shouldEq1 bl 0xAA
+                shouldEq1 di 50
     describe "Rep" $ do
         it "MOVS8 DF=0" $ do
-            execPrism [(al `shouldEq` 0xFF), (bl `shouldEq` 0xAA), (di `shouldEq` 2), (si `shouldEq` 102)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov si, 100
                 mov [si], BYTE 0xFF
@@ -130,9 +160,13 @@ testString env = do
                 rep movsb
                 mov al, [es:0]
                 mov bl, [es:1]
-            |]
+            |]) $ do
+                shouldEq1 al 0xFF
+                shouldEq1 bl 0xAA
+                shouldEq1 di 2
+                shouldEq1 si 102
         it "SCAS8 NE" $ do
-            execPrism [(di `shouldEq` 5)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov [di], BYTE 0xFF
                 mov [di+1], BYTE 0xAB
@@ -142,9 +176,10 @@ testString env = do
                 mov cx, 5
                 mov al, 0xDD
                 repne scasb
-            |]
+            |]) $ do
+                shouldEq1 di 5
         it "SCAS8 NE found" $ do
-            execPrism [(di `shouldEq` 3)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov [es:di], BYTE 0xFF
                 mov [es:di+1], BYTE 0xAB
@@ -154,9 +189,10 @@ testString env = do
                 mov cx, 5
                 mov al, 0xDD
                 repne scasb
-            |]
+            |]) $ do
+                shouldEq1 di 3
         it "SCAS8 NZ found" $ do
-            execPrism [(di `shouldEq` 5)] env [text|
+            runTest env ([untrimming|
                 mov di, 0
                 mov [es:di], BYTE 0xFF
                 mov [es:di+1], BYTE 0xAB
@@ -166,6 +202,7 @@ testString env = do
                 mov cx, 10
                 mov ax, 0
                 repnz scasb
-            |]
+            |]) $ do
+                shouldEq1 di 5
 
 -------------------------------------------------------------------------------
