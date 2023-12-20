@@ -7,10 +7,7 @@ import Test.Hspec
 import Test.Hspec.Core.Runner
 
 import Prism.Cpu
-import Prism.Instructions
-import Prism.Command
 
-import TestAsm.Run
 import TestAsm.Common
 
 import NeatInterpolation

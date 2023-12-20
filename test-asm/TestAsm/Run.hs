@@ -234,18 +234,18 @@ makePrismPeripheralsEnv :: (MonadIO m, PeripheralsTestCreator mL pL) =>
                             [PeripheralPort mL] ->
                             [PeripheralMem mL] ->
                             [InterruptHandlerLocation] ->
-                            PrismComm ->
                             PrismM () ->
                             m (TestEnv1 Ep.ExecutorPrism)
-makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList comm preStartAction = do
+makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList preStartAction = do
+    comm <- liftIO $ newPrismComm False
     queue <- liftIO $ createIOQueue
     let ioCtx = createTestPeripherals peripheralL queue
     threadId <- liftIO . forkIO $ runRemotePeripherals queue peripheralR execPeripheralsOnce
-    prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx runner
+    prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
     return $ TestEnv1 (Just threadId) makeAsmStr16 prismExec
     where
         debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
-        runner decoder _ = do
+        runner comm decoder _ = do
             preStartAction
             decodeHaltCpu decoder comm
         memSize = 1024 * 1024
@@ -258,3 +258,5 @@ makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList comm preStar
                                                          memsR
                                                          portsL
                                                          memsL
+
+-------------------------------------------------------------------------------

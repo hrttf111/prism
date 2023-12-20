@@ -50,8 +50,8 @@ doTests env = do
         testLog makerPN
         testString PrismEnvMaker
         testProcessor PrismEnvMaker
+        testPeripheral
         --
-        testPeripheral x86InstrList
         testPC x86InstrList
         describe "New tests" $ do
             it "Test1" $ do
