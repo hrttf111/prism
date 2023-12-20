@@ -179,35 +179,6 @@ execPrismHalt regs env comm cd = do
     let memRegP = ctxReg ctx
     mapM_ (\f -> f memRegP) regs
 
-execAndCmpFF :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> (Flags -> Flags) -> Text -> Expectation
-execAndCmpFF regs env fixFlags cd = do
-    code <- (assembleNative env) cd
-    code16 <- (assembleNative16 env) cd
-    memRegN <- (executeNative env) code
-    ctx <- (executePrism env) code16 decodeMemIp
-    let memRegP = ctxReg ctx
-    mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
-    (flagsN, _) <- readRegRaw memRegN flagsInternal
-    (fixFlags $ ctxFlags ctx) `shouldBe` (fixFlags flagsN)
-
-execAndCmp :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> Text -> Expectation
-execAndCmp regs env cd = execAndCmpFF regs env id cd
-
-execAndCmpNF :: (HasCallStack, RegTest a v) => [a] -> TestEnv -> Text -> Expectation
-execAndCmpNF regs env cd = do
-    code <- (assembleNative env) cd
-    code16 <- (assembleNative16 env) cd
-    memRegN <- (executeNative env) code
-    ctx <- (executePrism env) code16 decodeMemIp
-    let memRegP = ctxReg ctx
-    mapM_ (\r -> r `shouldEqReg` memRegP $ memRegN) regs
-
-execCodeTest :: MonadIO m => AsmTest -> MemReg -> Text -> m MemReg
-execCodeTest asmTest (MemReg ptrA) code = liftIO $ do
-    mainCode <- makeAsmStr code
-    execCode asmTest mainCode ptrA
-    return $ MemReg ptrA
-
 -------------------------------------------------------------------------------
 
 data PrismEnvMaker = PrismEnvMaker
