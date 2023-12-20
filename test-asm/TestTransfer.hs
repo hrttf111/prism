@@ -306,10 +306,10 @@ testMovMem1 env = do
             |]) $ do
                 shouldEq1 ax 0xFFAA
                 shouldEq1 bx 0xFFAA-}
-    {-describe "XLAT" $ do
+
+testMovXlat env = do
+    describe "XLAT" $ do
         it "XLAT simple" $ do
-            comm <- newPrismComm False
-            execPrismHalt [(ax `shouldEq` 0x15)] env comm [text|
             runTest env ([untrimming|
                 SECTION .data start=100h
                     pxlat_table db 0x11, 0x12, 0x13, 0x14, 0x15
@@ -322,10 +322,9 @@ testMovMem1 env = do
                     mov ax, 4
                     xlatb
                     hlt
-            |]
+            |]) $ do
+                shouldEq1 ax 0x15
         it "XLAT" $ do
-            comm <- newPrismComm False
-            execPrismHalt [(bx `shouldEq` 0x15), (dx `shouldEq` 0x11), (cx `shouldEq` 0xAF)] env comm [text|
             runTest env ([untrimming|
                 SECTION .data start=100h
                     pxlat_table db 0x11, 0x12, 0x13, 0x14, 0x15
@@ -345,7 +344,10 @@ testMovMem1 env = do
                     xlatb
                     mov bx, ax
                     hlt
-            |]-}
+            |]) $ do
+                shouldEq1 bx 0x15
+                shouldEq1 cx 0xAF
+                shouldEq1 dx 0x11
 
 testMovMem env = do
     describe "MOV mem ds" $ do

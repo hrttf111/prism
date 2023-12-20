@@ -219,6 +219,16 @@ instance TestEnvMaker PrismEnvMaker (TestEnv1 Ep.ExecutorPrism) where
         where
             runner = decodeMemIp
 
+data PrismEnvHaltMaker = PrismEnvHaltMaker
+
+instance TestEnvMaker PrismEnvHaltMaker (TestEnv1 Ep.ExecutorPrism) where
+    makeTestEnv _ = do
+        comm <- newPrismComm False
+        prismExec <- Ep.createPrismExecutorNoIO x86InstrList (runner comm)
+        return $ TestEnv1 Nothing makeAsmStr16 prismExec
+        where
+            runner comm decoder _ = decodeHaltCpu decoder comm
+
 data QemuEnvMaker = QemuEnvMaker
 
 instance TestEnvMaker QemuEnvMaker (TestEnv1 Qemu.ExecutorQemu) where
