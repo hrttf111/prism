@@ -120,22 +120,25 @@ emptyMemR = []
 emptyPortR :: [PeripheralPort (RemoteTrans Int)]
 emptyPortR = []
 
-testPC instrList = do
+preStartAction :: PrismM ()
+preStartAction = return ()
+
+testPC = do
     describe "Test PC PIC" $ do
         let devR = 0
         it "Interrupt test infra" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let testHandler int val = 89
                 intList = [
                     (PrismInt 0x10, testInterruptHandler testHandler)
                     ]
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 mov al, 134
                 int 0x10
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 89
         it "Basic test Master PIC IRQ0" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -144,8 +147,8 @@ testPC instrList = do
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 0)),
                     (PrismInt 0x20, testInterruptHandler testHandler)
                     ]
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] intList comm preStartAction
+            execTestEnvIO env ([untrimming|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 ICW1  equ  0x17
@@ -173,7 +176,8 @@ testPC instrList = do
                 inc bl
                 loop LOOP1
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 89
         it "Basic test Slave PIC IRQ8" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -182,8 +186,8 @@ testPC instrList = do
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 8)),
                     (PrismInt 0x28, testInterruptHandler testHandler)
                     ]
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] intList comm preStartAction
+            execTestEnvIO env ([untrimming|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 PIC2  equ  0xA0
@@ -225,7 +229,8 @@ testPC instrList = do
                 inc bl
                 loop LOOP1
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 89
     describe "Test PC Scheduler" $ do
         it "Sched" $ do
             comm <- newPrismComm False
@@ -236,8 +241,8 @@ testPC instrList = do
                             (PeripheralHandlerPort testScheduleWrite emptyWriteH emptyReadH emptyReadH)
                     ]
                 intList = []
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPortsExt [] intList
-            execPrismHalt [(al `shouldEq` 5)] env comm $ [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPortsExt [] intList comm preStartAction
+            execTestEnvIO env ([untrimming|
                 mov al, 5
                 out 0x89, al
                 mov cx, 10
@@ -245,15 +250,16 @@ testPC instrList = do
                 inc bl
                 loop LOOP1
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 5
     describe "Test PC PIT" $ do
         let devR = 0
         it "Write, read and interrupt Timer 0" $ do
             comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF0
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(bx `shouldEq` 51), (cl `shouldEq` expectedStatus), (dx `shouldEq` 1)] env comm $ append headerPit [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
+            execTestEnvIO env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
@@ -275,13 +281,16 @@ testPC instrList = do
                 mov bx, cx
                 inc dx
                 iret
-            |]
+            |]) $ do
+                shouldEq1 bx 51
+                shouldEq1 cl expectedStatus
+                shouldEq1 dx 1
         it "Write, read and interrupt Timer 2" $ do
             comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF4
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(bx `shouldEq` 21), (cl `shouldEq` expectedStatus), (dx `shouldEq` 4)] env comm $ append headerPit [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
+            execTestEnvIO env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x34 ; Timer0, Mode2, 2 Bytes, HEX
@@ -303,13 +312,16 @@ testPC instrList = do
                 mov bx, cx
                 inc dx
                 iret
-            |]
+            |]) $ do
+                shouldEq1 bx 21
+                shouldEq1 cl expectedStatus
+                shouldEq1 dx 4
         it "Write, read and interrupt Timer 3" $ do
             comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF6
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(bx `shouldEq` 6), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
+            execTestEnvIO env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x36 ; Timer0, Mode3, 2 Bytes, HEX
@@ -331,13 +343,16 @@ testPC instrList = do
                 mov bx, cx
                 inc dx
                 iret
-            |]
+            |]) $ do
+                shouldEq1 bx 6
+                shouldEq1 cl expectedStatus
+                shouldEq1 dx 2
         it "Write, read and interrupt Timer 4" $ do
             comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF8
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] []
-            execPrismHalt [(bx `shouldEq` 91), (cl `shouldEq` expectedStatus), (dx `shouldEq` 2)] env comm $ append headerPit [text|
+            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
+            execTestEnvIO env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x38 ; Timer0, Mode4, 2 Bytes, HEX
@@ -359,31 +374,33 @@ testPC instrList = do
                 mov bx, cx
                 inc dx
                 iret
-            |]
+            |]) $ do
+                shouldEq1 bx 91
+                shouldEq1 cl expectedStatus
+                shouldEq1 dx 2
     describe "Test PC BIOS" $ do
         let devR = 0
         it "BIOS interrupt infra" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 89)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 mov al, 134
                 mov ah, 76
                 int 0x1f
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 89
         it "BIOS keyboard - int 9" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let sharedKeyboard = fst $ getPcBiosSharedState devices
                 intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             let keys = [(PcKey 3 4)]
                 keyFlags = emptyKeyFlags { pcKeyFlagLeftShift = True }
                 keyboardState = SharedKeyboardState keyFlags keys
             liftIO $ atomically $ writeTVar sharedKeyboard keyboardState
-            execPrismHalt [(bl `shouldEq` 3), (bh `shouldEq` 4), (cl `shouldEq` 2), (dx `shouldEq` 0x40)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 int 9
                 ; Check shift flags
                 mov ah, 2
@@ -403,13 +420,16 @@ testPC instrList = do
                 pushf
                 pop dx
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 bl 3
+                shouldEq1 bh 4
+                shouldEq1 cl 2
+                shouldEq1 dx 0x40
         it "BIOS timer - int 8" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(cx `shouldEq` 0), (dx `shouldEq` 1), (al `shouldEq` 0), (bx `shouldEq` 1)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 ; Set interrupt
                 %define INTER_1c 0x1c*4
                 mov ax, 0
@@ -428,28 +448,33 @@ testPC instrList = do
                 INTERRUPT1:
                 inc bx
                 iret
-            |]
+            |]) $ do
+                shouldEq1 cx 0
+                shouldEq1 dx 1
+                shouldEq1 al 0
+                shouldEq1 bx 1
         it "BIOS timer - time" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
             utcTime <- liftIO getCurrentTime
             let tm = timeToTimeOfDay $ utctDayTime utcTime
                 hours = fromIntegral $ hexToBcd8 $ fromIntegral $ todHour tm
                 minutes = fromIntegral $ hexToBcd8 $ fromIntegral $ todMin tm
-            execPrismHalt [(ch `shouldEq` hours), (cl `shouldEq` minutes), (al `shouldEq` hours)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 ; Get time
                 mov ah, 2
                 int 0x1a
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 ch hours
+                shouldEq1 cl minutes
+                shouldEq1 al hours
         it "BIOS video - write/read char" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(ah `shouldEq` 7), (al `shouldEq` 0x31), (dh `shouldEq` 0), (dl `shouldEq` 0)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 ; Write char
                 mov al, 0x31
                 mov bl, 7
@@ -463,13 +488,16 @@ testPC instrList = do
                 mov ah, 8
                 int 0x10
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 ah 7
+                shouldEq1 al 0x31
+                shouldEq1 dh 0
+                shouldEq1 dl 0
         it "BIOS video - write + update/read char" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(ah `shouldEq` 7), (al `shouldEq` 0x31){-, (dh `shouldEq` 1), (dl `shouldEq` 0)-}] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 ; Write char
                 mov al, 0x31
                 mov bl, 7
@@ -488,33 +516,38 @@ testPC instrList = do
                 mov ah, 8
                 int 0x10
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 ah 7
+                shouldEq1 al 0x31
+                --shouldEq1 dh 1
+                --shouldEq1 dl 0
         it "BIOS memory and equipment" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(ax `shouldEq` 0x0021), (bx `shouldEq` 0x27f)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 ; Get memory size
                 int 0x12
                 mov bx, ax
                 ; Get equipment list
                 int 0x11
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 ax 0x0021
+                shouldEq1 bx 0x27f
         it "BIOS disk - no drive" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 0), (ah `shouldEq` 15)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 mov ah, 2
                 mov dl, 1
                 int 0x13
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 0
+                shouldEq1 ah 15
         it "BIOS disk - read" $ do
-            comm <- newPrismComm False
             let diskRead offset len = do
                     putStrLn $ "Offset = " ++ (show offset)
                     putStrLn $ "Len = " ++ (show len)
@@ -523,8 +556,8 @@ testPC instrList = do
                 disks = [(PcDiskFloppy 1, PcDisk 0 0 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 10), (ah `shouldEq` 2)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 mov ax, 0
                 mov es, ax ; buffer ES
                 mov bx, 6000 ; buffer BX
@@ -536,9 +569,10 @@ testPC instrList = do
                 mov dh, 2 ; head 2
                 int 0x13
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 10
+                shouldEq1 ah 2
         it "BIOS disk - write" $ do
-            comm <- newPrismComm False
             let diskRead offset len = return B.empty
                 diskWrite offset d = do
                     putStrLn $ "Offset = " ++ (show offset)
@@ -547,8 +581,8 @@ testPC instrList = do
                 disks = [(PcDiskFloppy 1, PcDisk 0 0 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts [] intList
-            execPrismHalt [(al `shouldEq` 10), (ah `shouldEq` 3)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
+            execTestEnvIO env ([untrimming|
                 mov ax, 0
                 mov es, ax ; buffer ES
                 mov bx, 6000 ; buffer BX
@@ -560,9 +594,10 @@ testPC instrList = do
                 mov dh, 2 ; head 2
                 int 0x13
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 10
+                shouldEq1 ah 3
         it "BIOS disk - params" $ do
-            comm <- newPrismComm False
             let diskRead offset len = return B.empty
                 diskWrite offset d = do
                     putStrLn $ "Offset = " ++ (show offset)
@@ -572,24 +607,28 @@ testPC instrList = do
             devices <- createPcWithDisks disks
             let intList = mkBiosInterrupts
                 initBios = setPcMemory devices
-            env <- createPeripheralsTestEnv1 instrList devR emptyPortR emptyMemR devices pcPorts [] intList initBios
-            execPrismHalt [(ax `shouldEq` 0), (ah `shouldEq` 0), (bl `shouldEq` 4), (dh `shouldEq` 1), (di `shouldEq` 5000)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList initBios
+            execTestEnvIO env ([untrimming|
                 mov ah, 8
                 mov dl, 1
                 int 0x13
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 ax 0
+                shouldEq1 bl 4
+                shouldEq1 dh 1
+                shouldEq1 di 5000
         it "BIOS memory - halt" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let intList = mkBiosInterrupts
-            env <- createPeripheralsTestEnv instrList devR emptyPortR emptyMemR devices pcPorts pcMemory intList
-            execPrismHalt [(al `shouldEq` 0)] env comm $ [text|
+            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts pcMemory intList preStartAction
+            execTestEnvIO env ([untrimming|
                 mov ax, 0
                 mov ds, ax
                 mov bx, 0x410
                 mov cx, WORD [ds:bx]
                 mov al, 10
                 hlt
-            |]
+            |]) $ do
+                shouldEq1 al 0
 -------------------------------------------------------------------------------

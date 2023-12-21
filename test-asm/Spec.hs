@@ -51,8 +51,8 @@ doTests = do
         testString PrismEnvMaker
         testProcessor PrismEnvMaker
         testPeripheral
+        testPC
         --
-        testPC x86InstrList
         describe "New tests" $ do
             it "Test1" $ do
                 env <- makeTestEnv PrismEnvMaker

@@ -248,4 +248,40 @@ makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList preStartActi
                                                          portsL
                                                          memsL
 
+makePrismPeripheralsEnv1 :: (MonadIO m, PeripheralsTestCreator mL pL) =>
+                            pR ->
+                            [PeripheralPort (RemoteTrans pR)] ->
+                            [PeripheralMem (RemoteTrans pR)] ->
+                            pL ->
+                            [PeripheralPort mL] ->
+                            [PeripheralMem mL] ->
+                            [InterruptHandlerLocation] ->
+                            PrismComm ->
+                            PrismM () ->
+                            m (TestEnv1 Ep.ExecutorPrism)
+makePrismPeripheralsEnv1 devR portsR memsR devL portsL memsL intList comm preStartAction = do
+    queue <- liftIO $ createIOQueue
+    let ioCtx = createTestPeripherals peripheralL queue
+    mvar <- liftIO $ newEmptyMVar
+    threadId <- liftIO $ forkFinally (do
+        runRemotePeripherals queue peripheralR execPeripheralsOnce
+        ) (\_ -> putMVar mvar ())
+    prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
+    return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr16 prismExec
+    where
+        debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
+        runner comm decoder _ = do
+            preStartAction
+            decodeHaltCpu decoder comm
+        memSize = 1024 * 1024
+        pageSize = 1024
+        (peripheralR, peripheralL) = createPeripheralsLR devR
+                                                         devL
+                                                         memSize
+                                                         pageSize
+                                                         portsR
+                                                         memsR
+                                                         portsL
+                                                         memsL
+
 -------------------------------------------------------------------------------
