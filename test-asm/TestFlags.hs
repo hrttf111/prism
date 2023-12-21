@@ -22,14 +22,14 @@ testFlagsZF env =
             runTest env ([untrimming|
                 mov ax, 0
             |]) $ do
-                --shouldEq1 ZF True
+                --shouldEq ZF True
                 shouldEqSources ZF-}
         it "ZF cleared" $ do
             runTest env ([untrimming|
                 mov al, 0
                 add al, 1
             |]) $ do
-                shouldEq1 ZF False
+                shouldEq ZF False
                 shouldEqSources ZF
 
 testFlagsCF env = 
@@ -39,8 +39,8 @@ testFlagsCF env =
                 mov al, 10
                 add al, 245
             |]) $ do
-                shouldEq1 CF False
-                shouldEq1 OF False
+                shouldEq CF False
+                shouldEq OF False
                 --shouldEqSources [CF, OF]
         it "CF cleared sub" $ do
             runTest env ([untrimming|
@@ -49,9 +49,9 @@ testFlagsCF env =
             |]) $ do
                 showAllRegsL
                 showAllRegsR
-                shouldEq1 al 127
-                shouldEq1 CF False
-                shouldEq1 OF True
+                shouldEq al 127
+                shouldEq CF False
+                shouldEq OF True
                 shouldEqSources CF
                 shouldEqSources OF
                 --shouldEqSources [CF, OF]
@@ -61,7 +61,7 @@ testFlagsCF env =
                 mov al, 1
                 add al, 255
             |]) $ do
-                shouldEq1 CF True
+                shouldEq CF True
                 shouldEqSources CF
                 shouldEqSources al
         it "CF set negative" $ do
@@ -69,17 +69,17 @@ testFlagsCF env =
                 mov al, 127
                 add al, -120
             |]) $ do
-                shouldEq1 CF True
-                shouldEq1 OF False
+                shouldEq CF True
+                shouldEq OF False
                 shouldEqSources [CF, OF]
         it "CF set sub" $ do
             runTest env ([untrimming|
                 mov al, 1
                 sub al, 2
             |]) $ do
-                shouldEq1 CF True
-                shouldEq1 OF False
-                shouldEq1 al 255
+                shouldEq CF True
+                shouldEq OF False
+                shouldEq al 255
                 shouldEqSources [CF, OF]
                 shouldEqSources al
         it "CF set mul" $ do
@@ -88,9 +88,9 @@ testFlagsCF env =
                 mov al, 10
                 mul bl
             |]) $ do
-                shouldEq1 CF True
-                shouldEq1 OF True
-                shouldEq1 ax 1000
+                shouldEq CF True
+                shouldEq OF True
+                shouldEq ax 1000
                 shouldEqSources [CF, OF]
                 shouldEqSources ax
 
@@ -101,43 +101,43 @@ testFlagsOF env =
                 mov al, -127
                 add al, 255
             |]) $ do
-                shouldEq1 al (-128)
-                shouldEq1 OF False
-                shouldEq1 CF True
+                shouldEq al (-128)
+                shouldEq OF False
+                shouldEq CF True
         it "OF set when ADD" $ do
             runTest env ([untrimming|
                 mov al, -127
                 add al, 127
             |]) $ do
-                shouldEq1 OF False
-                shouldEq1 CF True
+                shouldEq OF False
+                shouldEq CF True
         it "OF set when ADD -2" $ do
             runTest env ([untrimming|
                 mov al, -2
                 add al, -2
             |]) $ do
-                shouldEq1 OF False
-                shouldEq1 CF True
+                shouldEq OF False
+                shouldEq CF True
         it "OF set when ADD negative" $ do
             runTest env ([untrimming|
                 mov al, -127
                 add al, -120
             |]) $ do
-                shouldEq1 OF True
-                shouldEq1 CF True
-                shouldEq1 al 9
+                shouldEq OF True
+                shouldEq CF True
+                shouldEq al 9
         it "OF set when SUB" $ do
             runTest env ([untrimming|
                 mov al, -127
                 sub al, 120
             |]) $ do
-                shouldEq1 OF True
-                shouldEq1 CF False
-                shouldEq1 al 9
+                shouldEq OF True
+                shouldEq CF False
+                shouldEq al 9
         it "OF set when SUB negative" $ do
             runTest env ([untrimming|
                 mov al, -127
                 sub al, -120
             |]) $ do
-                shouldEq1 OF False
-                shouldEq1 CF True
+                shouldEq OF False
+                shouldEq CF True

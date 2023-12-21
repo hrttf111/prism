@@ -47,8 +47,8 @@ testControl env = do
                     mov al, 2
                     ;hlt
             |]) $ do
-                shouldEq1 al 2
-                shouldEq1 bl 0
+                shouldEq al 2
+                shouldEq bl 0
     describe "Conditional jump" $ do
         it "loop" $ do
             runTest env ([untrimming|
@@ -159,7 +159,7 @@ testControl env = do
                 mov al, 1
                 hlt
             |]) $ do
-                shouldEq1 al 1
+                shouldEq al 1
                 --shouldEqSources al
 
 -------------------------------------------------------------------------------

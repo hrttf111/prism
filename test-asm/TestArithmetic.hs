@@ -20,15 +20,15 @@ testAdd env = do
                 mov al, 1
                 add al, 2
             |]) $ do
-                shouldEq1 al 3
+                shouldEq al 3
                 shouldEqSources al
         it "Add negative CF ZF" $ do
             runTest env ([untrimming|
                 mov al, 1
                 add al, -1
             |]) $ do
-                shouldEq1 al 0
-                shouldEq1 [CF, ZF] [True, True]
+                shouldEq al 0
+                shouldEq [CF, ZF] [True, True]
                 shouldEqSources al
                 shouldEqSourcesAllFlags
         it "Add negative CF and OF" $ do
@@ -36,7 +36,7 @@ testAdd env = do
                 mov al, -127
                 add al, -120
             |]) $ do
-                shouldEq1 [CF, OF] [True, True]
+                shouldEq [CF, OF] [True, True]
                 shouldEqSources al
                 shouldEqSourcesAllFlags
     describe "ADD [16] ACC REG <- IMM" $ do
@@ -45,15 +45,15 @@ testAdd env = do
                 mov ax, 1
                 add ax, 2
             |]) $ do
-                shouldEq1 ax 3
+                shouldEq ax 3
                 shouldEqSources ax
         it "Add negative CF ZF" $ do
             runTest env ([untrimming|
                 mov ax, 1
                 add ax, -1
             |]) $ do
-                shouldEq1 ax 0
-                shouldEq1 [CF, ZF] [True, True]
+                shouldEq ax 0
+                shouldEq [CF, ZF] [True, True]
                 shouldEqSources ax
                 shouldEqSourcesAllFlags
         it "Add negative CF and OF" $ do
@@ -61,7 +61,7 @@ testAdd env = do
                 mov ax, -32123
                 add ax, -31234
             |]) $ do
-                shouldEq1 [CF, OF] [True, True]
+                shouldEq [CF, OF] [True, True]
                 shouldEqSources ax
                 shouldEqSourcesAllFlags
         it "Add negative CF and OF 2" $ do
@@ -69,14 +69,14 @@ testAdd env = do
                 mov ax, 0x2002
                 add ax, -100
             |]) $ do
-                shouldEq1 ax $ 0x2002 - 100
+                shouldEq ax $ 0x2002 - 100
                 shouldEqSources ax
                 shouldEqSourcesAllFlags
             runTest env ([untrimming|
                 mov ax, 0x2002
                 add ax, -100
             |]) $ do
-                shouldEq1 ax $ 0x2002 - 100
+                shouldEq ax $ 0x2002 - 100
                 shouldEqSources ax
                 shouldEqSourcesAllFlags
     describe "ADD [8] REG <- REG" $ do

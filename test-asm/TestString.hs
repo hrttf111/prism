@@ -26,10 +26,10 @@ testString env = do
                 mov al, [es:0]
                 mov bl, [es:1]
             |]) $ do
-                shouldEq1 al 0xFF
-                shouldEq1 bl 0xAA
-                shouldEq1 di 2
-                shouldEq1 si 102
+                shouldEq al 0xFF
+                shouldEq bl 0xAA
+                shouldEq di 2
+                shouldEq si 102
         it "MOVS8 DF=1" $ do
             runTest env ([untrimming|
                 mov di, 50
@@ -43,10 +43,10 @@ testString env = do
                 mov bl, [es:50]
                 mov al, [es:49]
             |]) $ do
-                shouldEq1 al 0xFF
-                shouldEq1 bl 0xAA
-                shouldEq1 di 48
-                shouldEq1 si 98
+                shouldEq al 0xFF
+                shouldEq bl 0xAA
+                shouldEq di 48
+                shouldEq si 98
         it "MOVS16 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -58,10 +58,10 @@ testString env = do
                 mov ax, WORD [es:0]
                 mov bx, WORD [es:2]
             |]) $ do
-                shouldEq1 ax 0xFFDD
-                shouldEq1 bx 0xAAEE
-                shouldEq1 di 4
-                shouldEq1 si 104
+                shouldEq ax 0xFFDD
+                shouldEq bx 0xAAEE
+                shouldEq di 4
+                shouldEq si 104
         it "MOVS16 DF=1" $ do
             runTest env ([untrimming|
                 mov di, 50
@@ -75,10 +75,10 @@ testString env = do
                 mov bx, WORD [es:50]
                 mov ax, WORD [es:48]
             |]) $ do
-                shouldEq1 ax 0xFFDD
-                shouldEq1 bx 0xAAEE
-                shouldEq1 di 46
-                shouldEq1 si 96
+                shouldEq ax 0xFFDD
+                shouldEq bx 0xAAEE
+                shouldEq di 46
+                shouldEq si 96
         it "CMPS8 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -98,10 +98,10 @@ testString env = do
                 mov bl, 0
                 EQ:
             |]) $ do
-                shouldEq1 al 1
-                shouldEq1 bx 0
-                shouldEq1 di 2
-                shouldEq1 si 102
+                shouldEq al 1
+                shouldEq bx 0
+                shouldEq di 2
+                shouldEq si 102
         it "SCAS8 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -119,9 +119,9 @@ testString env = do
                 mov cl, 0
                 EQ:
             |]) $ do
-                shouldEq1 bl 1
-                shouldEq1 cl 0
-                shouldEq1 di 2
+                shouldEq bl 1
+                shouldEq cl 0
+                shouldEq di 2
         it "lods8 DF=0" $ do
             runTest env ([untrimming|
                 mov si, 100
@@ -132,9 +132,9 @@ testString env = do
                 mov bl, al
                 lodsb
             |]) $ do
-                shouldEq1 al 0xAA
-                shouldEq1 bl 0xFF
-                shouldEq1 si 102
+                shouldEq al 0xAA
+                shouldEq bl 0xFF
+                shouldEq si 102
         it "STOS8 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 48
@@ -145,9 +145,9 @@ testString env = do
                 mov bl, [es:49]
                 mov al, [es:48]
             |]) $ do
-                shouldEq1 al 0xFF
-                shouldEq1 bl 0xAA
-                shouldEq1 di 50
+                shouldEq al 0xFF
+                shouldEq bl 0xAA
+                shouldEq di 50
     describe "Rep" $ do
         it "MOVS8 DF=0" $ do
             runTest env ([untrimming|
@@ -160,10 +160,10 @@ testString env = do
                 mov al, [es:0]
                 mov bl, [es:1]
             |]) $ do
-                shouldEq1 al 0xFF
-                shouldEq1 bl 0xAA
-                shouldEq1 di 2
-                shouldEq1 si 102
+                shouldEq al 0xFF
+                shouldEq bl 0xAA
+                shouldEq di 2
+                shouldEq si 102
         it "SCAS8 NE" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -176,7 +176,7 @@ testString env = do
                 mov al, 0xDD
                 repne scasb
             |]) $ do
-                shouldEq1 di 5
+                shouldEq di 5
         it "SCAS8 NE found" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -189,7 +189,7 @@ testString env = do
                 mov al, 0xDD
                 repne scasb
             |]) $ do
-                shouldEq1 di 3
+                shouldEq di 3
         it "SCAS8 NZ found" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -202,6 +202,6 @@ testString env = do
                 mov ax, 0
                 repnz scasb
             |]) $ do
-                shouldEq1 di 5
+                shouldEq di 5
 
 -------------------------------------------------------------------------------

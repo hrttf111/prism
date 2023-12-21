@@ -56,11 +56,11 @@ testMov env =
                 mov si, 0x1003
                 mov di, 0x1004
             |]) $ do
-                shouldEq1 sp 0x1001
-                shouldEq1 sp 0x1001
-                shouldEq1 bp 0x1002
-                shouldEq1 si 0x1003
-                shouldEq1 di 0x1004
+                shouldEq sp 0x1001
+                shouldEq sp 0x1001
+                shouldEq bp 0x1002
+                shouldEq si 0x1003
+                shouldEq di 0x1004
         it "MOV REG to SP, BP, SI, DI" $ do
             runTest env ([text|
                 mov ax, 0x1001
@@ -72,10 +72,10 @@ testMov env =
                 mov si, cx
                 mov di, dx
             |]) $ do
-                shouldEq1 sp 0x1001
-                shouldEq1 bp 0x1002
-                shouldEq1 si 0x1003
-                shouldEq1 di 0x1004
+                shouldEq sp 0x1001
+                shouldEq bp 0x1002
+                shouldEq si 0x1003
+                shouldEq di 0x1004
         it "XCHG to accumulator Reg8" $ do
             runTest env ([text|
                 mov al, 0x10
@@ -133,28 +133,28 @@ testMov env =
                 mov bx, 0x2002
                 lea ax, [bx + 120]
             |]) $ do
-                shouldEq1 ax (0x2002 + 120)
+                shouldEq ax (0x2002 + 120)
                 shouldEqSources ax
         it "Test LEA disp16" $ do
             runTest env ([text|
                 mov bx, 0x2002
                 lea ax, [bx + 0x1001]
             |]) $ do
-                shouldEq1 ax (0x2002 + 0x1001)
+                shouldEq ax (0x2002 + 0x1001)
                 shouldEqSources ax
         it "Test LEA neg disp" $ do
             runTest env ([text|
                 mov bx, 0x2002
                 lea ax, WORD [bx - 1]
             |]) $ do
-                shouldEq1 ax (0x2002 - 1)
+                shouldEq ax (0x2002 - 1)
                 shouldEqSources ax
         it "Test LEA neg disp16" $ do
             runTest env ([text|
                 mov bx, 0x2002
                 lea ax, WORD [bx - 0x1000]
             |]) $ do
-                shouldEq1 ax (0x2002 - 0x1000)
+                shouldEq ax (0x2002 - 0x1000)
                 shouldEqSources ax
         it "Test LES" $ do
             runTest env ([text|
@@ -171,8 +171,8 @@ testMov env =
                     les ax, [reg_mem]
                     mov dx, es
             |]) $ do
-                shouldEq1 ax 0x1234
-                shouldEq1 dx 0x0060
+                shouldEq ax 0x1234
+                shouldEq dx 0x0060
                 shouldEqSources [ax, dx]
 
 testMovLDS env =
@@ -192,8 +192,8 @@ testMovLDS env =
                     lds ax, [reg_mem]
                     mov dx, ds
             |]) $ do
-                shouldEq1 ax 0x1234
-                shouldEq1 dx 0x0060
+                shouldEq ax 0x1234
+                shouldEq dx 0x0060
 
 testMovMem1 env = do
     describe "MOV mem ds" $ do
@@ -204,8 +204,8 @@ testMovMem1 env = do
                 mov [0x1010], WORD 0xDDCC
                 mov bx, [0x1010]
             |]) $ do
-                shouldEq1 ax 0xFFAA
-                shouldEq1 bx 0xDDCC
+                shouldEq ax 0xFFAA
+                shouldEq bx 0xDDCC
         it "Mem16 bx/si/di <- Imm16" $ do
             runTest env ([untrimming|
                 mov bx, 0x1000
@@ -218,9 +218,9 @@ testMovMem1 env = do
                 mov [di], WORD 0x8877
                 mov dx, [di]
             |]) $ do
-                shouldEq1 ax 0xFFAA
-                shouldEq1 cx 0xDDCC
-                shouldEq1 dx 0x8877
+                shouldEq ax 0xFFAA
+                shouldEq cx 0xDDCC
+                shouldEq dx 0x8877
         it "Mem16 bx/si/di + disp16 <- Imm16" $ do
             runTest env ([untrimming|
                 mov bx, 0
@@ -233,9 +233,9 @@ testMovMem1 env = do
                 mov [di + 0x1000], WORD 0x8877
                 mov dx, [di + 0x1000]
             |]) $ do
-                shouldEq1 ax 0xFFAA
-                shouldEq1 cx 0xDDCC
-                shouldEq1 dx 0x8877
+                shouldEq ax 0xFFAA
+                shouldEq cx 0xDDCC
+                shouldEq dx 0x8877
         it "Mem16 bx+si/bx+di + disp16<- Imm16" $ do
             runTest env ([untrimming|
                 mov bx, 10
@@ -246,8 +246,8 @@ testMovMem1 env = do
                 mov [bx + di + 0x1000], WORD 0xDDCC
                 mov cx, [bx + di + 0x1000]
             |]) $ do
-                shouldEq1 ax 0xFFAA
-                shouldEq1 cx 0xDDCC
+                shouldEq ax 0xFFAA
+                shouldEq cx 0xDDCC
     describe "MOV segment replacement" $ do
         it "Replace es" $ do
             runTest env ([untrimming|
@@ -258,8 +258,8 @@ testMovMem1 env = do
                 mov ax, [16]
                 mov bx, [ds:16]
             |]) $ do
-                shouldEq1 ax 0xFFAA
-                shouldEq1 bx 0xFFAA
+                shouldEq ax 0xFFAA
+                shouldEq bx 0xFFAA
 
 testMovMem2 env = do
     describe "MOV mem ds" $ do
@@ -276,9 +276,9 @@ testMovMem2 env = do
                 mov dx, [bp - 10]
                 ;mov dx, [bp + 4]
             |]) $ do
-                shouldEq1 ax 0xFFAA
-                shouldEq1 bx 0xDDCC
-                shouldEq1 dx 100
+                shouldEq ax 0xFFAA
+                shouldEq bx 0xDDCC
+                shouldEq dx 100
         it "Mem16 bp + si/di <- Imm16" $ do
             runTest env ([untrimming|
                 mov bp, 10
@@ -290,8 +290,8 @@ testMovMem2 env = do
                 mov [bp + di], WORD 0x8877
                 mov dx, [bp + di]
             |]) $ do
-                shouldEq1 cx 0xDDCC
-                shouldEq1 dx 0x8877
+                shouldEq cx 0xDDCC
+                shouldEq dx 0x8877
         it "Mem16 bp + si/di + disp8/16 <- Imm16" $ do
             runTest env ([untrimming|
                 mov bp, 10
@@ -303,8 +303,8 @@ testMovMem2 env = do
                 mov [bp + di + 0x1000], WORD 0x8877
                 mov dx, [bp + di + 0x1000]
             |]) $ do
-                shouldEq1 cx 0xDDCC
-                shouldEq1 dx 0x8877
+                shouldEq cx 0xDDCC
+                shouldEq dx 0x8877
 
 testMovXlat env = do
     describe "XLAT" $ do
@@ -322,7 +322,7 @@ testMovXlat env = do
                     xlatb
                     hlt
             |]) $ do
-                shouldEq1 ax 0x15
+                shouldEq ax 0x15
         it "XLAT" $ do
             runTest env ([untrimming|
                 SECTION .data start=100h
@@ -344,8 +344,8 @@ testMovXlat env = do
                     mov bx, ax
                     hlt
             |]) $ do
-                shouldEq1 bx 0x15
-                shouldEq1 cx 0xAF
-                shouldEq1 dx 0x11
+                shouldEq bx 0x15
+                shouldEq cx 0xAF
+                shouldEq dx 0x11
 
 -------------------------------------------------------------------------------

@@ -51,8 +51,8 @@ testPeripheral = do
                 mov bl, [8999]
                 hlt
             |]) $ do
-                shouldEq1 al 134
-                shouldEq1 bl 189
+                shouldEq al 134
+                shouldEq bl 189
         it "Read 16b" $ do
             let devices = TestDev
                 val = 0xFE19
@@ -67,8 +67,8 @@ testPeripheral = do
                 mov bx, [7998]
                 hlt
             |]) $ do
-                shouldEq1 ax 0xFE19
-                shouldEq1 bx 1089
+                shouldEq ax 0xFE19
+                shouldEq bx 1089
         it "Write 8b" $ do
             ref <- newIORef 0
             let devices = TestDev
@@ -81,7 +81,7 @@ testPeripheral = do
                 mov [9008], BYTE 189
                 hlt
             |]) $ do
-                shouldEq1 bx 0
+                shouldEq bx 0
                 liftIO $ do
                     readIORef ref >>= (`shouldBe` 189)
         it "Write 16b" $ do
@@ -96,7 +96,7 @@ testPeripheral = do
                 mov [9008], WORD 0xFEAB
                 hlt
             |]) $ do
-                shouldEq1 bx 0
+                shouldEq bx 0
                 liftIO $ do
                     readIORef ref >>= (`shouldBe` 0xFEAB)
     describe "Peripheral Port" $ do
@@ -111,7 +111,7 @@ testPeripheral = do
                 in al, 120
                 hlt
             |]) $ do
-                shouldEq1 al 134
+                shouldEq al 134
         it "Read 16b" $ do
             let devices = TestDev
                 val = 1349
@@ -122,7 +122,7 @@ testPeripheral = do
                 in ax, 80
                 hlt
             |]) $ do
-                shouldEq1 ax 1349
+                shouldEq ax 1349
         it "Write 8b" $ do
             ref <- newIORef 0
             let devices = TestDev
@@ -134,7 +134,7 @@ testPeripheral = do
                 out 80, al
                 hlt
             |]) $ do
-                shouldEq1 al 189
+                shouldEq al 189
                 liftIO $ do
                     readIORef ref >>= (`shouldBe` 189)
         it "Write 16b" $ do
@@ -148,7 +148,7 @@ testPeripheral = do
                 out 80, ax
                 hlt
             |]) $ do
-                shouldEq1 ax 1890
+                shouldEq ax 1890
                 liftIO $ do
                     readIORef ref >>= (`shouldBe` 1890)
     describe "Peripheral MMIO Local" $ do
@@ -170,9 +170,9 @@ testPeripheral = do
                 mov cl, [10300]
                 hlt
             |]) $ do
-                shouldEq1 al 134
-                shouldEq1 bl 189
-                shouldEq1 cl 127
+                shouldEq al 134
+                shouldEq bl 189
+                shouldEq cl 127
         it "Write 8b" $ do
             ref <- newIORef 0
             let devices = TestDev
@@ -186,7 +186,7 @@ testPeripheral = do
                 mov [9008], BYTE 189
                 hlt
             |]) $ do
-                shouldEq1 bx 0
+                shouldEq bx 0
                 liftIO $ do
                     readIORef ref >>= (`shouldBe` 189)
     describe "Peripheral Port Local" $ do
@@ -205,7 +205,7 @@ testPeripheral = do
                 in al, 120
                 hlt
             |]) $ do
-                shouldEq1 al 134
-                shouldEq1 bl 150
+                shouldEq al 134
+                shouldEq bl 150
 
 -------------------------------------------------------------------------------

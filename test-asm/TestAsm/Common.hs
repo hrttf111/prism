@@ -156,13 +156,13 @@ type family OpVal o where
     OpVal MemPhy16 = Uint16
 
 class ShouldEq op val m where
-    shouldEq1 :: (HasCallStack) => op -> val -> m ()
+    shouldEq :: (HasCallStack) => op -> val -> m ()
 
 instance {-# OVERLAPS #-} (Show val, Eq val, HasSourceL sl m, OperandSupport sl op (OpVal op) m, val ~ (OpVal op), MonadIO m) => ShouldEq [op] [val] m where
-    shouldEq1 = cmpOperandsVals
+    shouldEq = cmpOperandsVals
 
 instance {-# OVERLAPPABLE #-} (Show val, Eq val, HasSourceL sl m, OperandSupport sl op (OpVal op) m, val ~ (OpVal op), MonadIO m) => ShouldEq op val m where
-    shouldEq1 = cmpOperandVal
+    shouldEq = cmpOperandVal
 
 class ShouldEqSources op m where
     shouldEqSources :: (HasCallStack) => op -> m ()

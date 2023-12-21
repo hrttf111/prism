@@ -138,7 +138,7 @@ testPC = do
                 int 0x10
                 hlt
             |]) $ do
-                shouldEq1 al 89
+                shouldEq al 89
         it "Basic test Master PIC IRQ0" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -177,7 +177,7 @@ testPC = do
                 loop LOOP1
                 hlt
             |]) $ do
-                shouldEq1 al 89
+                shouldEq al 89
         it "Basic test Slave PIC IRQ8" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -230,7 +230,7 @@ testPC = do
                 loop LOOP1
                 hlt
             |]) $ do
-                shouldEq1 al 89
+                shouldEq al 89
     describe "Test PC Scheduler" $ do
         it "Sched" $ do
             comm <- newPrismComm False
@@ -251,7 +251,7 @@ testPC = do
                 loop LOOP1
                 hlt
             |]) $ do
-                shouldEq1 al 5
+                shouldEq al 5
     describe "Test PC PIT" $ do
         let devR = 0
         it "Write, read and interrupt Timer 0" $ do
@@ -282,9 +282,9 @@ testPC = do
                 inc dx
                 iret
             |]) $ do
-                shouldEq1 bx 51
-                shouldEq1 cl expectedStatus
-                shouldEq1 dx 1
+                shouldEq bx 51
+                shouldEq cl expectedStatus
+                shouldEq dx 1
         it "Write, read and interrupt Timer 2" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -313,9 +313,9 @@ testPC = do
                 inc dx
                 iret
             |]) $ do
-                shouldEq1 bx 21
-                shouldEq1 cl expectedStatus
-                shouldEq1 dx 4
+                shouldEq bx 21
+                shouldEq cl expectedStatus
+                shouldEq dx 4
         it "Write, read and interrupt Timer 3" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -344,9 +344,9 @@ testPC = do
                 inc dx
                 iret
             |]) $ do
-                shouldEq1 bx 6
-                shouldEq1 cl expectedStatus
-                shouldEq1 dx 2
+                shouldEq bx 6
+                shouldEq cl expectedStatus
+                shouldEq dx 2
         it "Write, read and interrupt Timer 4" $ do
             comm <- newPrismComm False
             devices <- createPC
@@ -375,9 +375,9 @@ testPC = do
                 inc dx
                 iret
             |]) $ do
-                shouldEq1 bx 91
-                shouldEq1 cl expectedStatus
-                shouldEq1 dx 2
+                shouldEq bx 91
+                shouldEq cl expectedStatus
+                shouldEq dx 2
     describe "Test PC BIOS" $ do
         let devR = 0
         it "BIOS interrupt infra" $ do
@@ -390,7 +390,7 @@ testPC = do
                 int 0x1f
                 hlt
             |]) $ do
-                shouldEq1 al 89
+                shouldEq al 89
         it "BIOS keyboard - int 9" $ do
             devices <- createPC
             let sharedKeyboard = fst $ getPcBiosSharedState devices
@@ -421,10 +421,10 @@ testPC = do
                 pop dx
                 hlt
             |]) $ do
-                shouldEq1 bl 3
-                shouldEq1 bh 4
-                shouldEq1 cl 2
-                shouldEq1 dx 0x40
+                shouldEq bl 3
+                shouldEq bh 4
+                shouldEq cl 2
+                shouldEq dx 0x40
         it "BIOS timer - int 8" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -449,10 +449,10 @@ testPC = do
                 inc bx
                 iret
             |]) $ do
-                shouldEq1 cx 0
-                shouldEq1 dx 1
-                shouldEq1 al 0
-                shouldEq1 bx 1
+                shouldEq cx 0
+                shouldEq dx 1
+                shouldEq al 0
+                shouldEq bx 1
         it "BIOS timer - time" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -467,9 +467,9 @@ testPC = do
                 int 0x1a
                 hlt
             |]) $ do
-                shouldEq1 ch hours
-                shouldEq1 cl minutes
-                shouldEq1 al hours
+                shouldEq ch hours
+                shouldEq cl minutes
+                shouldEq al hours
         it "BIOS video - write/read char" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -489,10 +489,10 @@ testPC = do
                 int 0x10
                 hlt
             |]) $ do
-                shouldEq1 ah 7
-                shouldEq1 al 0x31
-                shouldEq1 dh 0
-                shouldEq1 dl 0
+                shouldEq ah 7
+                shouldEq al 0x31
+                shouldEq dh 0
+                shouldEq dl 0
         it "BIOS video - write + update/read char" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -517,10 +517,10 @@ testPC = do
                 int 0x10
                 hlt
             |]) $ do
-                shouldEq1 ah 7
-                shouldEq1 al 0x31
-                --shouldEq1 dh 1
-                --shouldEq1 dl 0
+                shouldEq ah 7
+                shouldEq al 0x31
+                --shouldEq dh 1
+                --shouldEq dl 0
         it "BIOS memory and equipment" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -533,8 +533,8 @@ testPC = do
                 int 0x11
                 hlt
             |]) $ do
-                shouldEq1 ax 0x0021
-                shouldEq1 bx 0x27f
+                shouldEq ax 0x0021
+                shouldEq bx 0x27f
         it "BIOS disk - no drive" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -545,8 +545,8 @@ testPC = do
                 int 0x13
                 hlt
             |]) $ do
-                shouldEq1 al 0
-                shouldEq1 ah 15
+                shouldEq al 0
+                shouldEq ah 15
         it "BIOS disk - read" $ do
             let diskRead offset len = do
                     putStrLn $ "Offset = " ++ (show offset)
@@ -570,8 +570,8 @@ testPC = do
                 int 0x13
                 hlt
             |]) $ do
-                shouldEq1 al 10
-                shouldEq1 ah 2
+                shouldEq al 10
+                shouldEq ah 2
         it "BIOS disk - write" $ do
             let diskRead offset len = return B.empty
                 diskWrite offset d = do
@@ -595,8 +595,8 @@ testPC = do
                 int 0x13
                 hlt
             |]) $ do
-                shouldEq1 al 10
-                shouldEq1 ah 3
+                shouldEq al 10
+                shouldEq ah 3
         it "BIOS disk - params" $ do
             let diskRead offset len = return B.empty
                 diskWrite offset d = do
@@ -614,10 +614,10 @@ testPC = do
                 int 0x13
                 hlt
             |]) $ do
-                shouldEq1 ax 0
-                shouldEq1 bl 4
-                shouldEq1 dh 1
-                shouldEq1 di 5000
+                shouldEq ax 0
+                shouldEq bl 4
+                shouldEq dh 1
+                shouldEq di 5000
         it "BIOS memory - halt" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
@@ -630,5 +630,5 @@ testPC = do
                 mov al, 10
                 hlt
             |]) $ do
-                shouldEq1 al 0
+                shouldEq al 0
 -------------------------------------------------------------------------------
