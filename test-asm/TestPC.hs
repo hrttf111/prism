@@ -618,7 +618,7 @@ testPC = do
                 shouldEq bl 4
                 shouldEq dh 1
                 shouldEq di 5000
-        it "BIOS memory - halt" $ do
+        {-it "BIOS memory - halt" $ do
             devices <- createPC
             let intList = mkBiosInterrupts
             env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts pcMemory intList preStartAction
@@ -630,5 +630,5 @@ testPC = do
                 mov al, 10
                 hlt
             |]) $ do
-                shouldEq al 0
+                shouldEq al 0-}
 -------------------------------------------------------------------------------

@@ -244,8 +244,8 @@ testMovMem1 env = do
                 shouldEq cx 0xDDCC
                 shouldEq dx 0x8877
                 shouldEq (MemDisp16 0x1000) 0xFFAA
-                --shouldEq (MemDisp16 0x1010) 0xDDCC
-                --shouldEq (MemDisp16 0x1020) 0x8877
+                shouldEq (MemDisp16 0x100a) 0xDDCC
+                shouldEq (MemDisp16 0x1014) 0x8877
                 shouldEqSources [ax, cx, dx]
         it "Mem16 bx+si/bx+di + disp16<- Imm16" $ do
             runTest env ([untrimming|
@@ -259,8 +259,8 @@ testMovMem1 env = do
             |]) $ do
                 shouldEq ax 0xFFAA
                 shouldEq cx 0xDDCC
-                --shouldEq (MemDisp16 0x1020) 0xFFAA
-                --shouldEq (MemDisp16 0x1030) 0xDDCC
+                shouldEq (MemDisp16 0x1014) 0xFFAA
+                shouldEq (MemDisp16 0x101e) 0xDDCC
                 shouldEqSources [ax, cx]
     describe "MOV segment replacement" $ do
         it "Replace es" $ do

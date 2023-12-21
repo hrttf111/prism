@@ -61,6 +61,8 @@
                 - Implement readable aliases +
             - Fix flags in QEMU +
             - Align addresses between Prism and QEMU tests
+            - Fix Prism peripherals creation code
+            - Show asm errors when assembler fails
 
 -------------------------------------------------------
 
