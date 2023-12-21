@@ -9,7 +9,7 @@ module TestAsm.Run where
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict
 
-import Control.Concurrent
+import Control.Concurrent (forkIO, forkFinally, takeMVar, putMVar, newEmptyMVar, ThreadId)
 
 import Data.Text (Text)
 import qualified Data.ByteString as B
@@ -226,9 +226,12 @@ makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList preStartActi
     comm <- liftIO $ newPrismComm False
     queue <- liftIO $ createIOQueue
     let ioCtx = createTestPeripherals peripheralL queue
-    threadId <- liftIO . forkIO $ runRemotePeripherals queue peripheralR execPeripheralsOnce
+    mvar <- liftIO $ newEmptyMVar
+    threadId <- liftIO $ forkFinally (do
+        runRemotePeripherals queue peripheralR execPeripheralsOnce
+        ) (\_ -> putMVar mvar ())
     prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
-    return $ TestEnv1 (Just threadId) makeAsmStr16 prismExec
+    return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr16 prismExec
     where
         debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
         runner comm decoder _ = do

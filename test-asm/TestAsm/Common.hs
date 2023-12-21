@@ -18,13 +18,14 @@ module TestAsm.Common where
 import Test.Hspec
 import Test.Hspec.Expectations
 
-import Control.Concurrent
+import Control.Concurrent (ThreadId, MVar, killThread, tryTakeMVar, threadDelay)
 import Control.Monad (when)
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict
 
 import Numeric (showHex)
 
+import Data.Maybe (isJust)
 import Data.Text (Text)
 import qualified Data.ByteString as B
 
@@ -45,8 +46,13 @@ data TestEnv = TestEnv {
         executePrism :: (B.ByteString -> PrismRunner -> IO Ctx)
     }
 
+data PeripheralThread = PeripheralThread {
+    peripheralThreadId1 :: ThreadId,
+    peripheralThreadMVar :: MVar ()
+}
+
 data TestEnv1 executor = TestEnv1 {
-        testEnv1PeripheralThreadId :: Maybe ThreadId,
+        testEnv1PeripheralThread :: Maybe PeripheralThread,
         testEnv1Assemble :: (Text -> IO B.ByteString),
         testEnv1Executor :: executor
     }
@@ -65,8 +71,23 @@ instance (ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, ()) IO 
     execTestEnv env program seq = do
         code <- (testEnv1Assemble env) program
         res <- execProgram (testEnv1Executor env) code
+        waitThreadEnd $ testEnv1PeripheralThread env
         runSeq (res, ()) seq
         return ()
+        where
+            waitN threadId mvar 0 = do
+                killThread threadId
+                putStrLn "Thread wait timeout" >> return ()
+            waitN threadId mvar n = do
+                m <- tryTakeMVar mvar
+                if isJust m then
+                    return ()
+                    else do
+                        threadDelay 10000
+                        waitN threadId mvar $ n - 1
+            waitThreadEnd (Just (PeripheralThread id mvar)) =
+                waitN id mvar 10
+            waitThreadEnd Nothing = return ()
 
 instance (ProgramExecutor exec1 res1 IO, ProgramExecutor exec2 res2 IO) => TestEnvE (TestEnv2 exec1 exec2) (res1, res2) IO where
     execTestEnv env program seq = do
@@ -83,6 +104,9 @@ class TestEnvMaker maker env | maker -> env where
 runTest maker program seq = do
     env <- makeTestEnv maker
     execTestEnv env program seq
+
+execTestEnvIO :: (ProgramExecutor exec res IO) => (TestEnv1 exec) -> Text -> SeqM (res, ()) () -> IO ()
+execTestEnvIO env program seq = execTestEnv env program seq
 
 -------------------------------------------------------------------------------
 

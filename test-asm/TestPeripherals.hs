@@ -6,9 +6,8 @@ module TestPeripherals where
 import Test.Hspec
 
 import Data.Text (Text)
-import Data.IORef
+import Data.IORef (readIORef, newIORef, IORef, atomicWriteIORef)
 import Control.Monad.Trans (liftIO, MonadIO)
-import Control.Concurrent
 
 import Prism.Cpu
 import Prism.Instructions
@@ -34,9 +33,6 @@ testPeriphWrite ref offset val =
 
 preStartAction :: PrismM ()
 preStartAction = return ()
-
-execTestEnvIO :: (ProgramExecutor exec res IO) => (TestEnv1 exec) -> Text -> SeqM (res, ()) () -> IO ()
-execTestEnvIO env program seq = execTestEnv env program seq
 
 testPeripheral = do
     describe "Peripheral MMIO Remote" $ do
@@ -86,8 +82,8 @@ testPeripheral = do
                 hlt
             |]) $ do
                 shouldEq1 bx 0
-            threadDelay 100
-            readIORef ref >>= (`shouldBe` 189)
+                liftIO $ do
+                    readIORef ref >>= (`shouldBe` 189)
         it "Write 16b" $ do
             ref <- newIORef 0
             let devices = TestDev
@@ -101,8 +97,8 @@ testPeripheral = do
                 hlt
             |]) $ do
                 shouldEq1 bx 0
-            threadDelay 100
-            readIORef ref >>= (`shouldBe` 0xFEAB)
+                liftIO $ do
+                    readIORef ref >>= (`shouldBe` 0xFEAB)
     describe "Peripheral Port" $ do
         let devL = TestDev
         it "Read 8b" $ do
@@ -139,8 +135,8 @@ testPeripheral = do
                 hlt
             |]) $ do
                 shouldEq1 al 189
-            threadDelay 10000
-            readIORef ref >>= (`shouldBe` 189)
+                liftIO $ do
+                    readIORef ref >>= (`shouldBe` 189)
         it "Write 16b" $ do
             ref <- newIORef 0
             let devices = TestDev
@@ -153,8 +149,8 @@ testPeripheral = do
                 hlt
             |]) $ do
                 shouldEq1 ax 1890
-            threadDelay 10000
-            readIORef ref >>= (`shouldBe` 1890)
+                liftIO $ do
+                    readIORef ref >>= (`shouldBe` 1890)
     describe "Peripheral MMIO Local" $ do
         let devR = TestDev
         it "Read 8b" $ do
@@ -191,8 +187,8 @@ testPeripheral = do
                 hlt
             |]) $ do
                 shouldEq1 bx 0
-            threadDelay 100
-            readIORef ref >>= (`shouldBe` 189)
+                liftIO $ do
+                    readIORef ref >>= (`shouldBe` 189)
     describe "Peripheral Port Local" $ do
         let devR = TestDev
         it "Read 8b" $ do
