@@ -36,16 +36,6 @@ import Assembler
 
 -------------------------------------------------------------------------------
 
-type PrismRunner = PrismDecoder -> Int -> PrismM ()
-
-data TestEnv = TestEnv {
-        peripheralThreadId :: Maybe ThreadId,
-        assembleNative :: (Text -> IO B.ByteString),
-        assembleNative16 :: (Text -> IO B.ByteString),
-        executeNative :: (B.ByteString -> IO MemReg),
-        executePrism :: (B.ByteString -> PrismRunner -> IO Ctx)
-    }
-
 data PeripheralThread = PeripheralThread {
     peripheralThreadId1 :: ThreadId,
     peripheralThreadMVar :: MVar ()
@@ -123,35 +113,6 @@ instance Show MemRangeRes where
             printHex s b = "0x" ++ (showHex b "") ++ ", " ++ s
 
 data AllRegs = AllRegs deriving (Show, Eq)
-
--------------------------------------------------------------------------------
-
-class (MemRegManipulator a MemReg v) => RegTest a v | a -> v where
-    shouldEq :: (HasCallStack) => a -> Int -> MemReg -> Expectation
-    shouldEqReg :: (HasCallStack) => a -> MemReg -> MemReg -> Expectation
-
-instance RegTest Reg8 Uint8 where
-    shouldEq reg valExp memReg = do
-        val <- readRegRaw memReg reg
-        val `shouldBe` (fromIntegral valExp)
-    shouldEqReg reg memReg1 memReg2 = do
-        val1 <- readRegRaw memReg1 reg
-        val2 <- readRegRaw memReg2 reg
-        val1 `shouldBe` val2
-
-instance RegTest Reg16 Uint16 where
-    shouldEq reg valExp memReg = do
-        val <- readRegRaw memReg reg
-        val `shouldBe` (fromIntegral valExp)
-    shouldEqReg reg memReg1 memReg2 = do
-        val1 <- readRegRaw memReg1 reg
-        val2 <- readRegRaw memReg2 reg
-        val1 `shouldBe` val2
-
-flagsShouldEq :: (HasCallStack) => Flags -> MemReg -> Expectation
-flagsShouldEq flags memReg = do
-    (flagsN, _) <- readRegRaw memReg flagsInternal
-    flags `shouldBe` flagsN
 
 -------------------------------------------------------------------------------
 
