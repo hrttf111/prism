@@ -157,6 +157,8 @@ type family OpVal o where
     OpVal EFlag = Bool
     OpVal MemPhy8 = Uint8
     OpVal MemPhy16 = Uint16
+    OpVal MemDisp8 = Uint8
+    OpVal MemDisp16 = Uint16
 
 class ShouldEq op val m where
     shouldEq :: (HasCallStack) => op -> val -> m ()
