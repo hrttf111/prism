@@ -59,9 +59,6 @@ class RegDecoder a where
     decodeReg :: Word8 -> a
     decodeRegVal :: a -> Word8
 
-class MemRegManipulator a p v | a p -> v where
-    readRegRaw :: (MonadIO m) => p -> a -> m v
-
 class MemOpManipulator a p v | a p -> v where
     readOpRaw :: (MonadIO m) => p -> a -> m v
 

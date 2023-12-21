@@ -15,7 +15,7 @@ import Prism.Command
 import Prism.Peripherals
 import Prism.Instructions (internalInstrList)
 
-import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..), AllRegs(..))
+import TestAsm.Common
 
 -------------------------------------------------------------------------------
 
@@ -23,7 +23,8 @@ data ExecutorPrismRes = ExecutorPrismRes {
     eprMemReg :: MemReg,
     eprMemMain :: MemMain,
     eprFlags :: Flags,
-    eprEFlags :: EFlags
+    eprEFlags :: EFlags,
+    eprDataOffset :: Int
 }
 
 type PrismRunner = PrismDecoder -> Int -> PrismM ()
@@ -53,6 +54,7 @@ instance (MonadIO m) => ProgramExecutor ExecutorPrism ExecutorPrismRes m where
                                   (ctxMem ctx)
                                   (ctxFlags ctx)
                                   (ctxEFlags ctx)
+                                  (fromIntegral dataSegment)
 
 -------------------------------------------------------------------------------
 
@@ -104,6 +106,14 @@ instance (MonadIO m) => OperandSupport ExecutorPrismRes MemPhy8 Uint8 m where
 instance (MonadIO m) => OperandSupport ExecutorPrismRes MemPhy16 Uint16 m where
     readSourceOp epr mem =
         readOpRaw (eprMemMain epr) mem
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes MemDisp8 Uint8 m where
+    readSourceOp epr (MemDisp8 offset) =
+        readOpRaw (eprMemMain epr) $ MemPhy8 $ (fromIntegral offset) + (eprDataOffset epr)
+
+instance (MonadIO m) => OperandSupport ExecutorPrismRes MemDisp16 Uint16 m where
+    readSourceOp epr (MemDisp16 offset) =
+        readOpRaw (eprMemMain epr) $ MemPhy16 $ (fromIntegral offset) + (eprDataOffset epr)
 
 instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRange MemRangeRes m where
     readSourceOp epr (MemRange start end) =

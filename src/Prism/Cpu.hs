@@ -11,7 +11,7 @@ module Prism.Cpu (
         , OperandReg, OperandMem
         , MemArithmetics (..)
         , MemSegWrapper (..)
-        , MemRegManipulator (..), MemOpManipulator (..)
+        , MemOpManipulator (..)
         , MemAddress (..)
         , MemDecoder (..), RegDecoder (..)
         , Port8 (..), Port16 (..)

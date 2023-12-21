@@ -157,9 +157,6 @@ instance CpuFlags EFlags CpuTrans where
 
 type AllFlags = (Flags, EFlags)
 
-instance MemRegManipulator RegSpec MemReg AllFlags where
-    readRegRaw memReg _ = readFlags memReg
-
 instance MemOpManipulator RegSpec MemReg AllFlags where
     readOpRaw memReg _ = readFlags memReg
 

@@ -28,6 +28,9 @@ import Data.Text.Encoding (encodeUtf8)
 import qualified Data.ByteString as B
 import Data.Either (either)
 import Data.List (intercalate)
+import Numeric (showHex)
+
+import Control.Exception (Exception, throwIO)
 
 import Prism.Cpu
 
@@ -222,6 +225,24 @@ data ExecutorQemuRes = ExecutorQemuRes {
     eqrMemMainOffset :: Int
 } deriving (Show)
 
+convMemAddress :: ExecutorQemuRes -> Int -> Maybe Int
+convMemAddress res address | address < (eqrMemMainOffset res) = Nothing
+convMemAddress res address | (address - (eqrMemMainOffset res)) > (B.length $ eqrMemMain res) = Nothing
+convMemAddress res address = Just $ address - (eqrMemMainOffset res)
+
+data QemuAddressException = QemuAddressException Int Int Int
+
+instance Exception QemuAddressException
+instance Show QemuAddressException where
+    show (QemuAddressException lower addr upper) =
+        "QemuAddressException(" ++ (showHex lower "") ++ "," ++ (showHex addr "") ++ "," ++ (showHex upper "") ++ ")"
+
+convAddr :: (MonadIO m) => ExecutorQemuRes -> Int -> m Int
+convAddr res address =
+    case convMemAddress res address of
+        Just addr -> return addr
+        Nothing -> liftIO . throwIO $ QemuAddressException (eqrMemMainOffset res) address (eqrMemMainOffset res + B.length (eqrMemMain res))
+
 data ExecutorQemu = ExecutorQemu
 
 assembleQemu :: T.Text -> IO B.ByteString
@@ -238,7 +259,7 @@ execCode mainCode = do
         Nothing -> return $ Left "Could not execute QEMU"
     where
         regAreaStart = 0x7E10
-        regAreaSize = 42
+        regAreaSize = 64
         magic1Offset = 0x7E00
         magic2Offset = 0x7E02
         programDataOffset = 0x9800
@@ -304,18 +325,18 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes RegSeg Uint16 m where
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy8 Uint8 m where
     readSourceOp er (MemPhy8 offset) = liftIO $
         B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
-            readOpRaw (MemMain $ castPtr ptr) $ MemPhy8 $ (eqrMemMainOffset er) - offset
+            convAddr er offset >>= readOpRaw (MemMain $ castPtr ptr) . MemPhy8
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy16 Uint16 m where
     readSourceOp er (MemPhy16 offset) = liftIO $
         B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
-            readOpRaw (MemMain $ castPtr ptr) $ MemPhy16 $ (eqrMemMainOffset er) - offset
+            convAddr er offset >>= readOpRaw (MemMain $ castPtr ptr) . MemPhy16
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m where
     readSourceOp epr (MemRange start end) =
-        MemRangeRes <$> mapM (\mem -> readSourceOp epr $ MemPhy8 $ fromIntegral mem) [start..end]
+        MemRangeRes <$> mapM (\mem -> convAddr epr (fromIntegral mem) >>= readSourceOp epr . MemPhy8) [start..end]
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes AllRegs String m where
     readSourceOp er _ = liftIO $

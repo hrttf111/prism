@@ -63,6 +63,7 @@ doTests = do
                     mov dx, 4
                     mov [0x1000], WORD 0xFFAA
                     mov ax, [0x1000]
+                    mov [0x1002], BYTE 0xfe
                     mov [0x1010], WORD 0xDDCC
                     mov bx, [0x1010]
                 |]) $ do
@@ -71,14 +72,19 @@ doTests = do
                     showOperandVal cx
                     showOperandVal dx
                     showOperandVal ds
-                    showOperandVal (MemPhy8 (0x1000 + 8000))
-                    showOperandVal (MemPhy16 (0x1000 + 8000))
-                    showOperandVal (MemRange (0x1000 + 8000) (0x1000 + 8020))
+                    showOperandVal (MemDisp8 0x1000)
+                    showOperandVal (MemDisp16 0x1000)
+                    showOperandVal (MemDisp8 0x1002)
+                    showOperandVal (MemPhy8 0x1000)
+                    showOperandVal (MemPhy16 0x1000)
+                    showOperandVal (MemPhy8 0x1002)
+                    showOperandVal (MemRange 0x1000 0x1020)
                 putStrLn "End newTests"
             it "Qemu" $ do
                 env <- makeTestEnv QemuEnvMaker
                 execTestEnv env ([untrimming|
-                    mov WORD [0x9800], 0x1234
+                    ;mov WORD [0x9800], 0x1234
+                    mov WORD [0x9800], 1234
                     mov ax, 1
                     mov bx, 2
                     mov cx, 3
@@ -92,7 +98,7 @@ doTests = do
                     showOperandVal ss
                     showOperandVal sp
                     showOperandVal (MemPhy16 0x9800)
-                    showOperandVal (MemRange 0x7E00 0x7E20)
+                    --showOperandVal (MemRange 0x7E00 0x7E20)
                 putStrLn "End newTests"
             it "Both" $ do
                 env <- makeTestEnv PrismQemuEnvMaker

@@ -245,12 +245,6 @@ printRegs memReg =
 
 -------------------------------------------------------------------------------
 
-instance MemRegManipulator Reg8 MemReg Uint8 where
-    readRegRaw = readReg8
-
-instance MemRegManipulator Reg16 MemReg Uint16 where
-    readRegRaw = readReg16
-
 instance MemOpManipulator Reg8 MemReg Uint8 where
     readOpRaw = readReg8
 

@@ -100,6 +100,9 @@ execTestEnvIO env program seq = execTestEnv env program seq
 
 -------------------------------------------------------------------------------
 
+newtype MemDisp8 = MemDisp8 Disp deriving (Eq, Show)
+newtype MemDisp16 = MemDisp16 Disp deriving (Eq, Show)
+
 data MemRange = MemRange Uint32 Uint32 deriving (Eq)
 newtype MemRangeRes = MemRangeRes [Uint8] deriving (Eq)
 
