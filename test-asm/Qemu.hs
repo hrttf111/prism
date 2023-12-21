@@ -122,6 +122,10 @@ asmBiosHeader = [untrimming|
 
     ;start test
     cli
+    ;clear flags
+    mov dx, 0
+    push dx
+    popf
     jmp 1000h:START
 
     STOP:

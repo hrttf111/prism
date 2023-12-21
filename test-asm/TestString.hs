@@ -30,6 +30,9 @@ testString env = do
                 shouldEq bl 0xAA
                 shouldEq di 2
                 shouldEq si 102
+                shouldEqSources [al, bl]
+                shouldEqSources [si, di]
+                shouldEqSourcesAllFlags
         it "MOVS8 DF=1" $ do
             runTest env ([untrimming|
                 mov di, 50
@@ -47,6 +50,9 @@ testString env = do
                 shouldEq bl 0xAA
                 shouldEq di 48
                 shouldEq si 98
+                shouldEqSources [al, bl]
+                shouldEqSources [si, di]
+                shouldEqSourcesAllFlags
         it "MOVS16 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -62,6 +68,8 @@ testString env = do
                 shouldEq bx 0xAAEE
                 shouldEq di 4
                 shouldEq si 104
+                shouldEqSources [ax, bx]
+                shouldEqSources [si, di]
         it "MOVS16 DF=1" $ do
             runTest env ([untrimming|
                 mov di, 50
@@ -79,6 +87,9 @@ testString env = do
                 shouldEq bx 0xAAEE
                 shouldEq di 46
                 shouldEq si 96
+                shouldEqSources [ax, bx]
+                shouldEqSources [si, di]
+                shouldEqSourcesAllFlags
         it "CMPS8 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -102,6 +113,10 @@ testString env = do
                 shouldEq bx 0
                 shouldEq di 2
                 shouldEq si 102
+                shouldEqSources al
+                shouldEqSources bx
+                shouldEqSources [si, di]
+                shouldEqSourcesAllFlags
         it "SCAS8 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -122,6 +137,9 @@ testString env = do
                 shouldEq bl 1
                 shouldEq cl 0
                 shouldEq di 2
+                shouldEqSources [bl, cl]
+                shouldEqSources di
+                shouldEqSourcesAllFlags
         it "lods8 DF=0" $ do
             runTest env ([untrimming|
                 mov si, 100
@@ -135,6 +153,9 @@ testString env = do
                 shouldEq al 0xAA
                 shouldEq bl 0xFF
                 shouldEq si 102
+                shouldEqSources [al, bl]
+                shouldEqSources si
+                shouldEqSourcesAllFlags
         it "STOS8 DF=0" $ do
             runTest env ([untrimming|
                 mov di, 48
@@ -148,6 +169,9 @@ testString env = do
                 shouldEq al 0xFF
                 shouldEq bl 0xAA
                 shouldEq di 50
+                shouldEqSources [al, bl]
+                shouldEqSources di
+                shouldEqSourcesAllFlags
     describe "Rep" $ do
         it "MOVS8 DF=0" $ do
             runTest env ([untrimming|
@@ -164,6 +188,9 @@ testString env = do
                 shouldEq bl 0xAA
                 shouldEq di 2
                 shouldEq si 102
+                shouldEqSources [al, bl]
+                shouldEqSources [di, si]
+                shouldEqSourcesAllFlags
         it "SCAS8 NE" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -177,6 +204,8 @@ testString env = do
                 repne scasb
             |]) $ do
                 shouldEq di 5
+                shouldEqSources di
+                shouldEqSourcesAllFlags
         it "SCAS8 NE found" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -190,6 +219,8 @@ testString env = do
                 repne scasb
             |]) $ do
                 shouldEq di 3
+                shouldEqSources di
+                shouldEqSourcesAllFlags
         it "SCAS8 NZ found" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -203,5 +234,7 @@ testString env = do
                 repnz scasb
             |]) $ do
                 shouldEq di 5
+                shouldEqSources di
+                shouldEqSourcesAllFlags
 
 -------------------------------------------------------------------------------

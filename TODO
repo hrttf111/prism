@@ -59,8 +59,8 @@
                 - Allow to compare values between Prism and Native/QEMU +
                 - Compare flags +
                 - Implement readable aliases +
+            - Fix flags in QEMU +
             - Align addresses between Prism and QEMU tests
-            - Fix flags in QEMU
 
 -------------------------------------------------------
 

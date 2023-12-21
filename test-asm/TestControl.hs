@@ -25,6 +25,7 @@ testControl env = do
                 mov al, 2
             |]) $ do
                 shouldEqSources [al, bl]
+                shouldEqSourcesAllFlags
         it "jmp far" $ do
             runTest env ([untrimming|
                 absolute 0x100
@@ -49,6 +50,7 @@ testControl env = do
             |]) $ do
                 shouldEq al 2
                 shouldEq bl 0
+                shouldEqSourcesAllFlags
     describe "Conditional jump" $ do
         it "loop" $ do
             runTest env ([untrimming|
@@ -59,6 +61,7 @@ testControl env = do
                 loop L1
             |]) $ do
                 shouldEqSources [ax, cx]
+                shouldEqSourcesAllFlags
         it "jz" $ do
             runTest env ([untrimming|
                 mov al, 1
@@ -70,6 +73,7 @@ testControl env = do
                 mov al, 2
             |]) $ do
                 shouldEqSources [al, bl]
+                shouldEqSourcesAllFlags
         it "jz 16" $ do
             runTest env ([untrimming|
                 mov ax, 2
@@ -83,6 +87,7 @@ testControl env = do
                 mov al, 2
             |]) $ do
                 shouldEqSources [al, bl]
+                shouldEqSourcesAllFlags
         it "je" $ do
             runTest env ([untrimming|
                 mov ax, 0xf111
@@ -100,6 +105,7 @@ testControl env = do
                 mov dx, 0
             |]) $ do
                 shouldEqSources [al, bl]
+                shouldEqSourcesAllFlags
         it "je loop" $ do
             runTest env ([untrimming|
                 mov ax, 0x1234
@@ -120,6 +126,7 @@ testControl env = do
                 shouldEqSources [ax, bx]
                 shouldEqSources cl
                 shouldEqSources dl
+                shouldEqSourcesAllFlags
         it "jcxz" $ do
             runTest env ([untrimming|
                 mov al, 1
@@ -131,6 +138,7 @@ testControl env = do
                 mov al, 2
             |]) $ do
                 shouldEqSources [al, bl]
+                shouldEqSourcesAllFlags
     describe "Call" $ do
         it "near" $ do
             runTest env ([untrimming|
@@ -145,6 +153,7 @@ testControl env = do
                 mov cx, 10
             |]) $ do
                 shouldEqSources [ax, cx, dx]
+                shouldEqSourcesAllFlags
     describe "Ret" $ do
         it "ret far" $ do
             runTest env ([untrimming|
@@ -154,12 +163,18 @@ testControl env = do
                 mov al, 0
                 retf
                 mov al, 2
-                hlt
                 L1:
                 mov al, 1
-                hlt
+                ;fill rest with pointless instructions
+                mov cl, 0
+                mov cl, 0
+                mov cl, 0
+                mov cl, 0
+                mov cl, 0
+                mov cl, 0
             |]) $ do
                 shouldEq al 1
-                --shouldEqSources al
+                shouldEqSources al
+                shouldEqSourcesAllFlags
 
 -------------------------------------------------------------------------------

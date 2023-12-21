@@ -206,6 +206,7 @@ testMovMem1 env = do
             |]) $ do
                 shouldEq ax 0xFFAA
                 shouldEq bx 0xDDCC
+                shouldEqSources [ax, bx]
         it "Mem16 bx/si/di <- Imm16" $ do
             runTest env ([untrimming|
                 mov bx, 0x1000
@@ -221,6 +222,7 @@ testMovMem1 env = do
                 shouldEq ax 0xFFAA
                 shouldEq cx 0xDDCC
                 shouldEq dx 0x8877
+                shouldEqSources [ax, cx, dx]
         it "Mem16 bx/si/di + disp16 <- Imm16" $ do
             runTest env ([untrimming|
                 mov bx, 0
@@ -236,6 +238,7 @@ testMovMem1 env = do
                 shouldEq ax 0xFFAA
                 shouldEq cx 0xDDCC
                 shouldEq dx 0x8877
+                shouldEqSources [ax, cx, dx]
         it "Mem16 bx+si/bx+di + disp16<- Imm16" $ do
             runTest env ([untrimming|
                 mov bx, 10
@@ -248,6 +251,7 @@ testMovMem1 env = do
             |]) $ do
                 shouldEq ax 0xFFAA
                 shouldEq cx 0xDDCC
+                shouldEqSources [ax, cx]
     describe "MOV segment replacement" $ do
         it "Replace es" $ do
             runTest env ([untrimming|
@@ -260,6 +264,7 @@ testMovMem1 env = do
             |]) $ do
                 shouldEq ax 0xFFAA
                 shouldEq bx 0xFFAA
+                shouldEqSources [ax, bx]
 
 testMovMem2 env = do
     describe "MOV mem ds" $ do
@@ -279,6 +284,7 @@ testMovMem2 env = do
                 shouldEq ax 0xFFAA
                 shouldEq bx 0xDDCC
                 shouldEq dx 100
+                shouldEqSources [ax, bx, dx]
         it "Mem16 bp + si/di <- Imm16" $ do
             runTest env ([untrimming|
                 mov bp, 10
@@ -292,6 +298,7 @@ testMovMem2 env = do
             |]) $ do
                 shouldEq cx 0xDDCC
                 shouldEq dx 0x8877
+                shouldEqSources [cx, dx]
         it "Mem16 bp + si/di + disp8/16 <- Imm16" $ do
             runTest env ([untrimming|
                 mov bp, 10
@@ -305,6 +312,7 @@ testMovMem2 env = do
             |]) $ do
                 shouldEq cx 0xDDCC
                 shouldEq dx 0x8877
+                shouldEqSources [cx, dx]
 
 testMovXlat env = do
     describe "XLAT" $ do

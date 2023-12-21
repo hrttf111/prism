@@ -17,13 +17,15 @@ import NeatInterpolation
 
 testFlagsZF env = 
     describe "Flags ZF" $ do
-        --todo
-        {-it "ZF set" $ do
+        --todo: fix
+        it "ZF set" $ do
             runTest env ([untrimming|
                 mov ax, 0
             |]) $ do
-                --shouldEq ZF True
-                shouldEqSources ZF-}
+                showAllRegsL
+                showAllRegsR
+                shouldEq ZF True
+                shouldEqSources ZF
         it "ZF cleared" $ do
             runTest env ([untrimming|
                 mov al, 0
@@ -41,20 +43,16 @@ testFlagsCF env =
             |]) $ do
                 shouldEq CF False
                 shouldEq OF False
-                --shouldEqSources [CF, OF]
+                shouldEqSources [CF, OF]
         it "CF cleared sub" $ do
             runTest env ([untrimming|
                 mov al, 0x80
                 sub al, 1
             |]) $ do
-                showAllRegsL
-                showAllRegsR
                 shouldEq al 127
                 shouldEq CF False
                 shouldEq OF True
-                shouldEqSources CF
-                shouldEqSources OF
-                --shouldEqSources [CF, OF]
+                shouldEqSources [CF, OF]
                 shouldEqSources al
         it "CF set" $ do
             runTest env ([untrimming|
