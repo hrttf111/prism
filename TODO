@@ -61,8 +61,18 @@
                 - Implement readable aliases +
             - Fix flags in QEMU +
             - Align addresses between Prism and QEMU tests
-            - Fix Prism peripherals creation code
+                - Use exactly same physical addresses
+                - Or implement MemDisp
+            - Rewrite tests to use data on default ds
+                - Allow resX?
+                - If yes, then QEMU tests should support it too
+            - Fix Prism peripherals creation code +
             - Show asm errors when assembler fails
+            - Use halt env for all Prism tests
+            - Implement dummy Env to skip "shouldEqSource"
+            - Move all test infra to separate dir
+                - Use single import in all tests
+            - Free memory after test
 
 -------------------------------------------------------
 

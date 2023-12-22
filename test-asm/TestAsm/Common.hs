@@ -95,9 +95,6 @@ runTest maker program seq = do
     env <- makeTestEnv maker
     execTestEnv env program seq
 
-execTestEnvIO :: (ProgramExecutor exec res IO) => (TestEnv1 exec) -> Text -> SeqM (res, ()) () -> IO ()
-execTestEnvIO env program seq = execTestEnv env program seq
-
 -------------------------------------------------------------------------------
 
 newtype MemDisp8 = MemDisp8 Disp deriving (Eq, Show)

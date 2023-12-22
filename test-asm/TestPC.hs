@@ -114,26 +114,21 @@ headerPit = [text|
 
 -------------------------------------------------------------------------------
 
-emptyMemR :: [PeripheralMem (RemoteTrans Int)]
-emptyMemR = []
-
-emptyPortR :: [PeripheralPort (RemoteTrans Int)]
-emptyPortR = []
-
-preStartAction :: PrismM ()
-preStartAction = return ()
+pcEnvMaker = defaultPrismEnvPeriphMaker { prismEnvPeriphpPortsLocal = pcPorts }
+biosEnvMaker = pcEnvMaker { prismEnvPeriphpInterrupts = mkBiosInterrupts }
 
 testPC = do
     describe "Test PC PIC" $ do
-        let devR = 0
         it "Interrupt test infra" $ do
             devices <- createPC
             let testHandler int val = 89
                 intList = [
                     (PrismInt 0x10, testInterruptHandler testHandler)
                     ]
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+                env = pcEnvMaker { prismEnvPeriphpInterrupts = intList
+                                 , prismEnvPeriphpDevLocal = devices
+                                 }
+            runTest env ([untrimming|
                 mov al, 134
                 int 0x10
                 hlt
@@ -147,8 +142,11 @@ testPC = do
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 0)),
                     (PrismInt 0x20, testInterruptHandler testHandler)
                     ]
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] intList comm preStartAction
-            execTestEnvIO env ([untrimming|
+                env = pcEnvMaker { prismEnvPeriphpInterrupts = intList
+                                 , prismEnvPeriphpDevLocal = devices
+                                 , prismEnvPeriphpComm = Just comm
+                                 }
+            runTest env ([untrimming|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 ICW1  equ  0x17
@@ -186,8 +184,11 @@ testPC = do
                     (PrismInt 0x11, testSendIRQUp (commCmdQueue comm) (PrismIRQ 8)),
                     (PrismInt 0x28, testInterruptHandler testHandler)
                     ]
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] intList comm preStartAction
-            execTestEnvIO env ([untrimming|
+                env = pcEnvMaker { prismEnvPeriphpInterrupts = intList
+                                 , prismEnvPeriphpDevLocal = devices
+                                 , prismEnvPeriphpComm = Just comm
+                                 }
+            runTest env ([untrimming|
                 PIC1  equ  0x20
                 PIC1D equ  0x21
                 PIC2  equ  0xA0
@@ -233,16 +234,15 @@ testPC = do
                 shouldEq al 89
     describe "Test PC Scheduler" $ do
         it "Sched" $ do
-            comm <- newPrismComm False
             devices <- createPC
-            let devR = 0
-                pcPortsExt = pcPorts ++ [
+            let pcPortsExt = pcPorts ++ [
                         PeripheralPort 0x89
                             (PeripheralHandlerPort testScheduleWrite emptyWriteH emptyReadH emptyReadH)
                     ]
-                intList = []
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPortsExt [] intList comm preStartAction
-            execTestEnvIO env ([untrimming|
+                env = pcEnvMaker { prismEnvPeriphpDevLocal = devices
+                                 , prismEnvPeriphpPortsLocal = pcPortsExt
+                                 }
+            runTest env ([untrimming|
                 mov al, 5
                 out 0x89, al
                 mov cx, 10
@@ -253,13 +253,11 @@ testPC = do
             |]) $ do
                 shouldEq al 5
     describe "Test PC PIT" $ do
-        let devR = 0
         it "Write, read and interrupt Timer 0" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF0
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
-            execTestEnvIO env (append headerPit [untrimming|
+                env = pcEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x30 ; Timer0, Mode0, 2 Bytes, HEX
@@ -286,11 +284,10 @@ testPC = do
                 shouldEq cl expectedStatus
                 shouldEq dx 1
         it "Write, read and interrupt Timer 2" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF4
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
-            execTestEnvIO env (append headerPit [untrimming|
+                env = pcEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x34 ; Timer0, Mode2, 2 Bytes, HEX
@@ -317,11 +314,10 @@ testPC = do
                 shouldEq cl expectedStatus
                 shouldEq dx 4
         it "Write, read and interrupt Timer 3" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF6
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
-            execTestEnvIO env (append headerPit [untrimming|
+                env = pcEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x36 ; Timer0, Mode3, 2 Bytes, HEX
@@ -348,11 +344,10 @@ testPC = do
                 shouldEq cl expectedStatus
                 shouldEq dx 2
         it "Write, read and interrupt Timer 4" $ do
-            comm <- newPrismComm False
             devices <- createPC
             let expectedStatus = 0xF8
-            env <- makePrismPeripheralsEnv1 devR emptyPortR emptyMemR devices pcPorts [] [] comm preStartAction
-            execTestEnvIO env (append headerPit [untrimming|
+                env = pcEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env (append headerPit [untrimming|
                 ;Init PIT
                 PIT_READ_STATUS  equ 0xE2 ; ReadBack Timer0, Status
                 PIT_COMMAND      equ 0x38 ; Timer0, Mode4, 2 Bytes, HEX
@@ -379,12 +374,10 @@ testPC = do
                 shouldEq cl expectedStatus
                 shouldEq dx 2
     describe "Test PC BIOS" $ do
-        let devR = 0
         it "BIOS interrupt infra" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 mov al, 134
                 mov ah, 76
                 int 0x1f
@@ -394,13 +387,12 @@ testPC = do
         it "BIOS keyboard - int 9" $ do
             devices <- createPC
             let sharedKeyboard = fst $ getPcBiosSharedState devices
-                intList = mkBiosInterrupts
-            let keys = [(PcKey 3 4)]
+                keys = [(PcKey 3 4)]
                 keyFlags = emptyKeyFlags { pcKeyFlagLeftShift = True }
                 keyboardState = SharedKeyboardState keyFlags keys
+                env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
             liftIO $ atomically $ writeTVar sharedKeyboard keyboardState
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            runTest env ([untrimming|
                 int 9
                 ; Check shift flags
                 mov ah, 2
@@ -427,9 +419,8 @@ testPC = do
                 shouldEq dx 0x40
         it "BIOS timer - int 8" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 ; Set interrupt
                 %define INTER_1c 0x1c*4
                 mov ax, 0
@@ -455,13 +446,12 @@ testPC = do
                 shouldEq bx 1
         it "BIOS timer - time" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
             utcTime <- liftIO getCurrentTime
             let tm = timeToTimeOfDay $ utctDayTime utcTime
                 hours = fromIntegral $ hexToBcd8 $ fromIntegral $ todHour tm
                 minutes = fromIntegral $ hexToBcd8 $ fromIntegral $ todMin tm
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            runTest env ([untrimming|
                 ; Get time
                 mov ah, 2
                 int 0x1a
@@ -472,9 +462,8 @@ testPC = do
                 shouldEq al hours
         it "BIOS video - write/read char" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 ; Write char
                 mov al, 0x31
                 mov bl, 7
@@ -495,9 +484,8 @@ testPC = do
                 shouldEq dl 0
         it "BIOS video - write + update/read char" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 ; Write char
                 mov al, 0x31
                 mov bl, 7
@@ -523,9 +511,8 @@ testPC = do
                 --shouldEq dl 0
         it "BIOS memory and equipment" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 ; Get memory size
                 int 0x12
                 mov bx, ax
@@ -537,9 +524,8 @@ testPC = do
                 shouldEq bx 0x27f
         it "BIOS disk - no drive" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 mov ah, 2
                 mov dl, 1
                 int 0x13
@@ -555,9 +541,8 @@ testPC = do
                 diskWrite offset d = return ()
                 disks = [(PcDiskFloppy 1, PcDisk 0 0 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 mov ax, 0
                 mov es, ax ; buffer ES
                 mov bx, 6000 ; buffer BX
@@ -580,9 +565,8 @@ testPC = do
                     return ()
                 disks = [(PcDiskFloppy 1, PcDisk 0 0 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 mov ax, 0
                 mov es, ax ; buffer ES
                 mov bx, 6000 ; buffer BX
@@ -605,10 +589,10 @@ testPC = do
                     return ()
                 disks = [(PcDiskFloppy 1, PcDisk 0 5000 (PcChs 10 10 10) diskRead diskWrite)]
             devices <- createPcWithDisks disks
-            let intList = mkBiosInterrupts
-                initBios = setPcMemory devices
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts [] intList initBios
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices
+                                   , prismEnvPeriphpPreStartAction = setPcMemory devices
+                                   }
+            runTest env ([untrimming|
                 mov ah, 8
                 mov dl, 1
                 int 0x13
@@ -618,11 +602,10 @@ testPC = do
                 shouldEq bl 4
                 shouldEq dh 1
                 shouldEq di 5000
-        {-it "BIOS memory - halt" $ do
+        it "BIOS memory - halt" $ do
             devices <- createPC
-            let intList = mkBiosInterrupts
-            env <- makePrismPeripheralsEnv devR emptyPortR emptyMemR devices pcPorts pcMemory intList preStartAction
-            execTestEnvIO env ([untrimming|
+            let env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
+            runTest env ([untrimming|
                 mov ax, 0
                 mov ds, ax
                 mov bx, 0x410
@@ -630,5 +613,5 @@ testPC = do
                 mov al, 10
                 hlt
             |]) $ do
-                shouldEq al 0-}
+                shouldEq al 0
 -------------------------------------------------------------------------------

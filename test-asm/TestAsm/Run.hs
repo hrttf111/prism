@@ -116,76 +116,56 @@ instance TestEnvMaker PrismNativeEnvMaker (TestEnv2 Ep.ExecutorPrism ExecNative.
 
 -------------------------------------------------------------------------------
 
-makePrismPeripheralsEnv :: (MonadIO m, PeripheralsTestCreator mL pL) =>
-                            pR ->
-                            [PeripheralPort (RemoteTrans pR)] ->
-                            [PeripheralMem (RemoteTrans pR)] ->
-                            pL ->
-                            [PeripheralPort mL] ->
-                            [PeripheralMem mL] ->
-                            [InterruptHandlerLocation] ->
-                            PrismM () ->
-                            m (TestEnv1 Ep.ExecutorPrism)
-makePrismPeripheralsEnv devR portsR memsR devL portsL memsL intList preStartAction = do
-    comm <- liftIO $ newPrismComm False
-    queue <- liftIO $ createIOQueue
-    let ioCtx = createTestPeripherals peripheralL queue
-    mvar <- liftIO $ newEmptyMVar
-    threadId <- liftIO $ forkFinally (do
-        runRemotePeripherals queue peripheralR execPeripheralsOnce
-        ) (\_ -> putMVar mvar ())
-    prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
-    return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr prismExec
-    where
-        debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
-        runner comm decoder _ = do
-            preStartAction
-            decodeHaltCpu decoder comm
-        memSize = 1024 * 1024
-        pageSize = 1024
-        (peripheralR, peripheralL) = createPeripheralsLR devR
-                                                         devL
-                                                         memSize
-                                                         pageSize
-                                                         portsR
-                                                         memsR
-                                                         portsL
-                                                         memsL
+data PrismEnvPeripheralsMaker devRemote devLocal memLocal = PrismEnvPeripheralsMaker {
+    prismEnvPeriphDevRemote :: devRemote,
+    prismEnvPeriphpPortsRemote :: [PeripheralPort (RemoteTrans devRemote)],
+    prismEnvPeriphpMemRemote :: [PeripheralMem (RemoteTrans devRemote)],
+    prismEnvPeriphpDevLocal :: devLocal,
+    prismEnvPeriphpPortsLocal :: [PeripheralPort memLocal],
+    prismEnvPeriphpMemLocal :: [PeripheralMem memLocal],
+    prismEnvPeriphpInterrupts :: [InterruptHandlerLocation],
+    prismEnvPeriphpPreStartAction :: PrismM (),
+    prismEnvPeriphpComm :: Maybe PrismComm
+}
 
-makePrismPeripheralsEnv1 :: (MonadIO m, PeripheralsTestCreator mL pL) =>
-                            pR ->
-                            [PeripheralPort (RemoteTrans pR)] ->
-                            [PeripheralMem (RemoteTrans pR)] ->
-                            pL ->
-                            [PeripheralPort mL] ->
-                            [PeripheralMem mL] ->
-                            [InterruptHandlerLocation] ->
-                            PrismComm ->
-                            PrismM () ->
-                            m (TestEnv1 Ep.ExecutorPrism)
-makePrismPeripheralsEnv1 devR portsR memsR devL portsL memsL intList comm preStartAction = do
-    queue <- liftIO $ createIOQueue
-    let ioCtx = createTestPeripherals peripheralL queue
-    mvar <- liftIO $ newEmptyMVar
-    threadId <- liftIO $ forkFinally (do
-        runRemotePeripherals queue peripheralR execPeripheralsOnce
-        ) (\_ -> putMVar mvar ())
-    prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
-    return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr prismExec
-    where
-        debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
-        runner comm decoder _ = do
-            preStartAction
-            decodeHaltCpu decoder comm
-        memSize = 1024 * 1024
-        pageSize = 1024
-        (peripheralR, peripheralL) = createPeripheralsLR devR
-                                                         devL
-                                                         memSize
-                                                         pageSize
-                                                         portsR
-                                                         memsR
-                                                         portsL
-                                                         memsL
+instance (PeripheralsTestCreator mL dL) => TestEnvMaker (PrismEnvPeripheralsMaker dR dL mL) (TestEnv1 Ep.ExecutorPrism) where
+    makeTestEnv (PrismEnvPeripheralsMaker devR portsR memsR devL portsL memsL intList preStartAction maybeComm) = do
+        comm <- (case maybeComm of
+            Just c -> return c
+            Nothing -> liftIO $ newPrismComm False
+            )
+        queue <- liftIO $ createIOQueue
+        let ioCtx = createTestPeripherals peripheralL queue
+        mvar <- liftIO $ newEmptyMVar
+        threadId <- liftIO $ forkFinally (do
+            runRemotePeripherals queue peripheralR execPeripheralsOnce
+            ) (\_ -> putMVar mvar ())
+        prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
+        return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr prismExec
+        where
+            debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
+            runner comm decoder _ = do
+                preStartAction
+                decodeHaltCpu decoder comm
+            memSize = 1024 * 1024
+            pageSize = 1024
+            (peripheralR, peripheralL) = createPeripheralsLR devR
+                                                             devL
+                                                             memSize
+                                                             pageSize
+                                                             portsR
+                                                             memsR
+                                                             portsL
+                                                             memsL
+
+defaultPrismEnvPeriphMaker = PrismEnvPeripheralsMaker TestDev
+                                                      []
+                                                      []
+                                                      TestDev
+                                                      []
+                                                      []
+                                                      []
+                                                      (return ())
+                                                      Nothing
 
 -------------------------------------------------------------------------------
