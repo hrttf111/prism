@@ -1,3 +1,4 @@
+{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE FlexibleInstances #-}
@@ -11,7 +12,7 @@ import Control.Monad.State.Strict
 
 import Control.Concurrent (forkIO, forkFinally, takeMVar, putMVar, newEmptyMVar, ThreadId)
 
-import Data.Text (Text)
+import Data.Text as T
 import qualified Data.ByteString as B
 
 import Foreign.Ptr (plusPtr)
@@ -29,6 +30,8 @@ import Prism.Instructions (internalInstrList, x86InstrList)
 
 import TestAsm.Common
 import Assembler
+
+import NeatInterpolation
 
 import qualified Qemu
 import qualified ExecPrism as Ep
@@ -71,24 +74,24 @@ instance PeripheralsTestCreator PeripheralsTest TestDev where
 
 -------------------------------------------------------------------------------
 
+makePrismExec :: IO (Ep.ExecutorPrism, Text -> IO B.ByteString)
+makePrismExec = do
+    comm <- newPrismComm False
+    prismExec <- Ep.createPrismExecutorNoIO x86InstrList (runner comm)
+    return (prismExec, asmFunc)
+    where
+        asmFooter = [untrimming|
+            hlt
+        |]
+        asmFunc t = makeAsmStr $ T.append t asmFooter
+        runner comm decoder _ = decodeHaltCpu decoder comm
+
 data PrismEnvMaker = PrismEnvMaker
 
 instance TestEnvMaker PrismEnvMaker (TestEnv1 Ep.ExecutorPrism) where
     makeTestEnv _ = do
-        prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
-        return $ TestEnv1 Nothing makeAsmStr prismExec
-        where
-            runner = decodeMemIp
-
-data PrismEnvHaltMaker = PrismEnvHaltMaker
-
-instance TestEnvMaker PrismEnvHaltMaker (TestEnv1 Ep.ExecutorPrism) where
-    makeTestEnv _ = do
-        comm <- newPrismComm False
-        prismExec <- Ep.createPrismExecutorNoIO x86InstrList (runner comm)
-        return $ TestEnv1 Nothing makeAsmStr prismExec
-        where
-            runner comm decoder _ = decodeHaltCpu decoder comm
+        (exec, func) <- makePrismExec
+        return $ TestEnv1 Nothing func exec
 
 data QemuEnvMaker = QemuEnvMaker
 
@@ -100,19 +103,15 @@ data PrismQemuEnvMaker = PrismQemuEnvMaker
 
 instance TestEnvMaker PrismQemuEnvMaker (TestEnv2 Ep.ExecutorPrism Qemu.ExecutorQemu) where
     makeTestEnv _ = do
-        prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
-        return $ TestEnv2 makeAsmStr prismExec Qemu.assembleQemu Qemu.ExecutorQemu
-        where
-            runner = decodeMemIp
+        (exec, func) <- makePrismExec
+        return $ TestEnv2 func exec Qemu.assembleQemu Qemu.ExecutorQemu
 
 data PrismNativeEnvMaker = PrismNativeEnvMaker
 
 instance TestEnvMaker PrismNativeEnvMaker (TestEnv2 Ep.ExecutorPrism ExecNative.ExecutorNative) where
     makeTestEnv _ = do
-        prismExec <- Ep.createPrismExecutorNoIO x86InstrList runner
-        return $ TestEnv2 makeAsmStr prismExec ExecNative.assembleNative ExecNative.ExecutorNative
-        where
-            runner = decodeMemIp
+        (exec, func) <- makePrismExec
+        return $ TestEnv2 func exec ExecNative.assembleNative ExecNative.ExecutorNative
 
 -------------------------------------------------------------------------------
 

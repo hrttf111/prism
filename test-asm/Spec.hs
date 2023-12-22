@@ -33,7 +33,7 @@ doTests = do
         testMov makerPQ
         testMovLDS PrismEnvMaker
         testMovMem1 makerPQ
-        testMovXlat PrismEnvHaltMaker
+        testMovXlat PrismEnvMaker
         testAdd makerPN
         testInc makerPN
         testSub makerPN
