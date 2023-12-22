@@ -7,6 +7,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import qualified Data.ByteString as B
 
 import Data.List (intercalate)
+import Foreign.Marshal.Alloc (free)
 
 import Prism.Cpu
 import Prism.Decoder
@@ -26,6 +27,10 @@ data ExecutorPrismRes = ExecutorPrismRes {
     eprEFlags :: EFlags,
     eprDataOffset :: Int
 }
+
+instance ExecutorRes ExecutorPrismRes where
+    freeRes (ExecutorPrismRes (MemReg p1) (MemMain p2) _ _ _) =
+        free p1 >> free p2
 
 type PrismRunner = PrismDecoder -> Int -> PrismM ()
 

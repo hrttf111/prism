@@ -15,6 +15,7 @@ import Control.Monad.Trans (MonadIO, liftIO)
 import Foreign.Ptr
 import Foreign.Marshal.Array (pokeArray)
 import Foreign.C.Types (CInt(..))
+import Foreign.Marshal.Alloc (free)
 
 import Data.Word (Word8)
 import Data.List (intercalate)
@@ -26,7 +27,7 @@ import qualified Data.ByteString as B
 import Prism.Cpu
 
 import Assembler (makeAsm)
-import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..), AllRegs(..))
+import TestAsm.Common
 
 -------------------------------------------------------------------------------
 
@@ -113,6 +114,9 @@ assembleNative programText =
 data ExecutorNativeRes = ExecutorNativeRes {
     enrMemReg :: MemReg
 }
+
+instance ExecutorRes ExecutorNativeRes where
+    freeRes (ExecutorNativeRes (MemReg p1)) = free p1
 
 data ExecutorNative = ExecutorNative
 

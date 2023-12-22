@@ -35,7 +35,7 @@ import Control.Exception (Exception, throwIO)
 import Prism.Cpu
 
 import Assembler (makeAsm)
-import TestAsm.Common (ProgramExecutor(..), OperandSupport(..), MemRange(..), MemRangeRes(..), AllRegs(..))
+import TestAsm.Common
 
 -------------------------------------------------------------------------------
 
@@ -228,6 +228,9 @@ data ExecutorQemuRes = ExecutorQemuRes {
     eqrMemMain :: B.ByteString,
     eqrMemMainOffset :: Int
 } deriving (Show)
+
+instance ExecutorRes ExecutorQemuRes where
+    freeRes _ = return ()
 
 convMemAddress :: ExecutorQemuRes -> Int -> Maybe Int
 convMemAddress res address | address < (eqrMemMainOffset res) = Nothing

@@ -57,13 +57,16 @@ data TestEnv2 executor1 executor2 = TestEnv2 {
 class TestEnvE env s m | env -> s where
     execTestEnv :: env -> Text -> SeqM s () -> m ()
 
-instance (ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, res) IO where
+class ExecutorRes r where
+    freeRes :: r -> IO ()
+
+instance (ExecutorRes res, ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, res) IO where
     execTestEnv env program seq = do
         code <- (testEnv1Assemble env) program
         res <- execProgram (testEnv1Executor env) code
         waitThreadEnd $ testEnv1PeripheralThread env
         runSeq (res, res) seq
-        return ()
+        freeRes res
         where
             waitN threadId mvar 0 = do
                 killThread threadId
@@ -79,14 +82,16 @@ instance (ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, res) IO
                 waitN id mvar 10
             waitThreadEnd Nothing = return ()
 
-instance (ProgramExecutor exec1 res1 IO, ProgramExecutor exec2 res2 IO) => TestEnvE (TestEnv2 exec1 exec2) (res1, res2) IO where
+instance (ExecutorRes res1, ExecutorRes res2
+         , ProgramExecutor exec1 res1 IO, ProgramExecutor exec2 res2 IO) => TestEnvE (TestEnv2 exec1 exec2) (res1, res2) IO where
     execTestEnv env program seq = do
         code1 <- (testEnv2Assemble1 env) program
         res1 <- execProgram (testEnv2Executor1 env) code1
         code2 <- (testEnv2Assemble2 env) program
         res2 <- execProgram (testEnv2Executor2 env) code2
         runSeq (res1, res2) seq
-        return ()
+        freeRes res1
+        freeRes res2
 
 class TestEnvMaker maker env | maker -> env where
     makeTestEnv :: maker -> IO env
