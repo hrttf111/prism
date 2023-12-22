@@ -29,11 +29,12 @@ import TestPC
 doTests = do
         let makerPQ = PrismQemuEnvMaker
             makerPN = PrismNativeEnvMaker
+            makerP = PrismEnvMaker
         testMovMem2 makerPQ
         testMov makerPQ
-        testMovLDS PrismEnvMaker
+        testMovLDS makerP
         testMovMem1 makerPQ
-        testMovXlat PrismEnvMaker
+        testMovXlat makerP
         testAdd makerPN
         testInc makerPN
         testSub makerPN
@@ -46,7 +47,7 @@ doTests = do
         testFlagsOF makerPN
         testLog makerPN
         testString makerPQ
-        testProcessor PrismEnvMaker
+        testProcessor makerP
         testPeripheral
         testPC
 

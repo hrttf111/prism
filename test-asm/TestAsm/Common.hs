@@ -57,12 +57,12 @@ data TestEnv2 executor1 executor2 = TestEnv2 {
 class TestEnvE env s m | env -> s where
     execTestEnv :: env -> Text -> SeqM s () -> m ()
 
-instance (ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, ()) IO where
+instance (ProgramExecutor exec res IO) => TestEnvE (TestEnv1 exec) (res, res) IO where
     execTestEnv env program seq = do
         code <- (testEnv1Assemble env) program
         res <- execProgram (testEnv1Executor env) code
         waitThreadEnd $ testEnv1PeripheralThread env
-        runSeq (res, ()) seq
+        runSeq (res, res) seq
         return ()
         where
             waitN threadId mvar 0 = do

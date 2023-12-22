@@ -68,8 +68,8 @@
                 - If yes, then QEMU tests should support it too
             - Fix Prism peripherals creation code +
             - Use halt env for all Prism tests +
+            - Implement dummy Env to skip "shouldEqSource" +
             - Show asm errors when assembler fails
-            - Implement dummy Env to skip "shouldEqSource"
             - Move all test infra to separate dir
                 - Use single import in all tests
             - Free memory after test
