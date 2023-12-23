@@ -67,9 +67,9 @@
             - Show asm errors when assembler fails +
             - Move all test infra to separate dir +
                 - Use single import in all tests +
-            - Align addresses between Prism and QEMU tests
-                - Use exactly same physical addresses
-                - Or implement MemDisp
+            - Align addresses between Prism and QEMU tests +
+                - Use exactly same physical addresses +
+                - Or implement MemDisp +
             - Rewrite tests to use data on default ds
                 - Allow resX?
                 - If yes, then QEMU tests should support it too

@@ -46,7 +46,7 @@ instance (MonadIO m) => ProgramExecutor ExecutorPrism ExecutorPrismRes m where
         let run = epRunner ep
             decoder = epDecoder ep
             codeStart = epCodeStart ep
-            dataSegment = 8000
+            dataSegment = 0x8000
         ctx <- runPrismM (epPrismCtx ep) $ do
             clearRegs
             copyMainMem (fromIntegral codeStart) mainCode

@@ -122,6 +122,10 @@ asmBiosHeader = [untrimming|
 
     ;start test
     cli
+    ;set DS start at 0x8000
+    mov ax, 0x800
+    mov ds, ax
+    mov ax, 0
     ;clear flags
     mov dx, 0
     push dx
@@ -129,6 +133,12 @@ asmBiosHeader = [untrimming|
     jmp 1000h:START
 
     STOP:
+    ;restore original ds
+    push ax
+    mov ax, 0
+    mov ds, ax
+    pop ax
+    ;save magic numbers
     mov WORD [magic_num], MAGIC_1
     save_regs REG_AREA
     mov WORD [magic_num+2], MAGIC_2
@@ -238,11 +248,13 @@ convMemAddress res address | (address - (eqrMemMainOffset res)) > (B.length $ eq
 convMemAddress res address = Just $ address - (eqrMemMainOffset res)
 
 data QemuAddressException = QemuAddressException Int Int Int
+data QemuExecException = QemuExecException String deriving (Show)
 
 instance Exception QemuAddressException
+instance Exception QemuExecException
 instance Show QemuAddressException where
     show (QemuAddressException lower addr upper) =
-        "QemuAddressException(" ++ (showHex lower "") ++ "," ++ (showHex addr "") ++ "," ++ (showHex upper "") ++ ")"
+        "QemuAddressException(0x" ++ (showHex lower "") ++ ",0x" ++ (showHex addr "") ++ ",0x" ++ (showHex upper "") ++ ")"
 
 convAddr :: (MonadIO m) => ExecutorQemuRes -> Int -> m Int
 convAddr res address =
@@ -269,8 +281,8 @@ execCode mainCode = do
         regAreaSize = 64
         magic1Offset = 0x7E00
         magic2Offset = 0x7E02
-        programDataOffset = 0x9800
-        programDataSize = 0x1000
+        programDataOffset = 0x8000
+        programDataSize = 0x2000
         minMemSize = 0x10000
         validateMemoryRes mem =
             validateMemorySize >> mapM_ validateMemoryMagic [(magic1Offset, 0x88), (magic1Offset+1, 0xee), (magic2Offset, 0x99), (magic2Offset+1, 0xff)]
@@ -284,11 +296,11 @@ execCode mainCode = do
                             Right ()
                 validateMemoryMagic (offset, magic) =
                     if (B.index mem offset) /= magic then
-                        Left $ "Magic is wrong on offset " ++ (show offset)
-                                                     ++ ": "
-                                                     ++ (show $ B.index mem offset)
-                                                     ++ " != "
-                                                     ++ (show magic)
+                        Left $ "Magic is wrong on offset 0x" ++ (showHex offset "")
+                                                     ++ ": 0x"
+                                                     ++ (showHex (B.index mem offset) "")
+                                                     ++ " != 0x"
+                                                     ++ (showHex magic "")
                         else
                             Right ()
         makeRes mem = do
@@ -307,7 +319,10 @@ execCode mainCode = do
 instance (MonadIO m) => ProgramExecutor ExecutorQemu ExecutorQemuRes m where
     execProgram _ mainCode = liftIO $ do
         res <- execCode mainCode
-        return $ either (\_ -> ExecutorQemuRes B.empty B.empty 0) id res
+        case res of
+            Right r -> return r
+            Left s ->
+                throwIO $ QemuExecException s
 
 -------------------------------------------------------------------------------
 
@@ -339,6 +354,18 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes MemPhy16 Uint16 m where
     readSourceOp er (MemPhy16 offset) = liftIO $
         B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
             convAddr er offset >>= readOpRaw (MemMain $ castPtr ptr) . MemPhy16
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes MemDisp8 Uint8 m where
+    readSourceOp er (MemDisp8 offset) = liftIO $
+        B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
+            convAddr er ((eqrMemMainOffset er) + fromIntegral offset) >>= readOpRaw (MemMain $ castPtr ptr) . MemPhy8
+            )
+
+instance (MonadIO m) => OperandSupport ExecutorQemuRes MemDisp16 Uint16 m where
+    readSourceOp er (MemDisp16 offset) = liftIO $
+        B.useAsCStringLen (eqrMemMain er) (\(ptr, len) ->
+            convAddr er ((eqrMemMainOffset er) + fromIntegral offset) >>= readOpRaw (MemMain $ castPtr ptr) . MemPhy16
             )
 
 instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m where
