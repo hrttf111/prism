@@ -65,16 +65,24 @@
             - Implement dummy Env to skip "shouldEqSource" +
             - Free memory after test +
             - Show asm errors when assembler fails +
+            - Move all test infra to separate dir +
+                - Use single import in all tests +
             - Align addresses between Prism and QEMU tests
                 - Use exactly same physical addresses
                 - Or implement MemDisp
             - Rewrite tests to use data on default ds
                 - Allow resX?
                 - If yes, then QEMU tests should support it too
-            - Move all test infra to separate dir
-                - Use single import in all tests
 
 -------------------------------------------------------
+
+Infra
+    ExecNative.hs
+    ExecQemu.hs
+    ExecPrism.hs
+    Types.hs
+    Assembler.hs
+Infra.hs
 
 execAndCmp env text cmpSeq
 

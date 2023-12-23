@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module Qemu (
+module Infra.ExecQemu (
     execQemu, execQemuBin
     , execCode
     , assembleQemu
@@ -34,8 +34,8 @@ import Control.Exception (Exception, throwIO)
 
 import Prism.Cpu
 
-import Assembler (makeAsm)
-import TestAsm.Common
+import Infra.Assembler (makeAsm)
+import Infra.Types
 
 -------------------------------------------------------------------------------
 

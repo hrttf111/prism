@@ -5,14 +5,11 @@ import Test.Hspec
 import Test.Hspec.Core.Runner
 
 import Control.Monad.Trans (MonadIO, liftIO)
-
-import NeatInterpolation
 import Data.Text (Text)
 
-import Prism.Instructions
+import NeatInterpolation
 
-import TestAsm.Run
-import TestAsm.Common
+import Infra
 
 import TestFlags
 import TestTransfer

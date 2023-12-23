@@ -5,7 +5,22 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
-module TestAsm.Run where
+module Infra (
+    runTest
+    , ShouldEq(..), ShouldEqSources(..) 
+    , MemRange(..)
+    , MemDisp8(..), MemDisp16(..)
+    , AllRegs
+    , showAllRegs, showAllRegsL, showAllRegsR
+    , shouldEqSourcesAllFlags
+-------------------------------------------------------------------------------
+    , PeripheralsTestCreator(..)
+-------------------------------------------------------------------------------
+    , PrismEnvMaker(..), PrismEnvPeripheralsMaker(..)
+    , PrismQemuEnvMaker(..)
+    , PrismNativeEnvMaker(..)
+    , defaultPrismEnvPeriphMaker
+) where
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict
@@ -21,6 +36,8 @@ import Foreign.Marshal.Utils (fillBytes)
 
 import Test.Hspec
 
+import NeatInterpolation
+
 import Prism.Cpu
 import Prism.Decoder
 import Prism.Run
@@ -28,14 +45,12 @@ import Prism.Command
 import Prism.Peripherals
 import Prism.Instructions (internalInstrList, x86InstrList)
 
-import TestAsm.Common
-import Assembler
+import Infra.Types
+import Infra.Assembler
 
-import NeatInterpolation
-
-import qualified Qemu
-import qualified ExecPrism as Ep
-import qualified ExecNative
+import qualified Infra.ExecQemu as ExecQemu
+import qualified Infra.ExecPrism as ExecPrism
+import qualified Infra.ExecNative as ExecNative
 
 -------------------------------------------------------------------------------
 
@@ -74,10 +89,10 @@ instance PeripheralsTestCreator PeripheralsTest TestDev where
 
 -------------------------------------------------------------------------------
 
-makePrismExec :: IO (Ep.ExecutorPrism, Text -> IO B.ByteString)
+makePrismExec :: IO (ExecPrism.ExecutorPrism, Text -> IO B.ByteString)
 makePrismExec = do
     comm <- newPrismComm False
-    prismExec <- Ep.createPrismExecutorNoIO x86InstrList (runner comm)
+    prismExec <- ExecPrism.createPrismExecutorNoIO x86InstrList (runner comm)
     return (prismExec, asmFunc)
     where
         asmFooter = [untrimming|
@@ -88,27 +103,27 @@ makePrismExec = do
 
 data PrismEnvMaker = PrismEnvMaker
 
-instance TestEnvMaker PrismEnvMaker (TestEnv1 Ep.ExecutorPrism) where
+instance TestEnvMaker PrismEnvMaker (TestEnv1 ExecPrism.ExecutorPrism) where
     makeTestEnv _ = do
         (exec, func) <- makePrismExec
         return $ TestEnv1 Nothing func exec
 
 data QemuEnvMaker = QemuEnvMaker
 
-instance TestEnvMaker QemuEnvMaker (TestEnv1 Qemu.ExecutorQemu) where
+instance TestEnvMaker QemuEnvMaker (TestEnv1 ExecQemu.ExecutorQemu) where
     makeTestEnv _ = do
-        return $ TestEnv1 Nothing Qemu.assembleQemu Qemu.ExecutorQemu
+        return $ TestEnv1 Nothing ExecQemu.assembleQemu ExecQemu.ExecutorQemu
 
 data PrismQemuEnvMaker = PrismQemuEnvMaker
 
-instance TestEnvMaker PrismQemuEnvMaker (TestEnv2 Ep.ExecutorPrism Qemu.ExecutorQemu) where
+instance TestEnvMaker PrismQemuEnvMaker (TestEnv2 ExecPrism.ExecutorPrism ExecQemu.ExecutorQemu) where
     makeTestEnv _ = do
         (exec, func) <- makePrismExec
-        return $ TestEnv2 func exec Qemu.assembleQemu Qemu.ExecutorQemu
+        return $ TestEnv2 func exec ExecQemu.assembleQemu ExecQemu.ExecutorQemu
 
 data PrismNativeEnvMaker = PrismNativeEnvMaker
 
-instance TestEnvMaker PrismNativeEnvMaker (TestEnv2 Ep.ExecutorPrism ExecNative.ExecutorNative) where
+instance TestEnvMaker PrismNativeEnvMaker (TestEnv2 ExecPrism.ExecutorPrism ExecNative.ExecutorNative) where
     makeTestEnv _ = do
         (exec, func) <- makePrismExec
         return $ TestEnv2 func exec ExecNative.assembleNative ExecNative.ExecutorNative
@@ -127,7 +142,7 @@ data PrismEnvPeripheralsMaker devRemote devLocal memLocal = PrismEnvPeripheralsM
     prismEnvPeriphpComm :: Maybe PrismComm
 }
 
-instance (PeripheralsTestCreator mL dL) => TestEnvMaker (PrismEnvPeripheralsMaker dR dL mL) (TestEnv1 Ep.ExecutorPrism) where
+instance (PeripheralsTestCreator mL dL) => TestEnvMaker (PrismEnvPeripheralsMaker dR dL mL) (TestEnv1 ExecPrism.ExecutorPrism) where
     makeTestEnv (PrismEnvPeripheralsMaker devR portsR memsR devL portsL memsL intList preStartAction maybeComm) = do
         comm <- (case maybeComm of
             Just c -> return c
@@ -139,7 +154,7 @@ instance (PeripheralsTestCreator mL dL) => TestEnvMaker (PrismEnvPeripheralsMake
         threadId <- liftIO $ forkFinally (do
             runRemotePeripherals queue peripheralR execPeripheralsOnce
             ) (\_ -> putMVar mvar ())
-        prismExec <- Ep.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
+        prismExec <- ExecPrism.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
         return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr prismExec
         where
             debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)

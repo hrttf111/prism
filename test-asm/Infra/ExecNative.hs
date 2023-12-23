@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module ExecNative (
+module Infra.ExecNative (
     assembleNative
     , ExecutorNative(..), ExecutorNativeRes
 ) where
@@ -26,8 +26,8 @@ import qualified Data.ByteString as B
 
 import Prism.Cpu
 
-import Assembler (makeAsm)
-import TestAsm.Common
+import Infra.Assembler (makeAsm)
+import Infra.Types
 
 -------------------------------------------------------------------------------
 

@@ -1,8 +1,4 @@
-module Assembler
-    (
-      makeAsm,
-      makeAsmStr
-    ) where
+module Infra.Assembler where
 
 import System.IO (hFlush, hClose, withFile, readFile', IOMode( ReadMode ) )
 import System.Exit (ExitCode( ExitSuccess ))

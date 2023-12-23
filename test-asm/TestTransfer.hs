@@ -6,11 +6,10 @@ module TestTransfer where
 import Test.Hspec
 import Test.Hspec.Core.Runner
 
-import Prism.Cpu
-
-import TestAsm.Common
-
 import NeatInterpolation
+
+import Prism.Cpu
+import Infra
 
 -------------------------------------------------------------------------------
 

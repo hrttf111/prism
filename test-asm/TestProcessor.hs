@@ -5,12 +5,10 @@ module TestProcessor where
 
 import Test.Hspec
 
-import Prism.Cpu
-import Prism.Instructions
-
-import TestAsm.Common
-
 import NeatInterpolation
+
+import Prism.Cpu
+import Infra
 
 -------------------------------------------------------------------------------
 

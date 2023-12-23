@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module ExecPrism where
+module Infra.ExecPrism where
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import qualified Data.ByteString as B
@@ -16,7 +16,7 @@ import Prism.Command
 import Prism.Peripherals
 import Prism.Instructions (internalInstrList)
 
-import TestAsm.Common
+import Infra.Types
 
 -------------------------------------------------------------------------------
 

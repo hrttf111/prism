@@ -6,11 +6,10 @@ module TestLogical where
 
 import Test.Hspec
 
-import Prism.Cpu
-
-import TestAsm.Common
-
 import NeatInterpolation
+
+import Prism.Cpu
+import Infra
 
 -------------------------------------------------------------------------------
 

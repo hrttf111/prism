@@ -13,7 +13,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module TestAsm.Common where
+module Infra.Types where
 
 import Test.Hspec
 import Test.Hspec.Expectations
@@ -30,9 +30,9 @@ import Data.Text (Text)
 import qualified Data.ByteString as B
 
 import Prism.Cpu
-import Prism.Decoder (PrismDecoder)
+--import Prism.Decoder (PrismDecoder)
 
-import Assembler
+--import Assembler
 
 -------------------------------------------------------------------------------
 
@@ -42,17 +42,17 @@ data PeripheralThread = PeripheralThread {
 }
 
 data TestEnv1 executor = TestEnv1 {
-        testEnv1PeripheralThread :: Maybe PeripheralThread,
-        testEnv1Assemble :: (Text -> IO B.ByteString),
-        testEnv1Executor :: executor
-    }
+    testEnv1PeripheralThread :: Maybe PeripheralThread,
+    testEnv1Assemble :: (Text -> IO B.ByteString),
+    testEnv1Executor :: executor
+}
 
 data TestEnv2 executor1 executor2 = TestEnv2 {
-        testEnv2Assemble1 :: (Text -> IO B.ByteString),
-        testEnv2Executor1 :: executor1,
-        testEnv2Assemble2 :: (Text -> IO B.ByteString),
-        testEnv2Executor2 :: executor2
-    }
+    testEnv2Assemble1 :: (Text -> IO B.ByteString),
+    testEnv2Executor1 :: executor1,
+    testEnv2Assemble2 :: (Text -> IO B.ByteString),
+    testEnv2Executor2 :: executor2
+}
 
 class TestEnvE env s m | env -> s where
     execTestEnv :: env -> Text -> SeqM s () -> m ()

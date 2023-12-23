@@ -9,14 +9,12 @@ import Data.Text (Text)
 import Data.IORef (readIORef, newIORef, IORef, atomicWriteIORef)
 import Control.Monad.Trans (liftIO, MonadIO)
 
+import NeatInterpolation
+
 import Prism.Cpu
 import Prism.Instructions
 import Prism.Peripherals
-
-import TestAsm.Run
-import TestAsm.Common
-
-import NeatInterpolation
+import Infra
 
 -------------------------------------------------------------------------------
 

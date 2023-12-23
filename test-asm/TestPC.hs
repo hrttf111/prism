@@ -15,15 +15,13 @@ import Data.Text (append)
 import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
 import qualified Data.ByteString as B
 
+import NeatInterpolation
+
 import Prism.Cpu
 import Prism.Command
 import Prism.Peripherals
 import Prism.PC
-
-import TestAsm.Common
-import TestAsm.Run
-
-import NeatInterpolation
+import Infra
 
 -------------------------------------------------------------------------------
 

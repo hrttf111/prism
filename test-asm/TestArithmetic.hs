@@ -5,12 +5,10 @@ module TestArithmetic where
 
 import Test.Hspec
 
-import Prism.Cpu
-
-import TestAsm.Run
-import TestAsm.Common
-
 import NeatInterpolation
+
+import Prism.Cpu
+import Infra
 
 -------------------------------------------------------------------------------
 testAdd env = do
