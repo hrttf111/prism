@@ -29,9 +29,9 @@ doTests = do
             makerP = PrismEnvMaker
         testMovMem2 makerPQ
         testMov makerPQ
-        testMovLDS makerP
+        testMovLDS makerPQ
         testMovMem1 makerPQ
-        testMovXlat makerP
+        testMovXlat makerPQ
         testAdd makerPN
         testInc makerPN
         testSub makerPN

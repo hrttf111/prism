@@ -27,11 +27,12 @@ testControl env = do
                 shouldEqSourcesAllFlags
         it "jmp far" $ do
             runTest env ([untrimming|
-                absolute 0x100
+                    jmp CODE_START
                     reg_mem    resw    1
                     seg_mem    resw    1
-                section .text
-                org 0
+                CODE_START:
+                    mov ax, cs
+                    mov ds, ax
                     mov [reg_mem], WORD L1
                     mov [seg_mem], WORD cs
                     ;mov [bp], WORD reg_mem
@@ -41,11 +42,6 @@ testControl env = do
                     mov bl, 1
                     L1:
                     mov al, 2
-                    mov al, 2
-                    mov al, 2
-                    mov al, 2
-                    mov al, 2
-                    ;hlt
             |]) $ do
                 shouldEq al 2
                 shouldEq bl 0

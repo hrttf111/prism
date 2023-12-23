@@ -155,8 +155,12 @@ instance (PeripheralsTestCreator mL dL) => TestEnvMaker (PrismEnvPeripheralsMake
             runRemotePeripherals queue peripheralR execPeripheralsOnce
             ) (\_ -> putMVar mvar ())
         prismExec <- ExecPrism.createPrismExecutor ioCtx x86InstrList intList debugCtx (runner comm)
-        return $ TestEnv1 (Just $ PeripheralThread threadId mvar) makeAsmStr prismExec
+        return $ TestEnv1 (Just $ PeripheralThread threadId mvar) asmFunc prismExec
         where
+            asmFooter = [untrimming|
+                hlt
+            |]
+            asmFunc t = makeAsmStr $ T.append t asmFooter
             debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
             runner comm decoder _ = do
                 preStartAction

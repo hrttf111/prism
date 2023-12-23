@@ -41,7 +41,6 @@ testPeripheral = do
                 mov [8999], BYTE 189
                 mov al, [9002]
                 mov bl, [8999]
-                hlt
             |]) $ do
                 shouldEq al 134
                 shouldEq bl 189
@@ -55,7 +54,6 @@ testPeripheral = do
                 mov [7998], WORD 1089
                 mov ax, [9002]
                 mov bx, [7998]
-                hlt
             |]) $ do
                 shouldEq ax 0xFE19
                 shouldEq bx 1089
@@ -67,7 +65,6 @@ testPeripheral = do
                 xor bx, bx
                 mov ds, bx
                 mov [9008], BYTE 189
-                hlt
             |]) $ do
                 shouldEq bx 0
                 liftIO $ do
@@ -80,7 +77,6 @@ testPeripheral = do
                 xor bx, bx
                 mov ds, bx
                 mov [9008], WORD 0xFEAB
-                hlt
             |]) $ do
                 shouldEq bx 0
                 liftIO $ do
@@ -92,7 +88,6 @@ testPeripheral = do
                 env = defaultPrismEnvPeriphMaker { prismEnvPeriphpPortsRemote = [(PeripheralPort 120 handler)] }
             runTest env ([untrimming|
                 in al, 120
-                hlt
             |]) $ do
                 shouldEq al 134
         it "Read 16b" $ do
@@ -101,7 +96,6 @@ testPeripheral = do
                 env = defaultPrismEnvPeriphMaker { prismEnvPeriphpPortsRemote = [(PeripheralPort 80 handler)] }
             runTest env ([untrimming|
                 in ax, 80
-                hlt
             |]) $ do
                 shouldEq ax 1349
         it "Write 8b" $ do
@@ -111,7 +105,6 @@ testPeripheral = do
             runTest env ([untrimming|
                 mov al, 189
                 out 80, al
-                hlt
             |]) $ do
                 shouldEq al 189
                 liftIO $ do
@@ -123,7 +116,6 @@ testPeripheral = do
             runTest env ([untrimming|
                 mov ax, 1890
                 out 80, ax
-                hlt
             |]) $ do
                 shouldEq ax 1890
                 liftIO $ do
@@ -143,7 +135,6 @@ testPeripheral = do
                 mov al, [9002]
                 mov bl, [8999]
                 mov cl, [10300]
-                hlt
             |]) $ do
                 shouldEq al 134
                 shouldEq bl 189
@@ -156,7 +147,6 @@ testPeripheral = do
                 xor bx, bx
                 mov ds, bx
                 mov [9008], BYTE 189
-                hlt
             |]) $ do
                 shouldEq bx 0
                 liftIO $ do
@@ -173,7 +163,6 @@ testPeripheral = do
                 in al, 121
                 mov bl, al
                 in al, 120
-                hlt
             |]) $ do
                 shouldEq al 134
                 shouldEq bl 150

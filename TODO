@@ -70,9 +70,8 @@
             - Align addresses between Prism and QEMU tests +
                 - Use exactly same physical addresses +
                 - Or implement MemDisp +
-            - Rewrite tests to use data on default ds
-                - Allow resX?
-                - If yes, then QEMU tests should support it too
+            - Rewrite tests to use data on default ds +
+                - If yes, then QEMU tests should support it too +
 
 -------------------------------------------------------
 

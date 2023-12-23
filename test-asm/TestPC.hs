@@ -129,7 +129,6 @@ testPC = do
             runTest env ([untrimming|
                 mov al, 134
                 int 0x10
-                hlt
             |]) $ do
                 shouldEq al 89
         it "Basic test Master PIC IRQ0" $ do
@@ -171,7 +170,6 @@ testPC = do
                 LOOP1:
                 inc bl
                 loop LOOP1
-                hlt
             |]) $ do
                 shouldEq al 89
         it "Basic test Slave PIC IRQ8" $ do
@@ -227,7 +225,6 @@ testPC = do
                 LOOP1:
                 inc bl
                 loop LOOP1
-                hlt
             |]) $ do
                 shouldEq al 89
     describe "Test PC Scheduler" $ do
@@ -247,7 +244,6 @@ testPC = do
                 LOOP1:
                 inc bl
                 loop LOOP1
-                hlt
             |]) $ do
                 shouldEq al 5
     describe "Test PC PIT" $ do
@@ -379,7 +375,6 @@ testPC = do
                 mov al, 134
                 mov ah, 76
                 int 0x1f
-                hlt
             |]) $ do
                 shouldEq al 89
         it "BIOS keyboard - int 9" $ do
@@ -409,7 +404,6 @@ testPC = do
                 int 0x16
                 pushf
                 pop dx
-                hlt
             |]) $ do
                 shouldEq bl 3
                 shouldEq bh 4
@@ -453,7 +447,6 @@ testPC = do
                 ; Get time
                 mov ah, 2
                 int 0x1a
-                hlt
             |]) $ do
                 shouldEq ch hours
                 shouldEq cl minutes
@@ -474,7 +467,6 @@ testPC = do
                 mov al, 0
                 mov ah, 8
                 int 0x10
-                hlt
             |]) $ do
                 shouldEq ah 7
                 shouldEq al 0x31
@@ -501,7 +493,6 @@ testPC = do
                 mov al, 0
                 mov ah, 8
                 int 0x10
-                hlt
             |]) $ do
                 shouldEq ah 7
                 shouldEq al 0x31
@@ -516,7 +507,6 @@ testPC = do
                 mov bx, ax
                 ; Get equipment list
                 int 0x11
-                hlt
             |]) $ do
                 shouldEq ax 0x0021
                 shouldEq bx 0x27f
@@ -527,7 +517,6 @@ testPC = do
                 mov ah, 2
                 mov dl, 1
                 int 0x13
-                hlt
             |]) $ do
                 shouldEq al 0
                 shouldEq ah 15
@@ -551,7 +540,6 @@ testPC = do
                 mov dl, 1 ; drive floppy 1
                 mov dh, 2 ; head 2
                 int 0x13
-                hlt
             |]) $ do
                 shouldEq al 10
                 shouldEq ah 2
@@ -575,7 +563,6 @@ testPC = do
                 mov dl, 1 ; drive floppy 1
                 mov dh, 2 ; head 2
                 int 0x13
-                hlt
             |]) $ do
                 shouldEq al 10
                 shouldEq ah 3
@@ -594,7 +581,6 @@ testPC = do
                 mov ah, 8
                 mov dl, 1
                 int 0x13
-                hlt
             |]) $ do
                 shouldEq ax 0
                 shouldEq bl 4
@@ -609,7 +595,6 @@ testPC = do
                 mov bx, 0x410
                 mov cx, WORD [ds:bx]
                 mov al, 10
-                hlt
             |]) $ do
                 shouldEq al 0
 -------------------------------------------------------------------------------

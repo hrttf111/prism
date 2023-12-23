@@ -157,7 +157,7 @@ testMov env =
                 shouldEqSources ax
         it "Test LES" $ do
             runTest env ([text|
-                absolute 0x100
+                absolute 0x8000
                     reg_mem    resw    1
                     seg_mem    resw    1
                 section .text
@@ -178,12 +178,11 @@ testMovLDS env =
     describe "(LDS) MOV [8] REG <- IMM" $ do
         it "Test LDS" $ do
             runTest env ([text|
-                absolute 0x100
+                    jmp CODE_START
                     reg_mem    resw    1
                     seg_mem    resw    1
-                section .text
-                org 0
-                    mov ax, 0
+                CODE_START:
+                    mov ax, cs
                     mov es, ax
                     mov ds, ax
                     mov [reg_mem], WORD 0x1234
@@ -193,6 +192,7 @@ testMovLDS env =
             |]) $ do
                 shouldEq ax 0x1234
                 shouldEq dx 0x0060
+                shouldEqSources [ax, dx]
 
 testMovMem1 env = do
     describe "MOV mem ds" $ do
@@ -338,26 +338,24 @@ testMovXlat env = do
     describe "XLAT" $ do
         it "XLAT simple" $ do
             runTest env ([untrimming|
-                SECTION .data start=100h
+                    jmp CODE_START
                     pxlat_table db 0x11, 0x12, 0x13, 0x14, 0x15
                     times 256-($-$$) db 0xAF
-                section .text
-                org 0
+                CODE_START:
                     mov ax, cs
                     mov ds, ax
                     mov bx, pxlat_table
                     mov ax, 4
                     xlatb
-                    hlt
             |]) $ do
                 shouldEq ax 0x15
+                shouldEqSources ax
         it "XLAT" $ do
             runTest env ([untrimming|
-                SECTION .data start=100h
+                    jmp CODE_START
                     pxlat_table db 0x11, 0x12, 0x13, 0x14, 0x15
                     times 256-($-$$) db 0xAF
-                section .text
-                org 0
+                CODE_START:
                     mov ax, cs
                     mov ds, ax
                     mov bx, pxlat_table
@@ -370,10 +368,10 @@ testMovXlat env = do
                     mov ax, 4
                     xlatb
                     mov bx, ax
-                    hlt
             |]) $ do
                 shouldEq bx 0x15
                 shouldEq cx 0xAF
                 shouldEq dx 0x11
+                shouldEqSources [bx, cx, dx]
 
 -------------------------------------------------------------------------------
