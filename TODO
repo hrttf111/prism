@@ -13,10 +13,10 @@
     - Trace jumps +
     - Trace interrupts +
     - Trace BIOS calls +
- - Testing infra
-    - Create custom code which runs in QEMU
-    - Compare values in memory after the test
-    - Use QEMU as a backend to compare results
+ - Testing infra +
+    - Create custom code which runs in QEMU +
+    - Compare values in memory after the test +
+    - Use QEMU as a backend to compare results +
         - Find how to run arbitrary binary in QEMU +
             - -device loader
             - qemu-system-i386 -drive file=boot.img,index=0,media=disk,format=raw -boot c -net none +
@@ -36,7 +36,7 @@
               { 'command': 'memsave',
                 'data': {'val': 'int', 'size': 'int', 'filename': 'str', '*cpu-index': 'int'} }
             - -qmp tcp:localhost:4444,server,wait=off
-        - Test sequence
+        - Test sequence +
             - make bootable image +
                 - take into account that qemu may not be able to detect FD type +
                 - boot sectors will always be 512 bytes +
@@ -52,80 +52,6 @@
                 - alternative is to stop it via JSON API
             - read test memory area + dump area from RAM file +
                 - alternative is to read memory directly from qemu via JSON API
-        - New testing infra
-            - New infra to check state of CPU after the test +
-                - Allow testing registers +
-                - Allow testing values in memory +
-                - Allow to compare values between Prism and Native/QEMU +
-                - Compare flags +
-                - Implement readable aliases +
-            - Fix flags in QEMU +
-            - Fix Prism peripherals creation code +
-            - Use halt env for all Prism tests +
-            - Implement dummy Env to skip "shouldEqSource" +
-            - Free memory after test +
-            - Show asm errors when assembler fails +
-            - Move all test infra to separate dir +
-                - Use single import in all tests +
-            - Align addresses between Prism and QEMU tests +
-                - Use exactly same physical addresses +
-                - Or implement MemDisp +
-            - Rewrite tests to use data on default ds +
-                - If yes, then QEMU tests should support it too +
-
--------------------------------------------------------
-
-Infra
-    ExecNative.hs
-    ExecQemu.hs
-    ExecPrism.hs
-    Types.hs
-    Assembler.hs
-Infra.hs
-
-execAndCmp env text cmpSeq
-
-execAndCmp env $ [text|
-    mov al, 1
-    mov bl, 2
-    mov cl, 3
-    mov dl, 4
-|] $ do
-    cmpRegAll
-    cmpRegAllExcept [dl, cl]
-    cmpRegs [al, bl]
-    cmpMem word 0x8000
-    cmpMemRange 0x9000 0x9004
-    cmpMemRanges [(0x1000, 0x1100), (0x2000, 0x2345)]
-    cmpFlags [if, af]
-    cmpFlagsExcept [zf]
-    al `shouldEq` 2
-    (MemWord 0x9000) `shouldEq` 0x1234
-    (MemRange 0x8010 0x8234) `shouldEq` [0, 1, 2, 3, ...]
-    (Flags [if, zf]) `shouldEq` [True, False]
-
-class HasSourceL s m where
-    getSourceL :: m s
-
-class HasSourceR s m where
-    getSourceR :: m s
-
-cmpReg :: (HasSourceL sl m, HasSourceR sr m, MonadIO m, RegRead sl Reg, RegRead sr m) => Reg -> m a
-cmpReg reg = do
-    sourceL <- getSourceL
-    sourceR <- getSourceR
-    regL <- readReg sourceL reg
-    regR <- readReg sourceR reg
-    liftIO $ regL `shouldBe` regR
-
-execCmpSeq :: Env -> Seq a -> Expectation
-execCmpSeq env seq = do
-    runSeq seq
-
-shouldEq :: op -> val -> m ()
-
-class ShouldEq op val where
-    shouldEq1 :: op -> val -> m ()
 
 -------------------------------------------------------
 
