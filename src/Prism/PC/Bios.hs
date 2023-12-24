@@ -574,6 +574,41 @@ scrollCopyRange ss distance False =
         else
             ((fromIntegral distance), [((fromIntegral $ scrollHeight ss) - i-1)|i <- [(fromIntegral $ scrollScreenTop ss)..(fromIntegral (scrollScreenBottom ss - distance))]])
 
+scrollScreen :: (VideoConsole console) => console -> Ptr Uint8 -> ScrollScreen -> Uint8 -> Bool -> Uint8 -> IO ()
+scrollScreen console memPtr ss distance doUp blankAttr = do
+    if distance == 0 then -- clear screen when distance is 0
+        clearScreen memPtr ss blankAttr
+        else do
+            let (step, rowRange) = scrollCopyRange ss distance doUp
+            mapM_ (\ rowNum -> copyRow memPtr ss rowNum (rowNum + step)) rowRange
+            let (blankStart, blankEnd) = if doUp then
+                    ((scrollScreenTop ss + (scrollHeight ss) - distance)+1, scrollScreenBottom ss)
+                    else
+                        (scrollScreenTop ss, scrollScreenTop ss + distance - 1)
+            clearScreen memPtr (ss{scrollScreenTop = blankStart, scrollScreenBottom = blankEnd}) blankAttr
+            return ()
+    where
+        clearScreen videoPtr ss attr =
+            mapM_ fillRow rowRange
+            where
+                defaultChar = 0x20 :: Uint8
+                rowRange = [(fromIntegral $ scrollScreenTop ss)..(fromIntegral $ scrollScreenBottom ss)]
+                columnRange = [(fromIntegral $ scrollScreenLeft ss)..(fromIntegral $ scrollScreenRight ss)]
+                fillRow rowNum =
+                    mapM_ (\ column -> pokeVideoChar console videoPtr rowNum column (defaultChar, attr)) columnRange
+        copyRow videoPtr ss srcRow dstRow = do
+                copyBytes ptr2 ptr1 toCopy
+            where
+                toCopy = (videoConsoleCharSize console) * (fromIntegral $ scrollWidth ss)
+                ptr1 = plusPtr videoPtr $ videoConsoleMemOffset console srcRow (fromIntegral $ scrollScreenLeft ss)
+                ptr2 = plusPtr videoPtr $ videoConsoleMemOffset console dstRow (fromIntegral $ scrollScreenLeft ss)
+
+scrollScreenFull :: (VideoConsole console) => console -> Ptr Uint8 -> Uint8 -> Bool -> Uint8 -> IO ()
+scrollScreenFull console memPtr distance doUp blankAttr =
+    scrollScreen console memPtr ss distance doUp blankAttr
+    where
+        ss = ScrollScreen 0 (fromIntegral $ videoConsoleLastRow console) 0 (fromIntegral $ videoConsoleColumns console)
+
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
@@ -650,11 +685,7 @@ processBiosVideo bios = do
                     writeTVar vs $ s { videoCursor = c' }
                     return (videoMemory s, getVideoCursorPos s, scrollLine)
                 if scrollLine then do
-                    let ss = ScrollScreen 0 (fromIntegral $ videoConsoleLastRow console) 0 (fromIntegral $ videoConsoleColumns console)
-                        blankAttr = 0
-                        (step, rowRange) = scrollCopyRange ss 1 True
-                    mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
-                    clearScreen ptr (ss{scrollScreenTop = fromIntegral (videoConsoleLastRow console), scrollScreenBottom = fromIntegral $ videoConsoleLastRow console}) blankAttr
+                    scrollScreenFull console ptr 1 True 0
                     pokeVideoChar console ptr row column (charCode, charAttr)
                     atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
                     else if char == '\r' || char == '\n' then
@@ -675,20 +706,6 @@ processBiosVideo bios = do
             s { videoCommands = commands' }
             where
                 commands' = (videoCommands s) ++ commands
-        clearScreen videoPtr ss attr =
-            mapM_ fillRow rowRange
-            where
-                defaultChar = 0x20 :: Uint8
-                rowRange = [(fromIntegral $ scrollScreenTop ss)..(fromIntegral $ scrollScreenBottom ss)]
-                columnRange = [(fromIntegral $ scrollScreenLeft ss)..(fromIntegral $ scrollScreenRight ss)]
-                fillRow rowNum =
-                    mapM_ (\ column -> pokeVideoChar console videoPtr rowNum column (defaultChar, attr)) columnRange
-        copyRow videoPtr ss srcRow dstRow = do
-                copyBytes ptr2 ptr1 toCopy
-            where
-                toCopy = (videoConsoleCharSize console) * (fromIntegral $ scrollWidth ss)
-                ptr1 = plusPtr videoPtr $ videoConsoleMemOffset console srcRow (fromIntegral $ scrollScreenLeft ss)
-                ptr2 = plusPtr videoPtr $ videoConsoleMemOffset console dstRow (fromIntegral $ scrollScreenLeft ss)
         doScroll doUp = do
             distance <- readOp al -- scroll distance in rows
             blankAttr <- readOp bh -- attr for blank lines
@@ -708,17 +725,7 @@ processBiosVideo bios = do
             liftIO $ do
                 let vs = pcVideoShared $ pcVideoState bios
                 ptr <- atomically $ videoMemory <$> readTVar vs
-                if distance == 0 then -- clear screen when distance is 0
-                    clearScreen ptr ss blankAttr
-                    else do
-                        let (step, rowRange) = scrollCopyRange ss distance doUp
-                        mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
-                        let (blankStart, blankEnd) = if doUp then
-                                ((scrollScreenTop ss + (scrollHeight ss) - distance)+1, scrollScreenBottom ss)
-                                else
-                                    (scrollScreenTop ss, scrollScreenTop ss + distance - 1)
-                        clearScreen ptr (ss{scrollScreenTop = blankStart, scrollScreenBottom = blankEnd}) blankAttr
-                        return ()
+                scrollScreen console ptr ss distance doUp blankAttr
                 atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
             return ()
 
