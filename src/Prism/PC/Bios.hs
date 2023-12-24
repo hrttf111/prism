@@ -518,23 +518,24 @@ videoConsoleRowsRange c = [0..(videoConsoleLastRow c)]
 videoConsoleColumnsRange :: (VideoConsole c) => c -> [Int]
 videoConsoleColumnsRange c = [0..(videoConsoleLastColumn c)]
 
-updateCursorPosition :: (VideoConsole c) => c -> VideoCursor -> Char -> VideoCursor
+updateCursorPosition :: (VideoConsole c) => c -> VideoCursor -> Char -> (VideoCursor, Bool)
 updateCursorPosition _ cursor '\r' =
-    cursor { videoCursorColumn = 0 }
+    (cursor { videoCursorColumn = 0 }, False)
 updateCursorPosition console cursor '\n' =
     if row < (videoConsoleLastRow console) then
-        cursor { videoCursorRow = (row + 1) }
+        (cursor { videoCursorRow = (row + 1) }, False)
         else
-            cursor
+            (cursor, True)
     where
         row = videoCursorRow cursor
 updateCursorPosition console cursor _ =
     if column < (videoConsoleLastColumn console) then
-        cursor { videoCursorRow = row, videoCursorColumn = (column+1) }
+        (cursor { videoCursorRow = row, videoCursorColumn = (column+1) }, False)
         else if row < (videoConsoleLastRow console) then
-            cursor { videoCursorRow = (row+1), videoCursorColumn = 0 }
+            (cursor { videoCursorRow = (row+1), videoCursorColumn = 0 }, False)
             else
-                cursor { videoCursorRow = row, videoCursorColumn = (videoConsoleLastColumn console) }
+                (cursor { videoCursorRow = row, videoCursorColumn = 0 }, True)
+                --cursor { videoCursorRow = row, videoCursorColumn = (videoConsoleLastColumn console) }
     where
         row = videoCursorRow cursor
         column = videoCursorColumn cursor
@@ -643,16 +644,24 @@ processBiosVideo bios = do
             let vs = pcVideoShared $ pcVideoState bios
                 char = toEnum (fromIntegral charCode)
             liftIO $ do
-                (ptr, (row, column)) <- atomically $ do
+                (ptr, (row, column), scrollLine) <- atomically $ do
                     s <- readTVar vs
-                    let c' = updateCursorPosition console (videoCursor s) char
+                    let (c', scrollLine) = updateCursorPosition console (videoCursor s) char
                     writeTVar vs $ s { videoCursor = c' }
-                    return (videoMemory s, getVideoCursorPos s)
-                if char == '\r' || char == '\n' then
-                    atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
-                    else do
-                        pokeVideoChar console ptr row column (charCode, charAttr)
-                        atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr), VideoUpdateCursor]
+                    return (videoMemory s, getVideoCursorPos s, scrollLine)
+                if scrollLine then do
+                    let ss = ScrollScreen 0 (fromIntegral $ videoConsoleLastRow console) 0 (fromIntegral $ videoConsoleColumns console)
+                        blankAttr = 0
+                        (step, rowRange) = scrollCopyRange ss 1 True
+                    mapM_ (\ rowNum -> copyRow ptr ss rowNum (rowNum + step)) rowRange
+                    clearScreen ptr (ss{scrollScreenTop = fromIntegral (videoConsoleLastRow console), scrollScreenBottom = fromIntegral $ videoConsoleLastRow console}) blankAttr
+                    pokeVideoChar console ptr row column (charCode, charAttr)
+                    atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
+                    else if char == '\r' || char == '\n' then
+                        atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
+                        else do
+                            pokeVideoChar console ptr row column (charCode, charAttr)
+                            atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr), VideoUpdateCursor]
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
             writeOp ah $ fromIntegral $ videoConsoleColumns console -- number of columns
