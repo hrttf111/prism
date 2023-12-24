@@ -21,6 +21,7 @@ import Foreign.Storable (poke, peekByteOff, pokeByteOff)
 import Foreign.ForeignPtr (withForeignPtr)
 
 import System.CPUTime (getCPUTime)
+import GHC.Stack (HasCallStack)
 
 import Prism.Cpu
 import Prism.Peripherals
@@ -360,7 +361,7 @@ processBiosTimerISR bios = do
     --TODO: check that timer ticks are correct
     writeOp (biosMem32 0x6C) $ fromIntegral timerTicks' -- update timer count
     if diff > timerPeriod then do
-        cpuLogT Trace BiosTimer "Raise interrupt 0x1c"
+        cpuLogT Debug BiosTimer "Raise interrupt 0x1c"
         raiseInterrupt $ PrismInt 0x1c
         return $ bios { pcTimer = PcTimer ticksUs timerTicks' }
         else do
@@ -499,7 +500,7 @@ peekVideoChar c videoMem row column =
     where
         offset = videoConsoleMemOffset c row column
 
-pokeVideoChar :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> (Uint8, Uint8) -> IO ()
+pokeVideoChar :: (HasCallStack, VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> (Uint8, Uint8) -> IO ()
 pokeVideoChar c _ row _ _ | row >= (videoConsoleRows c) = error "Wrong row"
 pokeVideoChar c _ _ column _ | column >= (videoConsoleColumns c) = error "Wrong column"
 pokeVideoChar c videoMem row column (code, attr) =
@@ -575,7 +576,7 @@ scrollCopyRange ss distance False =
         else
             ((fromIntegral distance), [((fromIntegral $ scrollHeight ss) - i-1)|i <- [(fromIntegral $ scrollScreenTop ss)..(fromIntegral (scrollScreenBottom ss - distance))]])
 
-scrollScreen :: (VideoConsole console) => console -> Ptr Uint8 -> ScrollScreen -> Uint8 -> Bool -> Uint8 -> IO ()
+scrollScreen :: (HasCallStack, VideoConsole console) => console -> Ptr Uint8 -> ScrollScreen -> Uint8 -> Bool -> Uint8 -> IO ()
 scrollScreen console memPtr ss distance doUp blankAttr = do
     if distance == 0 then -- clear screen when distance is 0
         clearScreen memPtr ss blankAttr
@@ -609,6 +610,13 @@ scrollScreenFull console memPtr distance doUp blankAttr =
     scrollScreen console memPtr ss distance doUp blankAttr
     where
         ss = ScrollScreen 0 (fromIntegral $ videoConsoleLastRow console) 0 (fromIntegral $ videoConsoleLastColumn console)
+
+validateScroll :: (VideoConsole c) => c -> ScrollScreen -> ScrollScreen
+validateScroll console ss = ss'
+    where
+        ss' = ss { scrollScreenRight = min (scrollScreenRight ss) (fromIntegral $ videoConsoleLastColumn console)
+                 , scrollScreenBottom = min (scrollScreenBottom ss) (fromIntegral $ videoConsoleLastRow console)
+                 }
 
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
@@ -714,15 +722,15 @@ processBiosVideo bios = do
             left <- readOp cl -- left column scroll window
             bottom <- readOp dh -- bottom row scroll window
             right <- readOp dl -- right column scroll window
-            let ss = ScrollScreen top bottom left right
+            let ss = validateScroll console $ ScrollScreen top bottom left right
             -- validate scroll
-            cpuDebugActionT Trace BiosVideo $ do
-                cpuLogT Trace BiosVideo $ "  Distance (in rows): " ++ show distance
-                cpuLogT Trace BiosVideo $ "  Attr for blank lines: " ++ show blankAttr
-                cpuLogT Trace BiosVideo $ "  Top row scroll window: " ++ show top
-                cpuLogT Trace BiosVideo $ "  Left column scroll window: " ++ show left
-                cpuLogT Trace BiosVideo $ "  Bottom row scroll window: " ++ show bottom
-                cpuLogT Trace BiosVideo $ "  Right column scroll window: " ++ show right
+            cpuDebugActionT Debug BiosVideo $ do
+                cpuLogT Debug BiosVideo $ "  Distance (in rows): " ++ show distance
+                cpuLogT Debug BiosVideo $ "  Attr for blank lines: " ++ show blankAttr
+                cpuLogT Debug BiosVideo $ "  Top row scroll window: " ++ show top
+                cpuLogT Debug BiosVideo $ "  Left column scroll window: " ++ show left
+                cpuLogT Debug BiosVideo $ "  Bottom row scroll window: " ++ show bottom
+                cpuLogT Debug BiosVideo $ "  Right column scroll window: " ++ show right
             liftIO $ do
                 let vs = pcVideoShared $ pcVideoState bios
                 ptr <- atomically $ videoMemory <$> readTVar vs
@@ -806,6 +814,7 @@ processBiosDisk bios = do
                     bs <- liftIO $ (pcDiskRead drive) diskOffset dataLen
                     copyMainMem memOffset bs
                     writeOp al numSectors -- sectors read
+                    writeOp ah 0
                     return ()
                 _ -> do
                     cpuLogT Debug BiosDisk "Wrong read op"
@@ -822,6 +831,7 @@ processBiosDisk bios = do
                         )
                     liftIO $ (pcDiskWrite drive) diskOffset memData
                     writeOp al numSectors -- sectors read
+                    writeOp ah 0
                     return ()
                 _ -> do
                     cpuLogT Debug BiosDisk "Wrong write op"
@@ -963,7 +973,6 @@ loadBootSector :: PcBios -> PrismM PcBios
 loadBootSector bios = do
     case Map.lookup (PcDiskFloppy 0) (pcDisks bios) of
         Just d -> do
-            --dt <- liftIO $ (pcDiskRead d) 0x7C00 512
             dt <- liftIO $ (pcDiskRead d) 0 512
             copyMainMem bootloaderStart dt
         Nothing -> return ()
@@ -979,7 +988,7 @@ processBiosReboot bios = do
 processBiosTest :: PcBios -> PrismM PcBios
 processBiosTest bios = do
     valAh <- readOp ah
-    cpuLogT Trace BiosGeneric $ "BIOS test interrupt, AH=: " ++ (show valAh)
+    cpuLogT Error BiosGeneric $ "BIOS test interrupt, AH=: " ++ (show valAh)
     writeOp al 89
     return bios
 
