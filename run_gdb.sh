@@ -4,10 +4,21 @@
 #    -ex 'break *0x7c00' \
 #    -ex 'continue'
 
+#gdb -ex 'target remote localhost:20001' \
+#    -ex 'set disassembly-flavor intel' \
+#    -ex 'layout asm' \
+#    -ex 'set architecture i8086'
+
+
 gdb -ex 'target remote localhost:20001' \
     -ex 'set disassembly-flavor intel' \
+    -ex 'set architecture i8086' \
     -ex 'layout asm' \
-    -ex 'set architecture i8086'
+    -ex 'break *0xff003' \
+    -ex 'cont'
+
+    #-ex 'break *0xfe3dc' \
+    #-ex 'break *0x27b29' \
 
 # x/10c (16*$ds + $si + 10)
 # 0x90a20 - execr

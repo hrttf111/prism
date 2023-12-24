@@ -113,10 +113,27 @@ traceRetInter ipVal csVal =
 
 traceInterrupt :: (CpuMonad m) => Uint8 -> m ()
 traceInterrupt int =
-    cpuLogT Trace CpuInt $ "Interrupt = 0x" ++ showHex int ""
+    cpuDebugActionT Trace CpuInt $ do
+        csValFrom <- readOp cs
+        ipValFrom <- readOp ip
+        let offset = 4 * (fromIntegral int)
+            mem = MemPhy16 offset
+            mem2 = MemPhy16 $ offset + 2
+        ipVal <- readOp mem
+        csVal <- readOp mem2
+    --cpuLogT Trace CpuInt $ "Interrupt = 0x" ++ showHex int ""
+        traceJmp CpuInt ipValFrom csValFrom ipVal csVal $ "Interrupt = 0x" ++ showHex int ""
+        when (int == 0x21) $ do
+            ahVal <- readOp ah
+            cpuLogT Trace CpuInt $ "AH = 0x" ++ showHex ahVal ""
+        return ()
 
-traceRetInterrupt :: (CpuMonad m) => m ()
-traceRetInterrupt = cpuLogT Trace CpuInt "Reti"
+--traceRetInterrupt :: (CpuMonad m) => m ()
+--traceRetInterrupt = cpuLogT Trace CpuInt "Reti"
+
+traceRetInterrupt :: (CpuMonad m) => Uint16 -> Uint16 -> Uint16 -> Uint16 -> m ()
+traceRetInterrupt csValFrom ipValFrom csVal ipVal =
+    traceJmp CpuInt ipValFrom csValFrom ipVal csVal "Reti"
 
 -------------------------------------------------------------------------------
 

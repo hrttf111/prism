@@ -59,8 +59,21 @@ into = int 4
 
 iret :: (CpuMonad m) => FuncImplicit m
 iret = do
-    Log.traceRetInterrupt
-    retInterrupt
+    --Log.traceRetInterrupt
+    --retInterrupt
+    ipValFrom <- readOp ip
+    csValFrom <- readOp cs
+    popP ip
+    popP cs
+    Log.cpuDebugActionT Trace Log.CpuInt $ do
+        ipVal <- readOp ip
+        csVal <- readOp cs
+        Log.traceRetInterrupt csValFrom ipValFrom csVal ipVal
+    val <- popV
+    let flags = valToFlags val
+        eflags = valToEFlags val
+    setFlags flags
+    setFlags eflags
 
 -------------------------------------------------------------------------------
 

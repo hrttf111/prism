@@ -16,7 +16,8 @@ import qualified Prism.Log as Log
 
 runPeripherals' :: Bool -> PrismM ()
 runPeripherals' updatePeripherals =
-    if updatePeripherals then
+    if updatePeripherals then do
+        Log.cpuLogT Debug Log.PrismRun "Update peripherals"
         f =<< ctxIO <$> get
         else
             return ()

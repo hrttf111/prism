@@ -142,8 +142,8 @@ type CpuTrans = CpuTransM Ctx IO
 -------------------------------------------------------------------------------
 
 instance CpuDebugM CpuTrans Trace where
-    cpuLog = ignoreLog
-    cpuDebugAction = ignoreAction
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
 
 instance CpuDebugM CpuTrans Debug where
     cpuLog = printLog

@@ -286,7 +286,6 @@ buildFloppy handle loc =
 
 readFloppy :: Handle -> Int -> Int -> IO BS.ByteString
 readFloppy handle offset length = do
-    --liftIO $ putStrLn $ "Read offset = " ++ (show offset) ++ " len = " ++ (show length)
     if (maxLength <= 0) || (offset < 0) || (length <= 0) then
         return BS.empty
         else do
@@ -299,7 +298,7 @@ readFloppy handle offset length = do
                     return dt
     where
         maxLength = maxFloppySize - offset
-        normLength = if length > maxLength then maxLength else length
+        normLength = min length maxLength
 
 writeFloppy :: Handle -> Int -> BS.ByteString -> IO ()
 writeFloppy handle offset dt =
@@ -311,7 +310,7 @@ writeFloppy handle offset dt =
             if maxLength <= 0 then
                 return ()
                 else do
-                    let normLength = if (BS.length dt) > maxLength then maxLength else (BS.length dt)
+                    let normLength = min maxLength (BS.length dt)
                     hSeek handle AbsoluteSeek $ fromIntegral offset
                     BS.hPut handle $ BS.take normLength dt
 
@@ -361,14 +360,18 @@ buildPC opts = do
 debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
     where
         featureArray =
-            Log.BiosTimer .= Error
+            Log.BiosTimer .= Trace
+            -- $ Log.CpuJmpIntra .= Trace
+            -- $ Log.CpuCallIntra .= Trace
             $ Log.CpuJmpInter .= Trace
             $ Log.CpuCallInter .= Trace
-            $ Log.CpuInt .= Error
+            $ Log.CpuInt .= Trace
+            $ Log.BiosKeyboard .= Trace
             $ Log.BiosVideo .= Error
             $ Log.BiosDisk .= Debug
             $ Log.PrismCommand .= Debug
-            $ Log.PrismPc .= Warning
+            $ Log.PrismPc .= Debug
+            $ Log.PrismRun .= Debug
             $ Log.featureArray
         debugPrint level feature msg =
             if fEnable level feature then
@@ -472,7 +475,6 @@ runBinary opts = do
 
 main :: IO ()
 main = do
-    putStrLn $ show $ Log.BiosTimer .= Trace $ Log.BiosVideo .= Warning $ Log.featureArray
     opts <- execParser optsParser
     runBinary opts
     return ()

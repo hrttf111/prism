@@ -79,6 +79,7 @@ instance PeripheralsMonad PeripheralsPC where
 instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
     runPeripheralsM ctx actions = do
         cpuCtx <- get
+        Log.cpuLogT Debug Log.PrismPc $ "Ints: " ++ show (ctxInterrupts cpuCtx)
         ((cyclesP, res), pcCtx) <- liftIO $ (runStateT . runLocal $ pcActions) $ setCycles cpuCtx ctx
         let c1 = ctxIO cpuCtx
             (cpuCtx', pcCtx') = processInterrupts cpuCtx $ pcCtx
@@ -86,6 +87,7 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
                           (ioCtxMemRegion c1)
                           (ioCtxPortRegion c1)
             doHalt = pcHalt $ localPeripherals pcCtx
+        Log.cpuLogT Debug Log.PrismPc $ "Cycles: " ++ show cyclesP
         put $ cpuCtx' { ctxIO = ioCtx, ctxCyclesP = cyclesP }
         when doHalt $ do
             Log.cpuLogT Warning Log.PrismPc "HALT"
