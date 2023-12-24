@@ -500,6 +500,8 @@ peekVideoChar c videoMem row column =
         offset = videoConsoleMemOffset c row column
 
 pokeVideoChar :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> (Uint8, Uint8) -> IO ()
+pokeVideoChar c _ row _ _ | row >= (videoConsoleRows c) = error "Wrong row"
+pokeVideoChar c _ _ column _ | column >= (videoConsoleColumns c) = error "Wrong column"
 pokeVideoChar c videoMem row column (code, attr) =
     pokeByteOff videoMem (offset + videoConsoleCodePos c) code
         >> pokeByteOff videoMem (offset + videoConsoleAttrPos c) attr
@@ -535,7 +537,6 @@ updateCursorPosition console cursor _ =
             (cursor { videoCursorRow = (row+1), videoCursorColumn = 0 }, False)
             else
                 (cursor { videoCursorRow = row, videoCursorColumn = 0 }, True)
-                --cursor { videoCursorRow = row, videoCursorColumn = (videoConsoleLastColumn console) }
     where
         row = videoCursorRow cursor
         column = videoCursorColumn cursor
@@ -557,7 +558,7 @@ data ScrollScreen = ScrollScreen {
 } deriving (Show)
 
 scrollWidth :: ScrollScreen -> Uint8
-scrollWidth ss = (scrollScreenRight ss - scrollScreenLeft ss)
+scrollWidth ss = (scrollScreenRight ss - scrollScreenLeft ss) + 1
 
 scrollHeight :: ScrollScreen -> Uint8
 scrollHeight ss = (scrollScreenBottom ss - scrollScreenTop ss)
@@ -607,7 +608,7 @@ scrollScreenFull :: (VideoConsole console) => console -> Ptr Uint8 -> Uint8 -> B
 scrollScreenFull console memPtr distance doUp blankAttr =
     scrollScreen console memPtr ss distance doUp blankAttr
     where
-        ss = ScrollScreen 0 (fromIntegral $ videoConsoleLastRow console) 0 (fromIntegral $ videoConsoleColumns console)
+        ss = ScrollScreen 0 (fromIntegral $ videoConsoleLastRow console) 0 (fromIntegral $ videoConsoleLastColumn console)
 
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
@@ -685,8 +686,8 @@ processBiosVideo bios = do
                     writeTVar vs $ s { videoCursor = c' }
                     return (videoMemory s, getVideoCursorPos s, scrollLine)
                 if scrollLine then do
-                    scrollScreenFull console ptr 1 True 0
                     pokeVideoChar console ptr row column (charCode, charAttr)
+                    scrollScreenFull console ptr 1 True 0
                     atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
                     else if char == '\r' || char == '\n' then
                         atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
