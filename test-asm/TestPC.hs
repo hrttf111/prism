@@ -27,7 +27,9 @@ import Infra
 
 instance PeripheralsTestCreator PeripheralsPC PC where
     createTestPeripherals (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) queue =
-        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
+        IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler debugCtx devices) memRegion portRegion
+        where
+            debugCtx = DebugCtx (\_ _ _ -> return ()) (\_ _ -> False)
 
 type TestInterruptHandler = Uint8 -> Uint8 -> Uint8
 

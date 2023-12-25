@@ -243,7 +243,7 @@ pcPitUpdate pit = do
     currentCycles <- pcCycles <$> getPC
     let (pit', actions) = pitDoUpdate pit currentCycles
     foldM_ (\ _ action -> do
-            --liftIO $ putStrLn $ show action
+            Log.cpuLogT Debug Log.PrismPc $ show action
             case action of
                 PitActionIrq True irq -> do
                     dispatchIrqUp irq
@@ -312,7 +312,7 @@ pcEventHandlerPit schedId = do
 pcHaltUp :: String -> MemOffset -> String -> PeripheralsPC ()
 pcHaltUp s offset s2 = do
     pc <- getPC
-    liftIO $ putStrLn $ "DO HALT = " ++ s ++ "[0x" ++ (showHex offset "") ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
+    Log.cpuLogT Warning Log.PrismPc $ "DO HALT = " ++ s ++ "[0x" ++ (showHex offset "") ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
     putPC $ pc { pcHalt = True }
 
 pcMemoryBiosDataW8 :: MemOffset -> Uint8 -> PeripheralsPC ()
@@ -347,13 +347,13 @@ pcBiosMemHandler_0 offset = PeripheralMem offset
 
 pcMemoryBiosDataW8_1 :: MemOffset -> Uint8 -> PeripheralsPC ()
 pcMemoryBiosDataW8_1 offset val = do
-    liftIO $ putStrLn $ "Write [0x" ++ (showHex offset "") ++ "]" ++ show val
+    Log.cpuLogT Warning Log.PrismPc $ "Write [0x" ++ (showHex offset "") ++ "]" ++ show val
     --writeOp (MemPhy8Abs offset) val
     return ()
 
 pcMemoryBiosDataW16_1 :: MemOffset -> Uint16 -> PeripheralsPC ()
 pcMemoryBiosDataW16_1 offset val = do
-    liftIO $ putStrLn $ "Write [0x" ++ (showHex offset "") ++ "]" ++ show val
+    Log.cpuLogT Warning Log.PrismPc $ "Write [0x" ++ (showHex offset "") ++ "]" ++ show val
     --writeOp (MemPhy16Abs offset) val
     return ()
 
@@ -364,7 +364,7 @@ pcMemoryBiosDataR16_1 :: MemOffset -> PeripheralsPC Uint16
 pcMemoryBiosDataR16_1 0x44a = return 80 -- screen columns
 pcMemoryBiosDataR16_1 0x46c = return 0
 pcMemoryBiosDataR16_1 off = do
-    liftIO $ putStrLn $ "Read [0x" ++ (showHex off "") ++ "]"
+    Log.cpuLogT Warning Log.PrismPc $ "Read [0x" ++ (showHex off "") ++ "]"
     return 0
 
 pcBiosMemHandler_1 offset = PeripheralMem offset
@@ -386,7 +386,7 @@ pcMemory = []
 pcHaltUpPort :: String -> Uint16 -> String -> PeripheralsPC ()
 pcHaltUpPort s port s2 = do
     pc <- getPC
-    liftIO $ putStrLn $ "DO HALT = " ++ s ++ "[0x" ++ (showHex port "") ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
+    Log.cpuLogT Warning Log.PrismPc $ "DO HALT = " ++ s ++ "[0x" ++ (showHex port "") ++ "]" ++ (if null s2 then "" else ("=" ++ s2))
     putPC $ pc { pcHalt = True }
 
 pcPortReadF8 :: Uint16 -> PeripheralsPC Uint8

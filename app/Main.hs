@@ -334,8 +334,8 @@ data AppOpts = AppOpts {
         externalLog :: !Bool
     }
 
-buildPC :: (MonadIO m) => AppOpts -> m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
-buildPC opts = do
+buildPC :: (MonadIO m) => AppOpts -> DebugCtx -> m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
+buildPC opts debugCtx = do
     queue <- liftIO $ createIOQueue
     disks <- liftIO $ if floppyMode opts then do
         handle <- openFile (binPath opts) ReadWriteMode
@@ -355,7 +355,7 @@ buildPC opts = do
             let (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) =
                     createPeripheralsL pc maxMemorySize pageSize portEntries memEntries
             in
-                IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler devices) memRegion portRegion
+                IOCtx (PeripheralsLocal maxPorts maxMem ports mem queue emptyScheduler debugCtx devices) memRegion portRegion
 
 debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
     where
@@ -421,7 +421,7 @@ runBinary opts = do
     memReg <- allocMemReg
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
-    (pc, ioCtx, intList, states) <- buildPC opts
+    (pc, ioCtx, intList, states) <- buildPC opts (debugCtx logFile)
     vty <- startVtyThread (commCmdQueue comm) (fst states) (snd states)
     when (not $ floppyMode opts) $ do
         readCodeToPtr binPath_ ptrMem 0

@@ -13,6 +13,7 @@
     - Trace jumps +
     - Trace interrupts +
     - Trace BIOS calls +
+    - Logger in peripherals +
  - Testing infra +
     - Create custom code which runs in QEMU +
     - Compare values in memory after the test +

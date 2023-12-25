@@ -26,6 +26,7 @@ data PeripheralsLocal p = PeripheralsLocal {
         localPeripheralMem :: PeripheralArray (PeripheralHandlerMem (LocalTrans p)),
         localIOQueue :: IOQueue,
         localScheduler :: Scheduler (LocalTrans p),
+        localDebugCtx :: DebugCtx,
         localPeripherals :: p
     }
 
@@ -42,6 +43,48 @@ instance MonadIO m => MonadIO (LocalTransM s m) where
     liftIO = lift . liftIO
 
 type LocalTrans p = LocalTransM (PeripheralsLocal p) IO
+
+-------------------------------------------------------------------------------
+
+printLog :: (Enum level) => level -> LogFeature -> String -> (LocalTrans p) ()
+printLog level (LogFeature index) msg = do
+    (DebugCtx printF _) <-localDebugCtx <$> get
+    liftIO $ printF levelIndex index msg
+    where
+        levelIndex = fromEnum level
+
+execDebugAction :: (Enum level) => level -> LogFeature -> (LocalTrans p) () -> (LocalTrans p) ()
+execDebugAction level (LogFeature index) a = do
+    (DebugCtx _ enabledF) <- localDebugCtx <$> get
+    if enabledF levelIndex index then
+        a
+        else
+            return ()
+    where
+        levelIndex = fromEnum level
+
+ignoreLog _ _ _ = return ()
+ignoreAction _ _ _ = return ()
+
+instance CpuDebugM (LocalTrans p) Trace where
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
+
+instance CpuDebugM (LocalTrans p) Debug where
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
+
+instance CpuDebugM (LocalTrans p) Info where
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
+
+instance CpuDebugM (LocalTrans p) Warning where
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
+
+instance CpuDebugM (LocalTrans p) Error where
+    cpuLog = printLog
+    cpuDebugAction = execDebugAction
 
 -------------------------------------------------------------------------------
 
