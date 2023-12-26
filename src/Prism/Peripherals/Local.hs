@@ -11,6 +11,7 @@ import Control.Monad.State.Strict
 import qualified Data.Array as Array
 
 import Prism.Cpu
+import qualified Prism.Log as Log
 
 import Prism.Peripherals.Types
 import Prism.Peripherals.Builder
@@ -91,6 +92,7 @@ instance CpuDebugM (LocalTrans p) Error where
 localSchedulerAdd :: SchedId -> CpuCycles -> SchedHandler (LocalTrans p) -> (LocalTrans p) ()
 localSchedulerAdd id cpuCycles handler = do
     scheduler <- localScheduler <$> get
+    Log.cpuLogT Debug Log.PrismPc $ "Add " ++ (show id) ++ " " ++ (show scheduler)
     let time = convertToSchedTime cpuCycles
         scheduler_ = schedEventAdd scheduler id time handler
     modify $ \s -> s { localScheduler = scheduler_ }
@@ -98,6 +100,7 @@ localSchedulerAdd id cpuCycles handler = do
 localSchedulerAddDelta :: SchedId -> CpuCyclesDelta -> SchedHandler (LocalTrans p) -> (LocalTrans p) ()
 localSchedulerAddDelta id delta handler = do
     scheduler <- localScheduler <$> get
+    Log.cpuLogT Debug Log.PrismPc $ "Add delta " ++ (show id) ++ " " ++ (show scheduler)
     let time = convertToSchedTimeDelta delta
         scheduler_ = schedEventAddDelta scheduler id time handler
     modify $ \s -> s { localScheduler = scheduler_ }
@@ -105,12 +108,14 @@ localSchedulerAddDelta id delta handler = do
 localSchedulerRemove :: SchedId -> (LocalTrans p) ()
 localSchedulerRemove id = do
     scheduler <- localScheduler <$> get
+    Log.cpuLogT Debug Log.PrismPc $ "Remove " ++ (show id) ++ " " ++ (show scheduler)
     let scheduler_ = schedEventRemove scheduler id
     modify $ \s -> s { localScheduler = scheduler_ }
 
 localSchedulerExpired :: CpuCycles -> (LocalTrans p) [(SchedHandlerOut (LocalTrans p))]
 localSchedulerExpired cpuCycles = do
     scheduler <- localScheduler <$> get
+    Log.cpuLogT Debug Log.PrismPc $ "Expired " ++ (show scheduler)
     let currentTime = convertToSchedTime cpuCycles
         (_, events, scheduler_) = expireSched scheduler currentTime
     modify $ \s -> s { localScheduler = scheduler_ }
@@ -119,6 +124,7 @@ localSchedulerExpired cpuCycles = do
 localSchedulerReschedule :: CpuCycles -> (LocalTrans p) CpuCyclesDelta
 localSchedulerReschedule cpuCycles = do
     scheduler <- localScheduler <$> get
+    Log.cpuLogT Debug Log.PrismPc $ "Reschedule " ++ (show scheduler)
     let currentTime = convertToSchedTime cpuCycles
         (nextSchedTime, scheduler_) = reschedule scheduler currentTime
         nextSchedCycle = convertFromSchedTime <$> nextSchedTime

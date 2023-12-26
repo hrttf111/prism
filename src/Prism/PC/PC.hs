@@ -37,6 +37,7 @@ type PeripheralsPC = LocalTrans PC
 
 instance InterruptDispatcher PeripheralsPC where
     dispatchIrqUp (PrismIRQ irq) = do
+        Log.cpuLogT Debug Log.PrismPc $ "dispatchIrqUp " ++ show irq
         pc <- getPC
         if irq < 8 then do
             let pic = picRaiseIrq (pcPicMaster pc) irq
@@ -47,6 +48,7 @@ instance InterruptDispatcher PeripheralsPC where
                 putPC $ pcPicUpdateSlave pc pic True
                 getPCIntrUp
     dispatchIrqDown (PrismIRQ irq) = do
+        Log.cpuLogT Debug Log.PrismPc $ "dispatchIrqDown " ++ show irq
         pc <- getPC
         if irq < 8 then do
             let pic = picLowerIrq (pcPicMaster pc) irq
@@ -59,6 +61,7 @@ instance InterruptDispatcher PeripheralsPC where
     ackIrq = do
         pc <- getPC
         let (picMaster, int) = picAck $ pcPicMaster pc
+        Log.cpuLogT Debug Log.PrismPc $ "ackIrq " ++ show int
         if int == 2 then do
             let (picSlave, intS) = picAck $ pcPicSlave pc
                 pc_ = pcPicUpdateSlave pc picSlave True
@@ -82,12 +85,17 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
         Log.cpuLogT Debug Log.PrismPc $ "Ints: " ++ show (ctxInterrupts cpuCtx)
         ((cyclesP, res), pcCtx) <- liftIO $ (runStateT . runLocal $ pcActions) $ setCycles cpuCtx ctx
         let c1 = ctxIO cpuCtx
-            (cpuCtx', pcCtx') = processInterrupts cpuCtx $ pcCtx
+            (cpuCtx', pcCtx') = processInterrupts cpuCtx pcCtx
             ioCtx = IOCtx pcCtx'
                           (ioCtxMemRegion c1)
                           (ioCtxPortRegion c1)
             doHalt = pcHalt $ localPeripherals pcCtx
-        Log.cpuLogT Debug Log.PrismPc $ "Cycles: " ++ show cyclesP
+        flagIF' <- getFlag IF
+        Log.cpuLogT Debug Log.PrismPc $ "Master: " ++ (show $ pcPicMaster $ localPeripherals $ pcCtx)
+        Log.cpuLogT Debug Log.PrismPc $ "Master after: " ++ (show $ pcPicMaster $ localPeripherals $ pcCtx')
+        Log.cpuLogT Debug Log.PrismPc $ "intOn: " ++ (show $ pcIntrUp $ localPeripherals $ pcCtx)
+        Log.cpuLogT Debug Log.PrismPc $ "intOn after: " ++ (show $ pcIntrUp $ localPeripherals $ pcCtx')
+        Log.cpuLogT Debug Log.PrismPc $ "Cycles: " ++ show cyclesP ++ ", ints=" ++ (show . ctxInterrupts $ cpuCtx') ++ ", IF=" ++ (show flagIF')
         put $ cpuCtx' { ctxIO = ioCtx, ctxCyclesP = cyclesP }
         when doHalt $ do
             Log.cpuLogT Warning Log.PrismPc "HALT"
@@ -109,13 +117,13 @@ instance RunPeripheralsM PeripheralsPC' PeripheralsPC PrismM where
             processInterrupts cpuCtx pcCtx =
                 let pc = localPeripherals pcCtx
                     in
-                if pcNeedUpdate pc then
+                if pcNeedUpdate pc || pcIntrUp pc then
                     let pc' = pc { pcNeedUpdate = False }
                         pcCtx' = pcCtx { localPeripherals = pc' }
                         interrupts = ctxInterrupts cpuCtx
                         intOn = pcIntrUp pc
-                        interruptUp = (intInterruptUp interrupts) || intOn
-                        interrupts_ = interrupts { intIntrOn = intOn, intInterruptUp = interruptUp}
+                        interruptUp_ = (intInterruptUp interrupts) || intOn
+                        interrupts_ = interrupts { intIntrOn = intOn, intInterruptUp = interruptUp_}
                         cpuCtx' = cpuCtx { ctxInterrupts = interrupts_ }
                         in
                         (cpuCtx', pcCtx')
@@ -243,7 +251,7 @@ pcPitUpdate pit = do
     currentCycles <- pcCycles <$> getPC
     let (pit', actions) = pitDoUpdate pit currentCycles
     foldM_ (\ _ action -> do
-            Log.cpuLogT Debug Log.PrismPc $ show action
+            Log.cpuLogT Debug Log.PrismPc $ "PIT action: " ++ show action
             case action of
                 PitActionIrq True irq -> do
                     dispatchIrqUp irq

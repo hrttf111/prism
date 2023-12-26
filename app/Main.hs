@@ -360,7 +360,7 @@ buildPC opts debugCtx = do
 debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
     where
         featureArray =
-            Log.BiosTimer .= Trace
+            Log.BiosTimer .= Error
             -- $ Log.CpuJmpIntra .= Trace
             -- $ Log.CpuCallIntra .= Trace
             $ Log.CpuJmpInter .= Trace
@@ -370,8 +370,8 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             $ Log.BiosVideo .= Error
             $ Log.BiosDisk .= Debug
             $ Log.PrismCommand .= Debug
-            $ Log.PrismPc .= Debug
-            $ Log.PrismRun .= Debug
+            $ Log.PrismPc .= Error
+            $ Log.PrismRun .= Error
             $ Log.featureArray
         debugPrint level feature msg =
             if fEnable level feature then
