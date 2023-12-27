@@ -106,10 +106,14 @@ newtype MemDisp8 = MemDisp8 Disp deriving (Eq, Show)
 newtype MemDisp16 = MemDisp16 Disp deriving (Eq, Show)
 
 data MemRange = MemRange Uint32 Uint32 deriving (Eq)
+data MemRangeDisp = MemRangeDisp Uint16 Uint16 deriving (Eq)
 newtype MemRangeRes = MemRangeRes [Uint8] deriving (Eq)
 
 instance Show MemRange where
     show (MemRange start end) = "MemRange 0x" ++ (showHex start "") ++ " 0x" ++ (showHex end "")
+
+instance Show MemRangeDisp where
+    show (MemRangeDisp start end) = "MemRangeDisp 0x" ++ (showHex start "") ++ " 0x" ++ (showHex end "")
 
 instance Show MemRangeRes where
     show (MemRangeRes range) =
@@ -161,6 +165,7 @@ type family OpVal o where
     OpVal MemPhy16 = Uint16
     OpVal MemDisp8 = Uint8
     OpVal MemDisp16 = Uint16
+    OpVal MemRangeDisp = MemRangeRes
 
 class ShouldEq op val m where
     shouldEq :: (HasCallStack) => op -> val -> m ()

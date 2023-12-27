@@ -124,6 +124,10 @@ instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRange MemRangeRes m w
     readSourceOp epr (MemRange start end) =
         MemRangeRes <$> mapM (\mem -> readOpRaw (eprMemMain epr) $ MemPhy8 $ fromIntegral mem) [start..end]
 
+instance (MonadIO m) => OperandSupport ExecutorPrismRes MemRangeDisp MemRangeRes m where
+    readSourceOp epr (MemRangeDisp start end) =
+        MemRangeRes <$> mapM (\mem -> readSourceOp epr $ MemDisp8 mem) [start..end]
+
 instance (MonadIO m) => OperandSupport ExecutorPrismRes AllRegs String m where
     readSourceOp epr _ = do
         sr <- (intercalate "\n") <$> (printRegs $ eprMemReg epr)

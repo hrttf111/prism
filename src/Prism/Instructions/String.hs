@@ -6,6 +6,7 @@ module Prism.Instructions.String where
 
 import Prism.Cpu
 import Prism.InstructionM
+import qualified Prism.Log as Log
 
 -------------------------------------------------------------------------------
 
@@ -57,6 +58,7 @@ cmps :: ( CpuMonad m
         , StringOp k
         , StringMemOp k b b1) => k -> FuncImplicit m
 cmps strOp = do
+    Log.cpuLogT Trace Log.CpuStrings "cmps"
     valDi <- readOp di
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
@@ -84,6 +86,7 @@ scas :: ( CpuMonad m
         , Operand a m v
         , StringMemOp k b b1) => k -> a -> FuncImplicit m
 scas strOp reg = do
+    Log.cpuLogT Trace Log.CpuStrings "scas"
     valRegA <- readOp reg
     valDi <- readOp di
     valMemDi <- readOp $ memTypeExp strOp es valDi
@@ -109,6 +112,7 @@ lods :: ( CpuMonad m
         , Operand a m v
         , StringMemOp k b b1) => k -> a -> FuncImplicit m
 lods strOp reg = do
+    Log.cpuLogT Trace Log.CpuStrings "lods"
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
     df_ <- getFlag DF
@@ -124,6 +128,7 @@ stos :: ( CpuMonad m
         , Operand a m v
         , StringMemOp k b b1) => k -> a -> FuncImplicit m
 stos strOp reg = do
+    Log.cpuLogT Trace Log.CpuStrings "stos"
     valDi <- readOp di
     valRegA <- readOp reg
     writeOp (memTypeExp strOp es valDi) valRegA
@@ -134,6 +139,7 @@ stos strOp reg = do
 
 rep :: (CpuMonad m) => m () -> Bool -> FuncImplicit m
 rep execInstr zfOne = do
+    --Log.cpuLogT Trace Log.CpuStrings "rep"
     cxVal <- readOp cx
     if cxVal == 0 then doExit
     else do

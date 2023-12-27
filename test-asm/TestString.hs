@@ -5,12 +5,26 @@ module TestString where
 
 import Test.Hspec
 
+import Data.Text (append)
+
 import NeatInterpolation
 
 import Prism.Cpu
 import Infra
 
 -------------------------------------------------------------------------------
+
+headerRep = [untrimming|
+            jmp CODE_START
+                str_in db 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x00
+                str_in_seq db 0xDD, 0xDD, 0xDD, 0xDD, 0x00
+                times 256-($-$$) db 0xAF
+        CODE_START:
+            mov ax, ds
+            mov es, ax
+            mov ax, cs
+            mov ds, ax
+    |]
 
 testString env = do
     describe "String" $ do
@@ -190,6 +204,87 @@ testString env = do
                 shouldEqSources [al, bl]
                 shouldEqSources [di, si]
                 shouldEqSourcesAllFlags
+        it "MOVS8 MEM DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 0
+                mov si, str_in
+                mov cx, 100
+                rep movsb
+            |]) $ do
+                shouldEq di 100
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
+                shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources [di, si]
+                shouldEqSources (MemRangeDisp 0 99)
+                shouldEqSourcesAllFlags
+        it "MOVS8 MEM DF=1" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 100
+                mov si, (str_in + 99)
+                mov cx, 100
+                std
+                rep movsb
+            |]) $ do
+                shouldEq di 0
+                --shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
+                shouldEq (MemRangeDisp 1 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14]
+                shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources [di, si]
+                shouldEqSources (MemRangeDisp 0 99)
+                shouldEqSourcesAllFlags
+        it "MOVS16 MEM DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 0
+                mov si, str_in
+                mov cx, 50
+                rep movsw
+            |]) $ do
+                shouldEq di 100
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
+                shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources [di, si]
+                shouldEqSources (MemRangeDisp 0 99)
+                shouldEqSourcesAllFlags
+        it "MOVS16 MEM DF=1" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 100
+                mov si, (str_in + 99)
+                mov cx, 50
+                std
+                rep movsw
+            |]) $ do
+                shouldEq di 0
+                --shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
+                shouldEq (MemRangeDisp 1 4) $ MemRangeRes [0x0, 0x12, 0x13, 0x14]
+                shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources [di, si]
+                shouldEqSources (MemRangeDisp 0 99)
+                shouldEqSourcesAllFlags
+        it "SCAS8 MEM DF=0" $ do
+            -- Find element in string
+            runTest env (append headerRep [untrimming|
+                mov di, str_in
+                mov cx, 255
+                mov al, 0xDD
+                repe scasb
+            |]) $ do
+                --shouldEq cx 229
+                showAllRegsR
+                shouldEqSources cx
+                shouldEqSources di
+                shouldEqSourcesAllFlags
+        it "SCAS8 NE MEM DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, str_in
+                mov cx, 255
+                mov al, 0xAF
+                repne scasb
+            |]) $ do
+                --shouldEq cx 247
+                showAllRegsR
+                shouldEqSources cx
+                shouldEqSources di
+                shouldEqSourcesAllFlags
         it "SCAS8 NE" $ do
             runTest env ([untrimming|
                 mov di, 0
@@ -235,5 +330,15 @@ testString env = do
                 shouldEq di 5
                 shouldEqSources di
                 shouldEqSourcesAllFlags
+        it "STOS8 DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 0
+                mov cx, 255
+                mov ax, 0xBC
+                repnz stosb
+            |]) $ do
+                shouldEqSources di
+                shouldEqSourcesAllFlags
+                shouldEqSources (MemRangeDisp 0 255)
 
 -------------------------------------------------------------------------------

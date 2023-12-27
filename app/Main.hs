@@ -372,6 +372,7 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             $ Log.PrismCommand .= Debug
             $ Log.PrismPc .= Error
             $ Log.PrismRun .= Error
+            $ Log.CpuStrings .= Trace
             $ Log.featureArray
         debugPrint level feature msg =
             if fEnable level feature then

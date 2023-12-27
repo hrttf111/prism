@@ -372,6 +372,10 @@ instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRange MemRangeRes m wh
     readSourceOp epr (MemRange start end) =
         MemRangeRes <$> mapM (\mem -> convAddr epr (fromIntegral mem) >>= readSourceOp epr . MemPhy8) [start..end]
 
+instance (MonadIO m) => OperandSupport ExecutorQemuRes MemRangeDisp MemRangeRes m where
+    readSourceOp epr (MemRangeDisp start end) =
+        MemRangeRes <$> mapM (\mem -> readSourceOp epr $ MemDisp8 mem) [start..end]
+
 instance (MonadIO m) => OperandSupport ExecutorQemuRes AllRegs String m where
     readSourceOp er _ = liftIO $
         B.useAsCStringLen (eqrMemReg er) (\(ptr, len) -> do

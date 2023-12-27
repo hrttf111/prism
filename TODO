@@ -56,6 +56,56 @@
 
 -------------------------------------------------------
 
+Test instructions:
+ - das
+ - aas
+ - daa
+ - aad
+ - aam
+
+Strings are interruptible
+CX - counter
+DF - direction
+ZF - scan/compare terminator
+
+rep - repeat while not end-of-string
+      movs, stos
+      is prefix
+repe/repz - same a rep
+      cmps, scas
+      reads ZF which is set by cmps or scas
+      ZF must be set to continue repetition
+repne/repnz - same as repe/repz
+      ZF must be cleared to continue repetition
+
+movs - copies byte/word from source (SI) to dest (DI)
+       increments SI and DI
+       used to copy data from memory to memory
+movsb/movsw - same as movs
+
+cmps - subtracts val addresses by DI from val addresses by SI
+       increments SI and DI
+       updates flags
+       maybe combined with repX or used with conditional jumps
+       used to match strings
+
+scas - subtracts val addresses by DI from context of AL/AX
+       increments DI
+       updates flags
+       used to find element in string
+
+lods - copy val addresses by SI to AL/AX
+       increments SI
+       not used with repX
+
+stos - copy val from AL/AX to place addresses by DI
+       increments DI
+       used to initialize string
+
+check segment override prefix
+
+-------------------------------------------------------
+
 radare2 -e asm.bits=16 x86BOOT.img
 
 1.474.560
