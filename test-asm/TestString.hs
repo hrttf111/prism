@@ -154,20 +154,82 @@ testString env = do
                 shouldEqSources [bl, cl]
                 shouldEqSources di
                 shouldEqSourcesAllFlags
-        it "lods8 DF=0" $ do
-            runTest env ([untrimming|
-                mov si, 100
-                mov [si], BYTE 0xFF
-                mov [si+1], BYTE 0xAA
-                mov al, 0
+        it "LODS8 DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov bx, str_in
+                mov si, str_in
                 lodsb
-                mov bl, al
+                mov [es:0], al
                 lodsb
+                mov [es:1], al
+                lodsb
+                mov [es:2], al
+                lodsb
+                mov [es:3], al
+                lodsb
+                mov [es:4], al
             |]) $ do
-                shouldEq al 0xAA
-                shouldEq bl 0xFF
-                shouldEq si 102
-                shouldEqSources [al, bl]
+                val <- getVal bx
+                shouldEq si (val + 5)
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
+                shouldEqSources $ MemRangeDisp 0 4
+                shouldEqSources si
+                shouldEqSourcesAllFlags
+        it "LODS8 DF=1" $ do
+            runTest env (append headerRep [untrimming|
+                mov bx, str_in
+                mov si, (str_in + 4)
+                std
+                lodsb
+                mov [es:0], al
+                lodsb
+                mov [es:1], al
+                lodsb
+                mov [es:2], al
+                lodsb
+                mov [es:3], al
+                lodsb
+                mov [es:4], al
+            |]) $ do
+                val <- getVal bx
+                shouldEq si (val-1)
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x15, 0x14, 0x13, 0x12, 0x11]
+                shouldEqSources $ MemRangeDisp 0 4
+                shouldEqSources si
+                shouldEqSourcesAllFlags
+        it "LODS16 DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov bx, str_in
+                mov si, str_in
+                lodsw
+                mov [es:0], ax
+                lodsw
+                mov [es:2], ax
+                lodsw
+                mov [es:4], ax
+            |]) $ do
+                val <- getVal bx
+                shouldEq si (val + 6)
+                shouldEq (MemRangeDisp 0 5) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15, 0x16]
+                shouldEqSources $ MemRangeDisp 0 5
+                shouldEqSources si
+                shouldEqSourcesAllFlags
+        it "LODS16 DF=1" $ do
+            runTest env (append headerRep [untrimming|
+                mov bx, str_in
+                mov si, (str_in + 4)
+                std
+                lodsw
+                mov [es:0], ax
+                lodsw
+                mov [es:2], ax
+                lodsw
+                mov [es:4], ax
+            |]) $ do
+                val <- getVal bx
+                shouldEq si (val - 2)
+                shouldEq (MemRangeDisp 0 5) $ MemRangeRes [0x15, 0x16, 0x13, 0x14, 0x11, 0x12]
+                shouldEqSources $ MemRangeDisp 0 5
                 shouldEqSources si
                 shouldEqSourcesAllFlags
         it "STOS8 DF=0" $ do
