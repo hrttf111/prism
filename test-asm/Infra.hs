@@ -8,6 +8,7 @@
 module Infra (
     runTest
     , ShouldEq(..), ShouldEqSources(..) 
+    , GetVal(..)
     , MemRange(..), MemRangeDisp(..)
     , MemDisp8(..), MemDisp16(..)
     , MemRangeRes(..)

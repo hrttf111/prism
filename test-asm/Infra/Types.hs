@@ -167,6 +167,12 @@ type family OpVal o where
     OpVal MemDisp16 = Uint16
     OpVal MemRangeDisp = MemRangeRes
 
+class GetVal op val m where
+    getVal :: op -> m val
+
+instance (Show val, Eq val, HasSourceL sl m, OperandSupport sl op (OpVal op) m, val ~ (OpVal op), MonadIO m) => GetVal op val m where
+    getVal = getOperandVal
+
 class ShouldEq op val m where
     shouldEq :: (HasCallStack) => op -> val -> m ()
 
@@ -187,6 +193,11 @@ instance {-# OVERLAPPABLE #-} (HasSourceL sl m, Show (OpVal op), Eq (OpVal op), 
 
 shouldEqSourcesAllFlags :: (ShouldEqSources [Flag] m) => m ()
 shouldEqSourcesAllFlags = shouldEqSources [CF, PF, AF, ZF, SF, OF]
+
+getOperandVal :: (Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> m val
+getOperandVal op = do
+    sourceL <- getSourceL
+    readSourceOp sourceL op
 
 cmpOperandVal :: (HasCallStack, Show val, Eq val, HasSourceL sl m, OperandSupport sl op val m, MonadIO m) => op -> val -> m ()
 cmpOperandVal op val = do

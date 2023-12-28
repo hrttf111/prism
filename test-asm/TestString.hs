@@ -18,12 +18,13 @@ headerRep = [untrimming|
             jmp CODE_START
                 str_in db 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x00
                 str_in_seq db 0xDD, 0xDD, 0xDD, 0xDD, 0x00
+                str_in_seq2 db 0xDD, 0xDD, 0xDD, 0x00, 0x00
                 times 256-($-$$) db 0xAF
-        CODE_START:
-            mov ax, ds
-            mov es, ax
-            mov ax, cs
-            mov ds, ax
+            CODE_START:
+                mov ax, ds
+                mov es, ax
+                mov ax, cs
+                mov ds, ax
     |]
 
 testString env = do
@@ -261,29 +262,112 @@ testString env = do
                 shouldEqSources (MemRangeDisp 0 99)
                 shouldEqSourcesAllFlags
         it "SCAS8 MEM DF=0" $ do
-            -- Find element in string
+            -- Repeat while al == [di]
             runTest env (append headerRep [untrimming|
-                mov di, str_in
-                mov cx, 255
+                mov ax, cs
+                mov es, ax
+                mov bx, str_in_seq
+                mov di, str_in_seq
+                mov cx, 10
                 mov al, 0xDD
                 repe scasb
             |]) $ do
-                --shouldEq cx 229
-                showAllRegsR
+                val <- getVal bx
+                shouldEq di (val + 5)
+                shouldEq cx 5
                 shouldEqSources cx
                 shouldEqSources di
                 shouldEqSourcesAllFlags
         it "SCAS8 NE MEM DF=0" $ do
+            -- Repeat while al != [di]
             runTest env (append headerRep [untrimming|
+                mov ax, cs
+                mov es, ax
+                mov bx, str_in
                 mov di, str_in
-                mov cx, 255
-                mov al, 0xAF
+                mov cx, 20
+                mov al, 0xDD
                 repne scasb
             |]) $ do
-                --shouldEq cx 247
-                showAllRegsR
+                val <- getVal bx
+                shouldEq di (val + 8)
+                shouldEq cx 0x0C
                 shouldEqSources cx
                 shouldEqSources di
+                shouldEqSourcesAllFlags
+        it "SCAS16 MEM DF=0" $ do
+            -- Repeat while ax == [di]
+            runTest env (append headerRep [untrimming|
+                mov ax, cs
+                mov es, ax
+                mov bx, str_in_seq
+                mov di, str_in_seq
+                mov cx, 10
+                mov ax, 0xDDDD
+                repe scasw
+            |]) $ do
+                val <- getVal bx
+                shouldEq di (val + 6)
+                shouldEq cx 7
+                shouldEqSources cx
+                shouldEqSources di
+                shouldEqSourcesAllFlags
+        it "SCAS16 NE MEM DF=0" $ do
+            -- Repeat while ax != [di]
+            runTest env (append headerRep [untrimming|
+                mov ax, cs
+                mov es, ax
+                mov bx, str_in
+                mov di, str_in
+                mov cx, 20
+                mov ax, 0xDDDD
+                repne scasw
+            |]) $ do
+                val <- getVal bx
+                shouldEq di (val + 10)
+                shouldEq cx 0x0F
+                shouldEqSources cx
+                shouldEqSources di
+                shouldEqSourcesAllFlags
+        it "CMPS8 MEM DF=0" $ do
+            -- Repeat while al == [di]
+            runTest env (append headerRep [untrimming|
+                mov ax, cs
+                mov es, ax
+                mov bx, str_in_seq
+                mov ax, str_in_seq2
+                mov di, str_in_seq
+                mov si, str_in_seq2
+                mov cx, 10
+                repe cmpsb
+            |]) $ do
+                val <- getVal bx
+                shouldEq di (val + 4)
+                val2 <- getVal ax
+                shouldEq si (val2 + 4)
+                shouldEq cx 6
+                shouldEqSources cx
+                shouldEqSources [di, si]
+                shouldEqSourcesAllFlags
+        it "CMPS8 NE MEM DF=0" $ do
+            -- Repeat while al != [di]
+            runTest env (append headerRep [untrimming|
+                mov ax, cs
+                mov es, ax
+                mov bx, (str_in_seq - 2)
+                mov ax, str_in_seq2
+                mov di, (str_in_seq - 2)
+                mov si, str_in_seq2
+                mov cx, 10
+                repne cmpsb
+            |]) $ do
+                val <- getVal bx
+                shouldEq di (val + 3)
+                val2 <- getVal ax
+                shouldEq si (val2 + 3)
+                shouldEq cx 7
+                shouldEqSources cx
+                shouldEqSources [di, si]
                 shouldEqSourcesAllFlags
         it "SCAS8 NE" $ do
             runTest env ([untrimming|
