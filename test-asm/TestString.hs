@@ -479,12 +479,60 @@ testString env = do
         it "STOS8 DF=0" $ do
             runTest env (append headerRep [untrimming|
                 mov di, 0
-                mov cx, 255
-                mov ax, 0xBC
-                repnz stosb
+                mov cx, 4
+                mov al, 0xCE
+                rep stosb
             |]) $ do
+                shouldEq cx 0
+                shouldEq di 4
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0xCE, 0xCE, 0xCE, 0xCE, 0]
                 shouldEqSources di
+                shouldEqSources cx
                 shouldEqSourcesAllFlags
-                shouldEqSources (MemRangeDisp 0 255)
+                shouldEqSources (MemRangeDisp 0 4)
+        it "STOS8 DF=1" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 4
+                mov cx, 4
+                mov al, 0xCE
+                std
+                rep stosb
+            |]) $ do
+                shouldEq cx 0
+                shouldEq di 0
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0, 0xCE, 0xCE, 0xCE, 0xCE]
+                shouldEqSources di
+                shouldEqSources cx
+                shouldEqSourcesAllFlags
+                shouldEqSources (MemRangeDisp 0 4)
+        it "STOS16 DF=0" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 0
+                mov cx, 2
+                mov ax, 0xAACE
+                rep stosw
+            |]) $ do
+                shouldEq cx 0
+                shouldEq di 4
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0xCE, 0xAA, 0xCE, 0xAA, 0]
+                shouldEqSources di
+                shouldEqSources cx
+                shouldEqSourcesAllFlags
+                shouldEqSources (MemRangeDisp 0 4)
+        it "STOS16 DF=1" $ do
+            runTest env (append headerRep [untrimming|
+                mov di, 3
+                mov cx, 2
+                mov ax, 0xAACE
+                std
+                rep stosw
+            |]) $ do
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0, 0xCE, 0xAA, 0xCE, 0xAA]
+                shouldEq cx 0
+                shouldEq di 65535 -- -1
+                shouldEqSources di
+                shouldEqSources cx
+                shouldEqSourcesAllFlags
+                shouldEqSources (MemRangeDisp 0 4)
 
 -------------------------------------------------------------------------------
