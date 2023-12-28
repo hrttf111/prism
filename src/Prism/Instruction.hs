@@ -6,8 +6,15 @@ module Prism.Instruction where
 import Data.Word (Word8, Word16)
 
 import Prism.Cpu
+import qualified Prism.Log as Log
 
 import qualified Prism.InstructionM as M
+
+-------------------------------------------------------------------------------
+
+haltFunc msg _ = do
+    Log.cpuLogT Debug Log.CpuStrings msg
+    cpuHalt
 
 -------------------------------------------------------------------------------
 

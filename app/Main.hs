@@ -363,6 +363,7 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             Log.BiosTimer .= Error
             -- $ Log.CpuJmpIntra .= Trace
             -- $ Log.CpuCallIntra .= Trace
+            -- $ Log.CpuHalt .= Debug
             $ Log.CpuJmpInter .= Trace
             $ Log.CpuCallInter .= Trace
             $ Log.CpuInt .= Trace

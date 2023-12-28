@@ -194,13 +194,19 @@ arithmeticInstrList = [
         makeInstructionS 0xF6 (Just 3) (decodeN8 (instrOF1 neg) (instrOF1 neg)),
         makeInstructionS 0xF7 (Just 3) (decodeN16 (instrOF1 neg) (instrOF1 neg)),
         --AAA/AAD/AAM/AAS
-        makeInstructionS 0x37 Nothing (decodeStR ax $ instrOF1 aaa),
+        {-makeInstructionS 0x37 Nothing (decodeStR ax $ instrOF1 aaa),
         makeInstructionS 0xD5 (Just 1) (decodeStR ax $ instrOF1 aad),
         makeInstructionS 0xD4 (Just 1) (decodeStR ax $ instrOF1 aam),
-        makeInstructionS 0x3F Nothing (decodeStR ax $ instrOF1 aas),
+        makeInstructionS 0x3F Nothing (decodeStR ax $ instrOF1 aas),-}
+        makeInstructionS 0x37 Nothing (haltFunc "aaa"),
+        makeInstructionS 0xD5 (Just 1) (haltFunc "aad"),
+        makeInstructionS 0xD4 (Just 1) (haltFunc "aam"),
+        makeInstructionS 0x3F Nothing (haltFunc "aas"),
         --DAA/DAS
-        makeInstructionS 0x27 Nothing (decodeStR al $ instrOF1 daa),
-        makeInstructionS 0x2F Nothing (decodeStR al $ instrOF1 das),
+        --makeInstructionS 0x27 Nothing (decodeStR al $ instrOF1 daa),
+        --makeInstructionS 0x2F Nothing (decodeStR al $ instrOF1 das),
+        makeInstructionS 0x27 Nothing (haltFunc "daa"),
+        makeInstructionS 0x2F Nothing (haltFunc "das"),
         --MUL
         makeInstructionS 0xF6 (Just 4) (decodeN8 (instrON1 $ muldivInstr8 mul8) (instrON1 $ muldivInstr8 mul8)),
         makeInstructionS 0xF7 (Just 4) (decodeN16 (instrON1 $ muldivInstr16 mul16) (instrON1 $ muldivInstr16 mul16)),

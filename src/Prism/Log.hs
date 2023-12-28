@@ -9,6 +9,7 @@ module Prism.Log (
     cpuLogT, cpuDebugActionT
 -------------------------------------------------------------------------------
     , PrismCommand(..), PrismRun(..), PrismPc(..)
+    , CpuHalt(..)
     , CpuJmpInter(..), CpuJmpIntra(..), CpuCallInter(..), CpuCallIntra(..), CpuInt(..)
     , CpuStrings(..)
     , BiosGeneric(..), BiosVideo(..), BiosTimer(..), BiosDisk(..), BiosKeyboard(..)
@@ -215,6 +216,7 @@ data PrismCommand = PrismCommand deriving (Show)
 data PrismRun = PrismRun deriving (Show)
 data PrismPc = PrismPc deriving (Show)
 
+data CpuHalt = CpuHalt deriving (Show)
 data CpuJmpInter = CpuJmpInter deriving (Show)
 data CpuJmpIntra = CpuJmpIntra deriving (Show)
 data CpuCallInter = CpuCallInter deriving (Show)
@@ -232,6 +234,7 @@ logFeatures = runState (
                         mkLeaf PrismCommand .>>>
                         mkLeaf PrismRun .>>>
                         mkLeaf PrismPc .>>>
+                        mkLeaf CpuHalt .>>>
                         mkLeaf CpuJmpInter .>>>
                         mkLeaf CpuJmpIntra .>>>
                         mkLeaf CpuInt .>>>
