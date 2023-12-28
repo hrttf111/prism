@@ -250,80 +250,68 @@ testString env = do
                 shouldEqSourcesAllFlags
     describe "Rep" $ do
         it "MOVS8 DF=0" $ do
-            runTest env ([untrimming|
-                mov di, 0
-                mov si, 100
-                mov [si], BYTE 0xFF
-                mov [si+1], BYTE 0xAA
-                mov cx, 2
-                rep movsb
-                mov al, [es:0]
-                mov bl, [es:1]
-            |]) $ do
-                shouldEq al 0xFF
-                shouldEq bl 0xAA
-                shouldEq di 2
-                shouldEq si 102
-                shouldEqSources [al, bl]
-                shouldEqSources [di, si]
-                shouldEqSourcesAllFlags
-        it "MOVS8 MEM DF=0" $ do
             runTest env (append headerRep [untrimming|
                 mov di, 0
                 mov si, str_in
                 mov cx, 100
                 rep movsb
             |]) $ do
+                shouldEq cx 0
                 shouldEq di 100
                 shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
                 shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources cx
                 shouldEqSources [di, si]
                 shouldEqSources (MemRangeDisp 0 99)
                 shouldEqSourcesAllFlags
-        it "MOVS8 MEM DF=1" $ do
+        it "MOVS8 DF=1" $ do
             runTest env (append headerRep [untrimming|
-                mov di, 100
+                mov di, 99
                 mov si, (str_in + 99)
                 mov cx, 100
                 std
                 rep movsb
             |]) $ do
-                shouldEq di 0
-                --shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
-                shouldEq (MemRangeDisp 1 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14]
+                shouldEq cx 0
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
+                shouldEq di 65535 -- -1
                 shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources cx
                 shouldEqSources [di, si]
                 shouldEqSources (MemRangeDisp 0 99)
                 shouldEqSourcesAllFlags
-        it "MOVS16 MEM DF=0" $ do
+        it "MOVS16 DF=0" $ do
             runTest env (append headerRep [untrimming|
                 mov di, 0
                 mov si, str_in
                 mov cx, 50
                 rep movsw
             |]) $ do
+                shouldEq cx 0
                 shouldEq di 100
                 shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
                 shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources cx
                 shouldEqSources [di, si]
                 shouldEqSources (MemRangeDisp 0 99)
                 shouldEqSourcesAllFlags
-        it "MOVS16 MEM DF=1" $ do
+        it "MOVS16 DF=1" $ do
             runTest env (append headerRep [untrimming|
-                mov di, 100
-                mov si, (str_in + 99)
+                mov di, 98
+                mov si, (str_in + 98)
                 mov cx, 50
                 std
                 rep movsw
             |]) $ do
-                shouldEq di 0
-                --shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
-                shouldEq (MemRangeDisp 1 4) $ MemRangeRes [0x0, 0x12, 0x13, 0x14]
+                shouldEq cx 0
+                shouldEq di 65534 -- -2
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0x11, 0x12, 0x13, 0x14, 0x15]
                 shouldEq (MemDisp8 99) 0xAF
+                shouldEqSources cx
                 shouldEqSources [di, si]
                 shouldEqSources (MemRangeDisp 0 99)
                 shouldEqSourcesAllFlags
-        it "SCAS8 MEM DF=0" $ do
+        it "SCAS8 DF=0" $ do
             -- Repeat while al == [di]
             runTest env (append headerRep [untrimming|
                 mov ax, cs
@@ -340,7 +328,7 @@ testString env = do
                 shouldEqSources cx
                 shouldEqSources di
                 shouldEqSourcesAllFlags
-        it "SCAS8 NE MEM DF=0" $ do
+        it "SCAS8 NE DF=0" $ do
             -- Repeat while al != [di]
             runTest env (append headerRep [untrimming|
                 mov ax, cs
@@ -357,7 +345,7 @@ testString env = do
                 shouldEqSources cx
                 shouldEqSources di
                 shouldEqSourcesAllFlags
-        it "SCAS16 MEM DF=0" $ do
+        it "SCAS16 DF=0" $ do
             -- Repeat while ax == [di]
             runTest env (append headerRep [untrimming|
                 mov ax, cs
@@ -374,7 +362,7 @@ testString env = do
                 shouldEqSources cx
                 shouldEqSources di
                 shouldEqSourcesAllFlags
-        it "SCAS16 NE MEM DF=0" $ do
+        it "SCAS16 NE DF=0" $ do
             -- Repeat while ax != [di]
             runTest env (append headerRep [untrimming|
                 mov ax, cs
@@ -527,9 +515,9 @@ testString env = do
                 std
                 rep stosw
             |]) $ do
-                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0, 0xCE, 0xAA, 0xCE, 0xAA]
                 shouldEq cx 0
                 shouldEq di 65535 -- -1
+                shouldEq (MemRangeDisp 0 4) $ MemRangeRes [0, 0xCE, 0xAA, 0xCE, 0xAA]
                 shouldEqSources di
                 shouldEqSources cx
                 shouldEqSourcesAllFlags
