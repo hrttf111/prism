@@ -22,6 +22,8 @@ module Infra (
     , PrismQemuEnvMaker(..)
     , PrismNativeEnvMaker(..)
     , defaultPrismEnvPeriphMaker
+-------------------------------------------------------------------------------
+    , QemuEnvMaker(..)
 ) where
 
 import Control.Monad.Trans (MonadIO, liftIO)

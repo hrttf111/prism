@@ -63,6 +63,31 @@ Test instructions:
  - aad
  - aam
 
+BCD
+ - unsigned packed decimal
+    - two digits per-byte
+    - supports addition and subtraction
+    - range: 0-99
+    - example:
+        - 0x07 -> 7 (valid)
+        - 0x89 -> 89 (valid)
+        - 0xC1 -> * (invalid)
+ - unsigned unpacked decimal
+    - one digit per-byte
+    - supports addition, subtraction, multiplication and division
+    - range: 0-9
+    - example:
+        - 0x07 -> 7 (valid)
+        - 0x89 -> * (invalid)
+        - 0xC1 -> * (invalid)
+
+AAA - ASCII adjust for addition
+DAA - decimal adjust for addition
+AAS - ASCII adjust for subtraction
+DAS - decimal adjust for subtraction
+AAM - ASCII adjust for mutiply
+AAD - ASCII adjust for division
+
 Strings are interruptible
 CX - counter
 DF - direction

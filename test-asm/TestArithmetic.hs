@@ -412,10 +412,145 @@ testArithAAA env = do
     describe "AAA" $ do
         it "simple" $ do
             runTest env ([untrimming|
-                mov al, 99
+                mov ax, 0x0099
                 aaa
             |]) $ do
+                shouldEq ax 0x0009
                 shouldEqSources ax
+                shouldEqSources [AF, CF]
+        it "simple 1" $ do
+            runTest env ([untrimming|
+                mov ax, 0x31
+                add ax, 0x32
+                aaa
+            |]) $ do
+                shouldEq ax 0x0003
+                shouldEqSources ax
+                shouldEqSources [AF, CF]
+    describe "AAD" $ do
+        it "8/2" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0008
+                mov bl, 2
+                aad
+                div bl
+            |]) $ do
+                shouldEq ax 0x0004
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "7/2" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0007
+                mov bl, 2
+                aad
+                div bl
+            |]) $ do
+                shouldEq ax 0x0103
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "88/2" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0808
+                mov bl, 2
+                aad
+                div bl
+            |]) $ do
+                shouldEq ax 0x002c
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "88/3" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0808
+                mov bl, 3
+                aad
+                div bl
+            |]) $ do
+                shouldEq ax 0x011d
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "0407" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0407
+                aad
+            |]) $ do
+                shouldEq ax 0x002f
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+    describe "AAM" $ do
+        it "simple" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0004
+                mov bl, 2
+                mul bl
+                aam
+            |]) $ do
+                shouldEq ax 0x0008
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "16" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0008
+                mov bl, 2
+                mul bl
+                aam
+            |]) $ do
+                shouldEq ax 0x0106
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "99" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0303
+                mov bl, 3
+                mul bl
+                aam
+            |]) $ do
+                shouldEq ax 0x0009
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+        it "0x0103" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0103
+                aam
+            |]) $ do
+                showAllRegsL
+                showAllRegsR
+                shouldEq ax 0x0003
+                shouldEqSources ax
+                shouldEqSources [PF, ZF, SF]
+    describe "DAA" $ do
+        it "simple" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0088
+                add ax, 1
+                daa
+            |]) $ do
+                showAllRegsL
+                showAllRegsR
+                shouldEq ax 0x0089
+                shouldEqSources ax
+                shouldEqSources [CF, PF, AF, ZF, SF]
+        it "simple1" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0049
+                add ax, 0x0050
+                daa
+            |]) $ do
+                showAllRegsL
+                showAllRegsR
+                shouldEq ax 0x0099
+                shouldEqSources ax
+                shouldEqSources [CF, PF, AF, ZF, SF]
+        it "simple2" $ do
+            runTest env ([untrimming|
+                mov ax, 0x0049
+                add ax, 0x0080
+                daa
+            |]) $ do
+                --shouldEq ax 0x0099
+                showAllRegsL
+                showAllRegsR
+                shouldEqSources ax
+                shouldEqSources [CF, PF, AF, ZF, SF]
 
 testArithMuldiv env = do
     describe "MUL" $ do
