@@ -181,7 +181,10 @@ daa flags val = (flags_, result)
         result = if overflowH then resultL + 0x60 else resultL
         cf_ = overflowH || (calcCFCarry val resultL)
         af_ = overflowL
-        flags_ = Flags cf_ False af_ False False False
+        zf_ = calcZF result
+        sf_ = calcSF result
+        pf_ = calcPF result
+        flags_ = Flags cf_ pf_ af_ zf_ sf_ False
 
 das :: FuncVF1 Uint8
 das flags val = (flags_, result)
@@ -192,9 +195,12 @@ das flags val = (flags_, result)
         overflowH = (val > 0x99) || cf
         resultL = if overflowL then val - 6 else val
         result = if overflowH then resultL - 0x60 else resultL
-        cf_ = overflowH || (calcCFCarry val resultL)
+        cf_ = overflowH -- || (calcCFCarry val resultL)
         af_ = overflowL
-        flags_ = Flags cf_ False af_ False False False
+        zf_ = calcZF result
+        sf_ = calcSF result
+        pf_ = calcPF result
+        flags_ = Flags cf_ pf_ af_ zf_ sf_ False
 
 -------------------------------------------------------------------------------
 

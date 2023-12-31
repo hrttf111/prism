@@ -37,7 +37,7 @@ doTests = do
         testSub makerPN
         testArithOther makerPN
         testArithMuldiv makerPN
-        testArithAAA makerPQ
+        testArithDecimals makerPQ
         testControl makerPQ
         testFlagsZF makerPN
         testFlagsCF makerPN
