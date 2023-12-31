@@ -23,7 +23,7 @@ module Prism.Log (
     , traceCallNear, traceCallIntra, traceCallInter
     , traceRetIntra, traceRetInter
     , traceInterrupt, traceRetInterrupt
-    , traceLogIP
+    , traceLogIP, traceLogString
 ) where
 
 import Data.Array (Array, array, (//))
@@ -113,6 +113,21 @@ traceRetInter ipVal csVal =
         traceJmp CpuCallInter ipValFrom csValFrom ipVal csVal "Ret[Inter]"
 
 -------------------------------------------------------------------------------
+
+traceLogString :: (CpuMonad m, Show n, Show n1, Integral n, Integral n1) => n -> n -> n1 -> n1 -> String -> m ()
+traceLogString siVal diVal regVal regVal2 msg = do
+    cpuDebugActionT Trace CpuStrings $ do
+        csVal <- readOp cs
+        ipVal <- readOp ip
+        let offset = regsToOffset csVal ipVal
+        cpuLogT Trace CpuStrings $ "0x" ++ (showHex offset "")
+                                   ++ "(cs=0x" ++ (showHex csVal "")
+                                   ++ ",ip=0x" ++ (showHex ipVal "")
+                                   ++ "): si=0x" ++ (showHex siVal "")
+                                   ++ ",di=0x" ++ (showHex diVal "")
+                                   ++ ",reg1=0x" ++ (showHex regVal $ ['/',(toEnum $ fromEnum regVal :: Char)])
+                                   ++ ",reg2=0x" ++ (showHex regVal2 $ ['/',(toEnum $ fromEnum regVal2 :: Char)])
+                                   ++ " " ++ msg
 
 traceLogIP :: (CpuMonad m) => String -> m ()
 traceLogIP msg = do

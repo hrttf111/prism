@@ -445,6 +445,7 @@ processBiosKeyboard bios = do
             -- suspend, wait for key
             cpuLogT Trace BiosKeyboard "Wait key"
             bios' <- waitKey bios
+            cpuLogT Trace BiosKeyboard "Wait key END"
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios'
             case keys' of
                 Just (key, keyList') -> do
