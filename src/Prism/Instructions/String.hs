@@ -58,7 +58,7 @@ cmps :: ( CpuMonad m
         , StringOp k
         , StringMemOp k b b1) => k -> FuncImplicit m
 cmps strOp = do
-    Log.cpuLogT Trace Log.CpuStrings "cmps"
+    Log.traceLogIP "cmps"
     valDi <- readOp di
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
@@ -86,7 +86,7 @@ scas :: ( CpuMonad m
         , Operand a m v
         , StringMemOp k b b1) => k -> a -> FuncImplicit m
 scas strOp reg = do
-    Log.cpuLogT Trace Log.CpuStrings "scas"
+    Log.traceLogIP "scas"
     valRegA <- readOp reg
     valDi <- readOp di
     valMemDi <- readOp $ memTypeExp strOp es valDi
@@ -112,7 +112,7 @@ lods :: ( CpuMonad m
         , Operand a m v
         , StringMemOp k b b1) => k -> a -> FuncImplicit m
 lods strOp reg = do
-    Log.cpuLogT Trace Log.CpuStrings "lods"
+    Log.traceLogIP "lods"
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
     df_ <- getFlag DF
@@ -128,7 +128,7 @@ stos :: ( CpuMonad m
         , Operand a m v
         , StringMemOp k b b1) => k -> a -> FuncImplicit m
 stos strOp reg = do
-    Log.cpuLogT Trace Log.CpuStrings "stos"
+    Log.traceLogIP "stos"
     valDi <- readOp di
     valRegA <- readOp reg
     writeOp (memTypeExp strOp es valDi) valRegA
