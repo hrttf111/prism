@@ -14,13 +14,11 @@ import Infra
 
 testFlagsZF env = 
     describe "Flags ZF" $ do
-        --todo: fix
         it "ZF set" $ do
             runTest env ([untrimming|
-                mov ax, 0
+                mov ax, 1
+                sub ax, 1
             |]) $ do
-                showAllRegsL
-                showAllRegsR
                 shouldEq ZF True
                 shouldEqSources ZF
         it "ZF cleared" $ do
