@@ -12,6 +12,7 @@ import Data.Time (getCurrentTime, timeToTimeOfDay, UTCTime(..), TimeOfDay(..))
 import qualified Data.Map.Strict as Map
 import qualified Data.ByteString as B
 import Data.ByteString.Internal as BI
+import Numeric (showHex)
 
 import Foreign.Ptr
 import Foreign.Marshal.Alloc (callocBytes)
@@ -622,6 +623,7 @@ validateScroll console ss = ss'
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
+    cpuLogT Trace BiosVideo $ "Video: 0x" ++ (showHex valAh "")
     case valAh of
         0 -> do -- Set video mode
             writeOp al 0x30 -- text mode is set
@@ -688,6 +690,7 @@ processBiosVideo bios = do
             charAttr <- readOp bl
             let vs = pcVideoShared $ pcVideoState bios
                 char = toEnum (fromIntegral charCode)
+            cpuLogT Trace BiosVideo $ "Write char(S): 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "'"
             liftIO $ do
                 (ptr, (row, column), scrollLine) <- atomically $ do
                     s <- readTVar vs

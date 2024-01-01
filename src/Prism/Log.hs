@@ -126,8 +126,8 @@ traceLogString siVal diVal regVal regVal2 msg = do
                                    ++ ",ip=0x" ++ (showHex ipVal "")
                                    ++ "): si=0x" ++ (showHex siVal "")
                                    ++ ",di=0x" ++ (showHex diVal "")
-                                   ++ ",reg1=0x" ++ (showHex regVal $ ['/',(toEnum $ fromEnum regVal :: Char)])
-                                   ++ ",reg2=0x" ++ (showHex regVal2 $ ['/',(toEnum $ fromEnum regVal2 :: Char)])
+                                   ++ ",reg1=0x" ++ (showHex regVal $ "/" ++ (show (toEnum $ fromEnum regVal :: Char)))
+                                   ++ ",reg2=0x" ++ (showHex regVal2 $ "/" ++ (show (toEnum $ fromEnum regVal2 :: Char)))
                                    ++ ",cx=" ++ (show cxVal)
                                    ++ " " ++ msg
 

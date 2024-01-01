@@ -1,4 +1,4 @@
-{ callCabal2nix, haskell, cabal-install, hpack, zlib1, yasm, gdb, python3 }:
+{ callCabal2nix, haskell, cabal-install, hpack, zlib1, yasm, gdb, python3, radare2 }:
 
 with haskell.lib;
 
@@ -7,7 +7,7 @@ let
 in
   (overrideCabal prismOrigin (old: {
     pname = "prism";
-    buildDepends = [ cabal-install hpack zlib1 yasm gdb python3 ];
+    buildDepends = [ cabal-install hpack zlib1 yasm gdb python3 radare2 ];
   })).overrideAttrs (finalAttrs: previousAttrs: {
     #propagatedBuildInputs = [ zlib1 ];
     LD_LIBRARY_PATH = "${zlib1}/lib:$LD_LIBRARY_PATH";
