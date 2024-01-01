@@ -4,15 +4,40 @@ module Prism.Decoder.Instruction where
 
 import Data.Bits (shiftR, (.&.))
 
+import Data.Bits (shiftL)
+import Numeric (showHex)
+
 import Prism.Cpu
 import Prism.Instruction
+
+import qualified Prism.Log as Log
 
 import Prism.Decoder.Common
 
 -------------------------------------------------------------------------------
 
-decodeEmpty :: PrismInstrFunc
-decodeEmpty _ = cpuUpdateIP 1
+decodeSkip :: PrismInstrFunc
+decodeSkip _ = cpuUpdateIP 1
+
+decodeWrong :: PrismInstrFunc
+decodeWrong (b1, b2, b3, b4, b5, b6) = do
+    csVal <- readOp cs
+    ipVal <- readOp ip
+    let offset = regsToOffset csVal ipVal
+    Log.cpuLogT Error Log.CpuInt $ "Wrong instruction(cs=0x"
+                                   ++ (showHex csVal "")
+                                   ++ ",ip=0x" ++ (showHex ipVal "")
+                                   ++ ",off=0x" ++ (showHex offset "")
+                                   ++ "): op=0x" ++ (showHex b1 "")
+                                   ++ ", 0x" ++ (showHex b2 "")
+                                   ++ ", 0x" ++ (showHex b3 "")
+                                   ++ ", 0x" ++ (showHex b4 "")
+                                   ++ ", 0x" ++ (showHex b5 "")
+                                   ++ ", 0x" ++ (showHex b6 "")
+    cpuHalt
+    where
+        regsToOffset :: Uint16 -> Uint16 -> Int
+        regsToOffset csVal ipVal = ((shiftL (fromIntegral csVal) 4) + (fromIntegral ipVal)) :: Int
 
 decodeImplicit :: FuncImplicit -> PrismInstrFunc
 decodeImplicit func _ =

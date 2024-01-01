@@ -34,7 +34,11 @@ sti = setFlag IF True
 -------------------------------------------------------------------------------
 
 hlt :: (CpuMonad m) => FuncImplicit m
-hlt = cpuHalt
+--hlt = cpuHalt
+hlt = do
+    Log.cpuLogT Error Log.CpuInt "HALT!!!"
+    Log.traceLogIP "HALT!!!"
+    cpuHalt
 
 wait :: (CpuMonad m) => FuncImplicit m
 wait = return ()

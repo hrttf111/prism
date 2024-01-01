@@ -9,6 +9,8 @@ import Control.Monad (foldM, liftM)
 import Control.Monad.Trans (lift, liftIO, MonadIO)
 import Control.Monad.State.Strict
 
+import Numeric (showHex)
+
 import Foreign.Ptr
 import Foreign.Storable (peekByteOff, pokeByteOff)
 
@@ -28,20 +30,20 @@ data PrismInstruction = PrismInstruction {
     }
 
 instance Show PrismInstruction where
-    show (PrismInstruction opcode rm _ arr) = "PrismInstruction "
-        ++ (show opcode) 
+    show (PrismInstruction opcode rm _ arr) = "PrismInstruction 0x"
+        ++ (showHex opcode "")
         ++ " " ++ (show rm)
         ++ " " ++ (show $ bounds arr)
 
 data PrismDecoder = PrismDecoder {
         decInstr :: Array Uint8 PrismInstruction
-    }
+    } deriving (Show)
 
 makeDecoder :: [PrismInstruction] -> PrismDecoder
 makeDecoder list =
     let arr = accumArray acc instrEmpty (0, 255) listF
         acc _ i = i
-        instrEmpty = makeInstructionS 0 Nothing decodeEmpty
+        instrEmpty = makeInstructionS 0 Nothing decodeWrong
         listF = map (\i -> (instrOpcode i, i)) list
         in
     PrismDecoder arr
@@ -53,12 +55,12 @@ emptyArray :: Array Uint8 PrismInstrFunc
 emptyArray = array (0, 0) []
 
 mergeInstruction :: Uint8 -> [PrismInstruction] -> PrismInstruction
-mergeInstruction opcode [] = 
-    PrismInstruction opcode Nothing decodeEmpty $ emptyArray
+mergeInstruction opcode [] =
+    PrismInstruction opcode Nothing decodeWrong $ emptyArray
 mergeInstruction _ [instr] = instr
-mergeInstruction opcode funcs = 
+mergeInstruction opcode funcs =
     let acc _ i = i
-        arr = accumArray acc decodeEmpty (0, 7) listF
+        arr = accumArray acc decodeWrong (0, 7) listF
         listF = map (\i -> (fromJust $ instrRm i, instrFunc i)) funcs
         func = decodeDemux arr
         in
@@ -69,7 +71,7 @@ type InstructionList = [(Uint8, [PrismInstruction])]
 
 addInstrList :: PrismInstruction -> InstructionList -> ListResult
 addInstrList instr@(PrismInstruction opcode _ _ _) [] = Right [(opcode, [instr])]
-addInstrList instr@(PrismInstruction opcode rm _ _) ((i, l):xs) | opcode == i = 
+addInstrList instr@(PrismInstruction opcode rm _ _) ((i, l):xs) | opcode == i =
     case rm of
         Nothing ->
             Left $ "Cannot add wildcard, item already exists "  ++ (show instr)
