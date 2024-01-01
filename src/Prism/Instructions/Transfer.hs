@@ -5,8 +5,12 @@ module Prism.Instructions.Transfer where
 
 import Data.Bits (shiftR)
 
+import Numeric (showHex)
+
 import Prism.Cpu
 import Prism.InstructionM
+
+import qualified Prism.Log as Log
 
 -------------------------------------------------------------------------------
 
@@ -150,6 +154,7 @@ portOutAlDx :: (CpuMonad m) => FuncImplicit m
 portOutAlDx = do
     portNum <- readOp dx
     val <- readOp al
+    Log.cpuLogT Debug Log.CpuInt $ "Port OUT: " ++ (showHex portNum "") ++ " <- " ++ (showHex val "")
     writeOp (Port8 portNum) val
 
 portOutAlImm :: (CpuMonad m) => FuncImm1 Uint8 m

@@ -253,6 +253,9 @@ pcPitUpdate pit = do
     foldM_ (\ _ action -> do
             Log.cpuLogT Debug Log.PrismPc $ "PIT action: " ++ show action
             case action of
+                PitActionIrq _ (PrismIRQ 100) -> do -- ignore Timer1 and Timer2
+                    Log.cpuLogT Debug Log.PrismPc "Ignore IRQ 100"
+                    return ()
                 PitActionIrq True irq -> do
                     dispatchIrqUp irq
                     return ()
