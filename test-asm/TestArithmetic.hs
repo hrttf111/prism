@@ -343,6 +343,29 @@ testSub env = do
             |]) $ do
                 shouldEqSources [ax, bx]
                 shouldEqSourcesAllFlags
+        it "CF sbb 1" $ do
+            runTest env ([untrimming|
+                mov ax, 0xffff
+                add ax, 1
+                mov ax, 0
+                sbb ax, ax
+            |]) $ do
+                showAllRegsL
+                showAllRegsR
+                shouldEqSources [ax]
+                shouldEqSourcesAllFlags
+        it "CF sbb" $ do
+            runTest env ([untrimming|
+                mov ax, 0xffff
+                add ax, 1
+                mov ax, 0
+                sbb ax, ax
+                sbb ax, 0xffff
+            |]) $ do
+                showAllRegsL
+                showAllRegsR
+                shouldEqSources [ax]
+                shouldEqSourcesAllFlags
     describe "CMP [16] REG, IMM" $ do
         it "Simple cmp" $ do
             runTest env ([untrimming|

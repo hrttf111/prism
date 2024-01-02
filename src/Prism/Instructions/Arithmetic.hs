@@ -62,10 +62,23 @@ sub _ source dest = (flags_, after)
 
 -------------------------------------------------------------------------------
 
+{-
 sbb :: (OperandVal v) => FuncVF2 v
 sbb flags source dest = sub flags source newDest
     where
         newDest = dest - if flagCF flags then 1 else 0
+        -}
+
+sbb :: (OperandVal v) => FuncVF2 v
+sbb flags source dest = (flags_, after)
+    where
+        after = (dest - source) - if flagCF flags then 1 else 0
+        flags_ = Flags (calcCFBorrow dest after)
+                       (calcPF after)
+                       (calcAFBorrow dest after)
+                       (calcZF after)
+                       (calcSF after)
+                       (calcOFSub dest source after)
 
 -------------------------------------------------------------------------------
 

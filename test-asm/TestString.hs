@@ -249,6 +249,36 @@ testString env = do
                 shouldEqSources di
                 shouldEqSourcesAllFlags
     describe "Rep" $ do
+        it "CMPS8 freedos" $ do
+            runTest env ([untrimming|
+                jmp CODE_START
+                    str_in db "  %_CWD",0
+                    str_pattern db "%%i",0
+                    times 256-($-$$) db 0
+            CODE_START:
+                mov ax, ds
+                mov es, ax
+                mov ax, cs
+                mov ds, ax
+                mov ax, cs
+                mov es, ax
+                ;mov bx, str_in_seq
+                ;mov ax, str_in_seq2
+                mov di, str_pattern
+                mov si, str_in
+                mov cx, 3
+                repz cmpsb
+            |]) $ do
+                {-val <- getVal bx
+                shouldEq di (val + 4)
+                val2 <- getVal ax
+                shouldEq si (val2 + 4)-}
+                --shouldEq cx 6
+                showAllRegsL
+                showAllRegsR
+                shouldEqSources cx
+                shouldEqSources [di, si]
+                shouldEqSourcesAllFlags
         it "MOVS8 DF=0" $ do
             runTest env (append headerRep [untrimming|
                 mov di, 0

@@ -14,7 +14,7 @@ gdb -ex 'target remote localhost:20001' \
     -ex 'set disassembly-flavor intel' \
     -ex 'set architecture i8086' \
     -ex 'layout asm' \
-    -ex 'break *0x1907e' \
+    -ex 'break *0x148a5' \
     -ex 'cont'
 
     #-ex 'break *0xc25' \

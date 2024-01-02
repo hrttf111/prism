@@ -64,6 +64,14 @@ PIT command 0xb6
 
 -------------------------------------------------------
 
+p ($ds * 16 + $di)
+print /s (char*)($ds * 16 + $si)
+print /s (char*)($es * 16 + $di)
+
+repz cmps byte ptr ds:[si], byte ptr es:[di]
+if "%_CWD%" == "%%i:\" set DOSDRV=%%i:
+%%i
+
 Test instructions:
  - das
  - aas
