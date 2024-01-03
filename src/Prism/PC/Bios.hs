@@ -503,8 +503,8 @@ peekVideoChar c videoMem row column =
         offset = videoConsoleMemOffset c row column
 
 pokeVideoChar :: (HasCallStack, VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> (Uint8, Uint8) -> IO ()
-pokeVideoChar c _ row _ _ | row >= (videoConsoleRows c) = error "Wrong row"
-pokeVideoChar c _ _ column _ | column >= (videoConsoleColumns c) = error "Wrong column"
+pokeVideoChar c _ row _ _ | row >= (videoConsoleRows c) = error $ "Wrong row: " ++ show row
+pokeVideoChar c _ _ column _ | column >= (videoConsoleColumns c) = error $ "Wrong column" ++ show column
 pokeVideoChar c videoMem row column (code, attr) =
     pokeByteOff videoMem (offset + videoConsoleCodePos c) code
         >> pokeByteOff videoMem (offset + videoConsoleAttrPos c) attr
@@ -638,7 +638,7 @@ processBiosVideo bios = do
                 writeTVar vs $ s { videoCursor = c { videoCursorEnabled = enableCursor } }
         2 -> do -- Set cursor pos
             --pageNum <- readOp bh
-            row <- fromIntegral <$> readOp dh
+            row <- (min (videoConsoleLastRow console)) <$> fromIntegral <$> readOp dh
             column <- fromIntegral <$> readOp dl
             let vs = pcVideoShared $ pcVideoState bios
             cpuLogT Trace BiosVideo $ "Set cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
@@ -677,7 +677,9 @@ processBiosVideo bios = do
             charAttr <- readOp bl
             --pageNum <- readOp bh
             valCx <- readOp cx -- repeat
+            let char = toEnum (fromIntegral charCode)
             let vs = pcVideoShared $ pcVideoState bios
+            cpuLogT Trace BiosVideo $ "Write char: 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "'"
             liftIO $ do
                 (ptr, (row, column)) <- atomically $ do
                     s <- readTVar vs
