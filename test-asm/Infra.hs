@@ -102,6 +102,7 @@ makePrismExec = do
     return (prismExec, asmFunc)
     where
         asmFooter = [untrimming|
+            cli
             hlt
         |]
         asmFunc t = makeAsmStr $ T.append t asmFooter
@@ -164,6 +165,7 @@ instance (PeripheralsTestCreator mL dL) => TestEnvMaker (PrismEnvPeripheralsMake
         return $ TestEnv1 (Just $ PeripheralThread threadId mvar) asmFunc prismExec
         where
             asmFooter = [untrimming|
+                cli
                 hlt
             |]
             asmFunc t = makeAsmStr $ T.append t asmFooter

@@ -269,6 +269,7 @@ testPC = do
                 ;Read status
                 set_cmd PIT_READ_STATUS
                 read_ctr PIT_REG_COUNTER0, cl
+                cli
                 hlt
 
                 INTERRUPT1: 
@@ -299,6 +300,7 @@ testPC = do
                 ;Read status
                 set_cmd PIT_READ_STATUS
                 read_ctr PIT_REG_COUNTER0, cl
+                cli
                 hlt
 
                 INTERRUPT1: 
@@ -329,6 +331,7 @@ testPC = do
                 ;Read status
                 set_cmd PIT_READ_STATUS
                 read_ctr PIT_REG_COUNTER0, cl
+                cli
                 hlt
 
                 INTERRUPT1:
@@ -359,6 +362,7 @@ testPC = do
                 ;Read status
                 set_cmd PIT_READ_STATUS
                 read_ctr PIT_REG_COUNTER0, cl
+                cli
                 hlt
 
                 INTERRUPT1: 
@@ -428,6 +432,7 @@ testPC = do
                 ; Get ticks
                 mov ah, 0
                 int 0x1a
+                cli
                 hlt
 
                 INTERRUPT1:

@@ -652,10 +652,11 @@ processBiosVideo bios = do
             --pageNum <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
             cursor <- liftIO $ atomically $ videoCursor <$> readTVar vs
-            writeOp ch 0 -- starting cursor scan line
-            writeOp cl 0 -- ending cursor scan line
-            writeOp dh $ fromIntegral $ videoCursorColumn cursor
-            writeOp dl $ fromIntegral $ videoCursorRow cursor
+            --writeOp ch 0 -- starting cursor scan line
+            --writeOp cl 0 -- ending cursor scan line
+            writeOp cx 0x0607 -- todo: check if it is correct
+            writeOp dh $ fromIntegral $ videoCursorRow cursor
+            writeOp dl $ fromIntegral $ videoCursorColumn cursor
         6 -> do -- Scroll up
             doScroll True
             return ()
@@ -673,13 +674,14 @@ processBiosVideo bios = do
             writeOp al code -- ASCII char
             writeOp ah attr -- attr
         9 -> do -- Write char + attr
+            --pageNum <- readOp bh
             charCode <- readOp al
             charAttr <- readOp bl
-            --pageNum <- readOp bh
-            valCx <- readOp cx -- repeat
+            repeatCount <- readOp cx -- repeat
             let char = toEnum (fromIntegral charCode)
             let vs = pcVideoShared $ pcVideoState bios
-            cpuLogT Trace BiosVideo $ "Write char: 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "'"
+            cpuLogT Trace BiosVideo $ "Write char: 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "', repeat=" ++ show repeatCount
+            --todo: move cursor if repeatCount > 1
             liftIO $ do
                 (ptr, (row, column)) <- atomically $ do
                     s <- readTVar vs

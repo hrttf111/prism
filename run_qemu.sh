@@ -1,4 +1,7 @@
-qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/144m/x86BOOT.img -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram
+#qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/144m/x86BOOT.img -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram
+#qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/144m/x86BOOT.img -m 1M
+qemu-system-i386 -fda /opt/sandbox/pc_emu/freedos/2/144m/x86BOOT.img -m 1M
+#qemu-system-i386 -fda /opt/projects/3rd/pcemu/8086tiny/fd.img -m 1M
 #qemu-system-i386 -fda ./data/bios_test -m 1M
 #qemu-system-i385 -fda ./data/bios_test -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram
 #qemu-system-i386 -fda ./data/test_exec -m 1M -object memory-backend-file,id=pc.ram,size=1M,mem-path=mem.data,prealloc=on,share=on -machine memory-backend=pc.ram
