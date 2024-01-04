@@ -370,16 +370,16 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             -- $ Log.CpuJmpIntra .= Trace
             -- $ Log.CpuCallIntra .= Trace
             -- $ Log.CpuHalt .= Debug
-            $ Log.CpuJmpInter .= Trace
-            $ Log.CpuCallInter .= Trace
-            $ Log.CpuInt .= Trace
-            $ Log.BiosKeyboard .= Trace
-            $ Log.BiosVideo .= Trace
-            $ Log.BiosDisk .= Debug
-            $ Log.PrismCommand .= Debug
+            -- $ Log.CpuJmpInter .= Trace
+            -- $ Log.CpuCallInter .= Trace
+            -- $ Log.CpuInt .= Trace
+            -- $ Log.BiosKeyboard .= Trace
+            -- $ Log.BiosVideo .= Trace
+            -- $ Log.BiosDisk .= Debug
+            -- $ Log.PrismCommand .= Debug
             $ Log.PrismPc .= Error
             -- $ Log.PrismRun .= Trace
-            $ Log.CpuStrings .= Trace
+            -- $ Log.CpuStrings .= Trace
             $ Log.featureArray
         debugPrint level feature msg =
             if fEnable level feature then
