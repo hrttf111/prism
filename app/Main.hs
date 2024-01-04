@@ -187,7 +187,13 @@ convertKeyToKeycode key = case key of
 
 convertKeyToAscii :: Key -> Uint8
 convertKeyToAscii (KChar c) = fromIntegral $ fromEnum c
-convertKeyToAscii _ = 0
+convertKeyToAscii key = case key of
+    KEsc -> 0x01
+    KEnter -> 0x0D
+    KBackTab -> 0x09
+    KBS -> 0x08 -- backspace
+    KChar c -> toEnum $ fromEnum c
+    _ -> 0
 
 
 convertUint8ToChar :: Uint8 -> Char
