@@ -202,6 +202,8 @@ convertUint8ToChar = toEnum . fromEnum
 
 isBadChar :: Uint8 -> Bool
 isBadChar 0x8 = True
+isBadChar 0xa = True
+isBadChar 0xd = True
 isBadChar _ = False
 
 filterChar :: Uint8 -> Uint8
@@ -211,8 +213,25 @@ filterChar c = c
 convertUint8ToAttr :: Uint8 -> Attr
 convertUint8ToAttr val = defAttr `withForeColor` fg `withBackColor` bg
     where
-        fg = ISOColor $ val .&. 0xf
-        bg = ISOColor $ shiftR val 4
+        fg = convColor $ val .&. 0xf
+        bg = convColor $ shiftR val 4
+        convColor :: Uint8 -> Color
+        convColor 0 = black
+        convColor 1 = blue
+        convColor 2 = green
+        convColor 3 = cyan
+        convColor 4 = red
+        convColor 5 = magenta
+        convColor 6 = black -- brown
+        convColor 7 = white
+        convColor 8 = brightBlack
+        convColor 9 = brightBlue
+        convColor 10 = brightGreen
+        convColor 11 = brightCyan
+        convColor 12 = brightRed
+        convColor 13 = brightMagenta
+        convColor 14 = yellow
+        convColor 15 = brightWhite
 
 peekVideoRow :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> IO [(Uint8, Uint8)]
 peekVideoRow console videoMem row =
@@ -256,11 +275,17 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
             let cursor = videoCursor s
                 c = convertUint8ToChar char
                 pic' = addToTop pic $ translate (videoCursorColumn cursor1) (videoCursorRow cursor1) $ string defAttr [c]
+                pic'' = pic' { picCursor = (Cursor (videoCursorColumn cursor) (videoCursorRow cursor)) }
                 --line = translateX (videoCursorColumn cursor) $ translateY (videoCursorRow cursor) $ char defAttr c
                 --pic' = picForImage $ horizJoin i $ crop videoColumns videoRows line
+            update vty pic''
+            return pic''
+        execVideo pic VideoUpdateCursor = do
+            s <- atomically $ readTVar video
+            let cursor = videoCursor s
+                pic' = pic { picCursor = (Cursor (videoCursorColumn cursor) (videoCursorRow cursor)) }
             update vty pic'
             return pic'
-        execVideo pic VideoUpdateCursor = return pic
         readKey = do
             event <- nextEventNonblocking vty
             case event of
@@ -284,15 +309,14 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
                 let cmd = videoCommands s
                 writeTVar video $ s { videoCommands = [] }
                 return cmd
-            pic' <- if (length videoCommands) > 0 then
+            {-pic' <- if (length videoCommands) > 0 then
                 execVideo pic VideoFullDraw
                 else
-                    return pic
-            --pic' <- foldM execVideo pic videoCommands
-            {-pic' <- (if (length $ picLayers pic) > 15 then
+                    return pic-}
+            pic' <- if ((length videoCommands) > 3) || ((length $ picLayers pic) > 20) then
                 execVideo pic VideoFullDraw
                 else
-                    foldM execVideo pic videoCommands)-}
+                    foldM execVideo pic videoCommands
             readKey
             threadDelay 10000
             runP pic'
