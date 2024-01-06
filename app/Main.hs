@@ -14,6 +14,7 @@ import Control.Monad.Trans.State
 import Control.Concurrent.STM
 import Control.Concurrent
 
+import Data.Bits (shiftR, (.&.))
 import Data.Char (toLower)
 import Data.Word (Word8)
 import qualified Data.Text as T
@@ -199,6 +200,19 @@ convertKeyToAscii key = case key of
 convertUint8ToChar :: Uint8 -> Char
 convertUint8ToChar = toEnum . fromEnum
 
+isBadChar :: Uint8 -> Bool
+isBadChar 0x8 = True
+isBadChar _ = False
+
+filterChar :: Uint8 -> Uint8
+filterChar c | isBadChar c = 0x20
+filterChar c = c
+
+convertUint8ToAttr :: Uint8 -> Attr
+convertUint8ToAttr val = defAttr `withForeColor` fg `withBackColor` bg
+    where
+        fg = ISOColor $ val .&. 0xf
+        bg = ISOColor $ shiftR val 4
 
 peekVideoRow :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> IO [(Uint8, Uint8)]
 peekVideoRow console videoMem row =
@@ -220,15 +234,15 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
         drawVideoScreen :: Ptr Uint8 -> Int -> IO Image
         drawVideoScreen mem scroll =
             ((crop (videoConsoleColumns console) (videoConsoleRows console)) . vertCat)
-                <$> mapM drawRowNoAttr (videoConsoleRowsRange console)
+                <$> mapM drawRow (videoConsoleRowsRange console)
             where
                 drawRowNoAttr rowN =
-                    (string defAttr . map (convertUint8ToChar . fst)) <$> peekVideoRow console mem rowN
+                    (string defAttr . map (convertUint8ToChar . filterChar . fst)) <$> peekVideoRow console mem rowN
                 drawRow rowN = do
                     horizCat <$> mapM (drawChar rowN) (videoConsoleColumnsRange console)
                 drawChar rowN columnN = do
-                    (valChar, _) <- peekVideoChar console mem rowN columnN
-                    return $ char defAttr $ convertUint8ToChar valChar
+                    (valChar, valAttr) <- peekVideoChar console mem rowN columnN
+                    return $ char (convertUint8ToAttr valAttr) (convertUint8ToChar $ filterChar valChar)
         execVideo pic VideoFullDraw = do
             s <- atomically $ readTVar video
             img <- drawVideoScreen (videoMemory s) (videoScrollPos s)
@@ -237,11 +251,11 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
                 pic'' = pic' { picCursor = (Cursor (videoCursorColumn cursor) (videoCursorRow cursor)) }
             update vty pic''
             return pic''
-        execVideo pic (VideoDrawChar char attr) = do
+        execVideo pic (VideoDrawChar char attr cursor1) = do
             s <- atomically $ readTVar video
             let cursor = videoCursor s
-                c = (toEnum . fromEnum) $ char :: Char
-                pic' = addToTop pic $ translate (videoCursorColumn cursor) (videoCursorRow cursor) $ string defAttr [c]
+                c = convertUint8ToChar char
+                pic' = addToTop pic $ translate (videoCursorColumn cursor1) (videoCursorRow cursor1) $ string defAttr [c]
                 --line = translateX (videoCursorColumn cursor) $ translateY (videoCursorRow cursor) $ char defAttr c
                 --pic' = picForImage $ horizJoin i $ crop videoColumns videoRows line
             update vty pic'
@@ -270,11 +284,11 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
                 let cmd = videoCommands s
                 writeTVar video $ s { videoCommands = [] }
                 return cmd
-            --pic' <- foldM execVideo pic videoCommands
             pic' <- if (length videoCommands) > 0 then
                 execVideo pic VideoFullDraw
                 else
                     return pic
+            --pic' <- foldM execVideo pic videoCommands
             {-pic' <- (if (length $ picLayers pic) > 15 then
                 execVideo pic VideoFullDraw
                 else
@@ -374,7 +388,7 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             -- $ Log.CpuCallInter .= Trace
             -- $ Log.CpuInt .= Trace
             -- $ Log.BiosKeyboard .= Trace
-            -- $ Log.BiosVideo .= Trace
+            $ Log.BiosVideo .= Trace
             -- $ Log.BiosDisk .= Debug
             -- $ Log.PrismCommand .= Debug
             $ Log.PrismPc .= Error

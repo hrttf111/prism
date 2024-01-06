@@ -107,7 +107,7 @@ data VideoCursor = VideoCursor {
 } deriving (Show)
 
 data VideoCommand = VideoFullDraw
-                  | VideoDrawChar Uint8 Uint8
+                  | VideoDrawChar Uint8 Uint8 VideoCursor
                   | VideoUpdateCursor
                   deriving (Show)
 
@@ -683,11 +683,11 @@ processBiosVideo bios = do
             cpuLogT Trace BiosVideo $ "Write char: 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "', repeat=" ++ show repeatCount
             --todo: move cursor if repeatCount > 1
             liftIO $ do
-                (ptr, (row, column)) <- atomically $ do
+                (ptr, (row, column), c) <- atomically $ do
                     s <- readTVar vs
-                    return (videoMemory s, getVideoCursorPos s)
+                    return (videoMemory s, getVideoCursorPos s, videoCursor s)
                 pokeVideoChar console ptr row column (charCode, charAttr)
-                atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr]
+                atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
         0xe -> do -- Write char and update cursor
             --pageNum <- readOp bh
             charCode <- readOp al
@@ -695,12 +695,16 @@ processBiosVideo bios = do
             let vs = pcVideoShared $ pcVideoState bios
                 char = toEnum (fromIntegral charCode)
             cpuLogT Trace BiosVideo $ "Write char(S): 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "'"
+            {-(row, column) <- liftIO $ atomically $ do
+                s <- readTVar vs
+                return $ getVideoCursorPos s
+            cpuLogT Trace BiosVideo $ "Cursor, row=" ++ (show row) ++ ", column=" ++ (show column)-}
             liftIO $ do
-                (ptr, (row, column), scrollLine) <- atomically $ do
+                (ptr, (row, column), c, scrollLine) <- atomically $ do
                     s <- readTVar vs
                     let (c', scrollLine) = updateCursorPosition console (videoCursor s) char
                     writeTVar vs $ s { videoCursor = c' }
-                    return (videoMemory s, getVideoCursorPos s, scrollLine)
+                    return (videoMemory s, getVideoCursorPos s, videoCursor s, scrollLine)
                 if scrollLine then do
                     pokeVideoChar console ptr row column (charCode, charAttr)
                     scrollScreenFull console ptr 1 True 0
@@ -709,7 +713,7 @@ processBiosVideo bios = do
                         atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
                         else do
                             pokeVideoChar console ptr row column (charCode, charAttr)
-                            atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr), VideoUpdateCursor]
+                            atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr c), VideoUpdateCursor]
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
             writeOp ah $ fromIntegral $ videoConsoleColumns console -- number of columns
@@ -731,7 +735,7 @@ processBiosVideo bios = do
             bottom <- readOp dh -- bottom row scroll window
             right <- readOp dl -- right column scroll window
             let ss = validateScroll console $ ScrollScreen top bottom left right
-            -- validate scroll
+            -- todo: validate scroll
             cpuDebugActionT Debug BiosVideo $ do
                 cpuLogT Debug BiosVideo $ "  Distance (in rows): " ++ show distance
                 cpuLogT Debug BiosVideo $ "  Attr for blank lines: " ++ show blankAttr

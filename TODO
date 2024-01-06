@@ -42,10 +42,10 @@
                 - take into account that qemu may not be able to detect FD type +
                 - boot sectors will always be 512 bytes +
                 - but tracks might be arbitrary big +
-            - make two types of test application
-                - one to run in prism
-                - second to run at qemu
-            - start qemu
+            - make two types of test application +
+                - one to run in prism +
+                - second to run at qemu +
+            - start qemu +
             - wait until qemu finishes running test +
                 - wait 500ms +
                 - alternative is to implement TCP client(JSON API) which periodically checks magic number in qemu
@@ -296,6 +296,7 @@ Functions
    - ah 1 (Set cursor shape)
        - ch - bit 5 disable cursor, 4-0 top scan line
        - cl - bit 6-5 show cursor, 4-0 low scan line
+       -- (0,25) means to hide cursor
    - ah 2 (Set cursor pos)
        - bh - display page number
        - dh - row
@@ -536,6 +537,32 @@ HW ports
  - Video cursor
  - Video resolution
  - Video scancode/refresh
+
+Video char attributes:
+ Blink enabled:
+  - Bit 7   - foreground blinks
+  - Bit 6-4 - background color
+  - Bit 3-0 - foreground color
+ Blink disabled:
+  - Bit 7-4 - background color
+  - Bit 3-0 - foreground color
+ Colors:
+  - 0 - black
+  - 1 - blue
+  - 2 - green
+  - 3 - cyan
+  - 4 - red
+  - 5 - magenta
+  - 6 - brown
+  - 7 - white
+  - 8 - gray
+  - 9 - bright blue
+  - 10 - bright greep
+  - 11 - bright cyan
+  - 12 - bright red
+  - 13 - bright magenta
+  - 14 - yellow
+  - 15 - bright white
 
 TODO:
  - Implement BIOS structs +
