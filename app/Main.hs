@@ -204,6 +204,7 @@ isBadChar :: Uint8 -> Bool
 isBadChar 0x8 = True
 isBadChar 0xa = True
 isBadChar 0xd = True
+--isBadChar 0xc4 = True
 isBadChar _ = False
 
 filterChar :: Uint8 -> Uint8

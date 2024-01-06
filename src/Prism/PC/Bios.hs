@@ -511,6 +511,18 @@ pokeVideoChar c videoMem row column (code, attr) =
     where
         offset = videoConsoleMemOffset c row column
 
+pokeVideoCharLine :: (VideoConsole c) => c -> Ptr Uint8 -> Int -> Int -> Int -> (Uint8, Uint8) -> IO Int
+pokeVideoCharLine c videoMem repeatCount row column (code, attr) = do
+    mapM_ (\column -> pokeVideoChar c videoMem row column (code, attr)) range1
+    when (end1 /= endColumn) $ do
+        mapM_ (\column -> pokeVideoChar c videoMem row column (code, attr)) range2
+    return endColumn
+    where
+        end1 = min (column + repeatCount) (videoConsoleLastColumn c)
+        range1 = [column..end1]
+        range2 = [0..endColumn]
+        endColumn = (column + repeatCount) `rem` videoConsoleColumns c
+
 videoConsoleLastRow :: (VideoConsole c) => c -> Int
 videoConsoleLastRow c = (videoConsoleRows c) - 1
 
@@ -677,17 +689,21 @@ processBiosVideo bios = do
             --pageNum <- readOp bh
             charCode <- readOp al
             charAttr <- readOp bl
-            repeatCount <- readOp cx -- repeat
+            repeatCount <- fromIntegral <$> readOp cx -- repeat
             let char = toEnum (fromIntegral charCode)
             let vs = pcVideoShared $ pcVideoState bios
             cpuLogT Trace BiosVideo $ "Write char: 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "', repeat=" ++ show repeatCount
-            --todo: move cursor if repeatCount > 1
             liftIO $ do
                 (ptr, (row, column), c) <- atomically $ do
                     s <- readTVar vs
                     return (videoMemory s, getVideoCursorPos s, videoCursor s)
-                pokeVideoChar console ptr row column (charCode, charAttr)
-                atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
+                if repeatCount > 1 then do
+                    --todo: update cursor
+                    cursorColumn <- pokeVideoCharLine console ptr repeatCount row column (charCode, charAttr)
+                    atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
+                    else do
+                        pokeVideoChar console ptr row column (charCode, charAttr)
+                        atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
         0xe -> do -- Write char and update cursor
             --pageNum <- readOp bh
             charCode <- readOp al
