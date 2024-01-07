@@ -632,6 +632,11 @@ validateScroll console ss = ss'
                  , scrollScreenBottom = min (scrollScreenBottom ss) (fromIntegral $ videoConsoleLastRow console)
                  }
 
+isEolChar :: Char -> Bool
+isEolChar '\r' = True
+isEolChar '\n' = True
+isEolChar _ = False
+
 processBiosVideo :: PcBios -> PrismM PcBios
 processBiosVideo bios = do
     valAh <- readOp ah
@@ -711,10 +716,10 @@ processBiosVideo bios = do
             let vs = pcVideoShared $ pcVideoState bios
                 char = toEnum (fromIntegral charCode)
             cpuLogT Trace BiosVideo $ "Write char(S): 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "'"
-            {-(row, column) <- liftIO $ atomically $ do
+            (row, column) <- liftIO $ atomically $ do
                 s <- readTVar vs
                 return $ getVideoCursorPos s
-            cpuLogT Trace BiosVideo $ "Cursor, row=" ++ (show row) ++ ", column=" ++ (show column)-}
+            cpuLogT Trace BiosVideo $ "Cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
             liftIO $ do
                 (ptr, (row, column), c, scrollLine) <- atomically $ do
                     s <- readTVar vs
@@ -722,10 +727,10 @@ processBiosVideo bios = do
                     writeTVar vs $ s { videoCursor = c' }
                     return (videoMemory s, getVideoCursorPos s, videoCursor s, scrollLine)
                 if scrollLine then do
-                    pokeVideoChar console ptr row column (charCode, charAttr)
+                    when (not $ isEolChar char) $ pokeVideoChar console ptr row column (charCode, charAttr)
                     scrollScreenFull console ptr 1 True 0
                     atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
-                    else if char == '\r' || char == '\n' then
+                    else if isEolChar char then
                         atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
                         else do
                             pokeVideoChar console ptr row column (charCode, charAttr)
