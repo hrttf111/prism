@@ -413,10 +413,10 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
             -- $ Log.CpuCallInter .= Trace
             -- $ Log.CpuInt .= Trace
             -- $ Log.BiosKeyboard .= Trace
-            $ Log.BiosVideo .= Trace
+            $ Log.BiosVideo .= Info
             -- $ Log.BiosDisk .= Debug
             -- $ Log.PrismCommand .= Debug
-            $ Log.PrismPc .= Error
+            $ Log.PrismPc .= Warning
             -- $ Log.PrismRun .= Trace
             -- $ Log.CpuStrings .= Trace
             $ Log.featureArray
