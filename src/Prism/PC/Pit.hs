@@ -440,10 +440,13 @@ getPitCounter pit PitCounterNum0 = pitCounter0 pit
 getPitCounter pit PitCounterNum1 = pitCounter1 pit
 getPitCounter pit PitCounterNum2 = pitCounter2 pit
 
+pitTimer1IRQ = PrismIRQ 255
+pitTimer2IRQ = PrismIRQ 255
+
 getPitIrqAndSchedId :: PitCounterNum -> (PrismIRQ, SchedId)
 getPitIrqAndSchedId PitCounterNum0 = (PrismIRQ 0, SchedId 0)
-getPitIrqAndSchedId PitCounterNum1 = (PrismIRQ 100, SchedId 1)
-getPitIrqAndSchedId PitCounterNum2 = (PrismIRQ 100, SchedId 2)
+getPitIrqAndSchedId PitCounterNum1 = (pitTimer1IRQ, SchedId 1)
+getPitIrqAndSchedId PitCounterNum2 = (pitTimer2IRQ, SchedId 2)
 
 -------------------------------------------------------------------------------
 

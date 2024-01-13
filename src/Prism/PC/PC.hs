@@ -253,7 +253,7 @@ pcPitUpdate pit = do
     foldM_ (\ _ action -> do
             Log.cpuLogT Debug Log.PrismPc $ "PIT action: " ++ show action
             case action of
-                PitActionIrq _ (PrismIRQ 100) -> do -- ignore Timer1 and Timer2
+                PitActionIrq _ irq | irq == pitTimer1IRQ || irq == pitTimer2IRQ -> do -- ignore Timer1 and Timer2
                     Log.cpuLogT Debug Log.PrismPc "Ignore IRQ 100"
                     return ()
                 PitActionIrq True irq -> do
@@ -356,18 +356,6 @@ pcMemoryBiosDataR16_0 offset = return 0
 pcBiosMemHandler_0 offset = PeripheralMem offset
                             $ PeripheralHandlerMem pcMemoryBiosDataW8_0 pcMemoryBiosDataW16_0 pcMemoryBiosDataR8_0 pcMemoryBiosDataR16_0
 
-pcMemoryBiosDataW8_1 :: MemOffset -> Uint8 -> PeripheralsPC ()
-pcMemoryBiosDataW8_1 offset val = do
-    Log.cpuLogT Warning Log.PrismPc $ "Write [0x" ++ (showHex offset "") ++ "]" ++ show val
-    --writeOp (MemPhy8Abs offset) val
-    return ()
-
-pcMemoryBiosDataW16_1 :: MemOffset -> Uint16 -> PeripheralsPC ()
-pcMemoryBiosDataW16_1 offset val = do
-    Log.cpuLogT Warning Log.PrismPc $ "Write [0x" ++ (showHex offset "") ++ "]" ++ show val
-    --writeOp (MemPhy16Abs offset) val
-    return ()
-
 pcMemoryBiosDataR8_1 :: MemOffset -> PeripheralsPC Uint8
 pcMemoryBiosDataR8_1 off = fromIntegral <$> pcMemoryBiosDataR16_1 off
 
@@ -378,18 +366,6 @@ pcMemoryBiosDataR16_1 off = do
     Log.cpuLogT Warning Log.PrismPc $ "Read [0x" ++ (showHex off "") ++ "]"
     return 0
 
-pcBiosMemHandler_1 offset = PeripheralMem offset
-                            $ PeripheralHandlerMem pcMemoryBiosDataW8 pcMemoryBiosDataW16 pcMemoryBiosDataR8_1 pcMemoryBiosDataR16_1
-
---pcMemory = [ pcBiosMemHandler_1 $ MemLocation 0x400 0x500 ]
-{-pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x470)
-           , (pcBiosMemHandler_0 $ MemLocation 0x471 0x471)
-           , (pcBiosMemHandler $ MemLocation 0x472 0x495)
-           , (pcBiosMemHandler_0 $ MemLocation 0x496 0x496)
-           , (pcBiosMemHandler $ MemLocation 0x497 0x500)
-           ]-}
---pcMemory = [ pcBiosMemHandler $ MemLocation 0x400 0x500 ]
---pcMemory = [ (pcBiosMemHandler $ MemLocation 0x400 0x500), (pcBiosMemHandler $ MemLocation 3354 3354) ]
 pcMemory = []
 
 -------------------------------------------------------------------------------

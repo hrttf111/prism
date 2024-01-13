@@ -206,7 +206,6 @@ isBadChar :: Uint8 -> Bool
 isBadChar 0x8 = True
 isBadChar 0xa = True
 isBadChar 0xd = True
---isBadChar 0xc4 = True
 isBadChar _ = False
 
 filterChar :: Uint8 -> Uint8
@@ -279,8 +278,6 @@ peripheralThread vty (PrismCmdQueue queue) wdVar keyboard video debugCtx = do
                 c = convertUint8ToChar char
                 pic' = addToTop pic $ translate (videoCursorColumn cursor1) (videoCursorRow cursor1) $ string defAttr [c]
                 pic'' = pic' { picCursor = (Cursor (videoCursorColumn cursor) (videoCursorRow cursor)) }
-                --line = translateX (videoCursorColumn cursor) $ translateY (videoCursorRow cursor) $ char defAttr c
-                --pic' = picForImage $ horizJoin i $ crop videoColumns videoRows line
             update vty pic''
             return pic''
         execVideo pic VideoUpdateCursor = do
@@ -429,7 +426,6 @@ buildPC opts debugCtx = do
         intList = mkBiosInterrupts
         pageSize = 1024
         portEntries = pcPorts
-        --memEntries = []
         memEntries = pcMemory
         mkIOCtx pc queue =
             let (PeripheralLocal maxPorts maxMem portRegion memRegion ports mem devices) =
@@ -477,7 +473,6 @@ runBinary opts = do
     logFile <- if (externalLog opts) then
         Just <$> do
             h <- openFile logPath AppendMode
-            --hSetBuffering h NoBuffering
             hSetBuffering h LineBuffering
             hPutStrLn h "Start log"
             return h
@@ -523,7 +518,6 @@ runBinary opts = do
         decodeHaltCpu (decoder intM) comm
     case vty of
         Just v -> do
-            --threadDelay 1000000
             shutdown v
         _ -> return ()
     liftIO . putStrLn . show $ ctxNew
@@ -537,7 +531,6 @@ runBinary opts = do
             if doRunVty then do
                 cfg <- standardIOConfig
                 vty <- mkVty $ cfg { mouseMode = Just True, vmin = Just 1}
-                --forkIO $ peripheralThread vty queue keyboard video
                 var <- newTVarIO 0
                 forkOS $ peripheralThread vty queue var keyboard video debugCtx
                 startWd var debugCtx

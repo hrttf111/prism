@@ -62,8 +62,6 @@ into = int 4
 
 iret :: (CpuMonad m) => FuncImplicit m
 iret = do
-    --Log.traceRetInterrupt
-    --retInterrupt
     ipValFrom <- readOp ip
     csValFrom <- readOp cs
     popP ip

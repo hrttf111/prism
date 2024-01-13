@@ -62,7 +62,7 @@ cmps strOp = do
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
     valMemDi <- readOp $ memTypeExp strOp es valDi
-    Log.traceLogString valSi valDi valMemSi valMemDi "cmps"
+    Log.traceLogString valSi valDi valMemSi valMemDi "CMPS"
     df_ <- getFlag DF
     writeOp di (advance1 strOp df_ valDi)
     writeOp si (advance1 strOp df_ valSi)
@@ -89,7 +89,7 @@ scas strOp reg = do
     valRegA <- readOp reg
     valDi <- readOp di
     valMemDi <- readOp $ memTypeExp strOp es valDi
-    Log.traceLogString 0 valDi valRegA valMemDi "scas"
+    Log.traceLogString 0 valDi valRegA valMemDi "SCAS"
     df_ <- getFlag DF
     writeOp di (advance1 strOp df_ valDi)
     let result = valRegA - valMemDi
@@ -114,7 +114,7 @@ lods :: ( CpuMonad m
 lods strOp reg = do
     valSi <- readOp si
     valMemSi <- readOp $ memType strOp valSi
-    Log.traceLogString valSi 0 0 valMemSi "lods"
+    Log.traceLogString valSi 0 0 valMemSi "LODS"
     df_ <- getFlag DF
     writeOp si (advance1 strOp df_ valSi)
     writeOp reg valMemSi
@@ -131,7 +131,7 @@ stos strOp reg = do
     valDi <- readOp di
     valRegA <- readOp reg
     writeOp (memTypeExp strOp es valDi) valRegA
-    Log.traceLogString 0 valDi valRegA 0 "stos"
+    Log.traceLogString 0 valDi valRegA 0 "STOS"
     df_ <- getFlag DF
     writeOp di (advance1 strOp df_ valDi)
 
@@ -139,7 +139,6 @@ stos strOp reg = do
 
 rep :: (CpuMonad m) => m () -> Bool -> FuncImplicit m
 rep execInstr zfOne = do
-    --Log.cpuLogT Trace Log.CpuStrings "rep"
     cxVal <- readOp cx
     if cxVal == 0 then doExit
     else do
