@@ -75,7 +75,7 @@
     - New decoder and command system
         - Implement readOp/writeOp for flags
     - Cleanup
-        - Remove halt printing from hlt command
+        - Remove halt printing from hlt command +
         - Create correct features for logging
         - Remove commented lines
         - Update lib versions

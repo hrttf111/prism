@@ -390,7 +390,9 @@ testPC = do
                 keyFlags = emptyKeyFlags { pcKeyFlagLeftShift = True }
                 keyboardState = SharedKeyboardState keyFlags keys
                 env = biosEnvMaker { prismEnvPeriphpDevLocal = devices }
-            liftIO $ atomically $ writeTVar sharedKeyboard keyboardState
+            liftIO $ atomically $ do
+                takeTMVar sharedKeyboard
+                putTMVar sharedKeyboard keyboardState
             runTest env ([untrimming|
                 int 9
                 ; Check shift flags
