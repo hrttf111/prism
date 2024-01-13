@@ -14,13 +14,14 @@
     - Trace interrupts +
     - Trace BIOS calls +
     - Logger in peripherals +
-    - Reorder log config
+    - Reorder log config +
     - Print additional info
-        - date
+        - date +
+        - feature +
+        - severity level +
         - instruction num
         - location
-        - feature
-        - severity level
+        [date] [level] [feature] -- msg
  - Testing infra +
     - Create custom code which runs in QEMU +
     - Compare values in memory after the test +
@@ -78,7 +79,8 @@
         - Remove halt printing from hlt command +
         - Create correct features for logging +
         - Remove commented lines +
-        - Update lib versions
+        - Update lib versions +
+        - Log updates +
     - Release
         - Cleanup
         - README

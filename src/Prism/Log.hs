@@ -17,9 +17,11 @@ module Prism.Log (
 -------------------------------------------------------------------------------
     , logFeatureTree, logFeatureCount
     , showFeatures
-    , featureArray
+    , featureArray, makeFeatureArray
     , getFeatureId
-    , setFeatureLevel, (.=), (..>>)
+    , setFeatureLevel, (.=), (..=), (..>>)
+    , intToLevelName
+    , intToFeatureName
 -------------------------------------------------------------------------------
     , traceJmpIntra, traceJmpInter
     , traceCallNear, traceCallIntra, traceCallInter
@@ -28,7 +30,7 @@ module Prism.Log (
     , traceLogString
 ) where
 
-import Data.Array (Array, array, (//))
+import Data.Array (Array, array, (//), (!))
 import Data.Typeable (typeOf)
 import Data.Bits (shiftL)
 import Numeric (showHex)
@@ -296,6 +298,49 @@ setFeatureLevel feature level ar = ar // [(featureIndex, levelIndex)]
         levelIndex = fromEnum level
         (LogFeature featureIndex) = logFeatureTree ..>> feature
 
-feature .= level = \ ar -> setFeatureLevel feature level ar
+data LogConfigAction = LogConfigAction {
+    logConfigAction :: Array Int Int -> Array Int Int
+}
+
+instance Semigroup LogConfigAction where
+    (LogConfigAction a1) <> (LogConfigAction a2) = LogConfigAction (\ar -> a2 $ a1 ar)
+
+feature .= level = LogConfigAction $ setFeatureLevel feature level
+
+makeFeatureArray :: LogConfigAction -> Array Int Int
+makeFeatureArray (LogConfigAction a) = a featureArray
+
+feature ..= level = \ ar -> setFeatureLevel feature level ar
+
+--------------------------------------------------------------------------------
+
+class IterLogFeature container where
+    iterLogFeature :: container -> a -> (a -> (String, LogFeature) -> a) -> a
+
+instance (Show a) => IterLogFeature (LFeatureLevel a b) where
+    iterLogFeature (LFeatureLevel a b n) r f = f r (show a, n)
+
+instance (IterLogFeature a, IterLogFeature b) => IterLogFeature (LFeaturePair a b) where
+    iterLogFeature (LFeaturePair a b) r f = iterLogFeature b (iterLogFeature a r f) f
+
+instance IterLogFeature () where
+    iterLogFeature _ r _ = r
+
+featureNameList = iterLogFeature logFeatureTree [] (\l f -> (f:l))
+
+featureNameArray :: Array Int String
+featureNameArray = array (1, logFeatureCount) $ map (\(name, LogFeature id) -> (id, name)) featureNameList
+
+intToLevelName :: Int -> String
+intToLevelName 0 = "Trace"
+intToLevelName 1 = "Debug"
+intToLevelName 2 = "Info"
+intToLevelName 3 = "Warning"
+intToLevelName 4 = "Error"
+intToLevelName _ = "Unknown"
+
+intToFeatureName :: Int -> String
+intToFeatureName fId | fId > 0 && fId <= logFeatureCount = featureNameArray ! fId
+intToFeatureName _ = "Unknown"
 
 --------------------------------------------------------------------------------

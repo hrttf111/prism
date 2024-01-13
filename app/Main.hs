@@ -9,6 +9,9 @@ import Data.Maybe (maybeToList, maybe)
 import qualified Data.Map.Strict (fromList)
 import Data.List (intercalate)
 
+import Data.Time.Format (formatTime, defaultTimeLocale)
+import qualified Data.Time.Clock.POSIX as PTime
+
 import Control.Monad.Logger (LogLevel(..))
 import Control.Monad.Trans.State
 import Control.Concurrent.STM
@@ -44,7 +47,7 @@ import Prism.Instructions
 import Prism.GDB
 import Prism.PC
 import qualified Prism.Log as Log
-import Prism.Log ((.=))
+import Prism.Log ((.=), (..=))
 
 -------------------------------------------------------------------------------
 
@@ -436,30 +439,37 @@ buildPC opts debugCtx = do
 debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
     where
         featureArray =
+            Log.makeFeatureArray $
             Log.BiosTimer .= Error
-            $ Log.PrismCommon .= Warning
-            -- $ Log.CpuJmpIntra .= Trace
-            -- $ Log.CpuCallIntra .= Trace
-            -- $ Log.CpuHalt .= Debug
-            -- $ Log.CpuJmpInter .= Trace
-            -- $ Log.CpuCallInter .= Trace
-            -- $ Log.CpuInt .= Trace
-            $ Log.BiosKeyboard .= Warning
-            $ Log.BiosVideo .= Info
-            -- $ Log.BiosDisk .= Debug
-            -- $ Log.PrismCommand .= Debug
-            $ Log.PrismPc .= Warning
-            -- $ Log.PrismRun .= Trace
-            -- $ Log.CpuStrings .= Trace
-            $ Log.featureArray
+            <> Log.PrismCommon .= Warning
+            -- <> Log.CpuJmpIntra .= Trace
+            -- <> Log.CpuCallIntra .= Trace
+            -- <> Log.CpuHalt .= Debug
+            -- <> Log.CpuJmpInter .= Trace
+            -- <> Log.CpuCallInter .= Trace
+            -- <> Log.CpuInt .= Trace
+            <> Log.BiosKeyboard .= Warning
+            <> Log.BiosVideo .= Info
+            -- <> Log.BiosDisk .= Debug
+            -- <> Log.PrismCommand .= Debug
+            <> Log.PrismPc .= Warning
+            -- <> Log.PrismRun .= Trace
+            -- <> Log.CpuStrings .= Trace
+        formatStr level feature msg = do
+            date <- PTime.getCurrentTime
+            let timeStr = formatTime defaultTimeLocale "%H:%M:%S.%q" date
+            return $ timeStr ++ " "
+                    ++ (Log.intToLevelName level) ++ " "
+                    ++ (Log.intToFeatureName feature) ++ " -- "
+                    ++ msg
         debugPrint level feature msg =
             if fEnable level feature then
-                putStrLn msg
+                formatStr level feature msg >>= putStrLn
                 else
                     return ()
         debugPrintToFile handle = \level feature msg ->
             if fEnable level feature then
-                hPutStrLn handle msg
+                formatStr level feature msg >>= hPutStrLn handle
                 else
                     return ()
         fEnable level feature =
