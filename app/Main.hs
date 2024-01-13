@@ -198,7 +198,6 @@ convertKeyToAscii key = case key of
     KEnter -> 0x0D
     KBackTab -> 0x09
     KBS -> 0x08 -- backspace
-    KChar c -> toEnum $ fromEnum c
     _ -> 0
 
 
