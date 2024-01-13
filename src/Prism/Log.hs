@@ -7,8 +7,9 @@
 
 module Prism.Log (
     cpuLogT, cpuDebugActionT
+    , cpuLogIP
 -------------------------------------------------------------------------------
-    , PrismCommand(..), PrismRun(..), PrismPc(..)
+    , PrismCommon(..), PrismCommand(..), PrismRun(..), PrismPc(..)
     , CpuHalt(..)
     , CpuJmpInter(..), CpuJmpIntra(..), CpuCallInter(..), CpuCallIntra(..), CpuInt(..)
     , CpuStrings(..)
@@ -17,13 +18,14 @@ module Prism.Log (
     , logFeatureTree, logFeatureCount
     , showFeatures
     , featureArray
-    , setFeatureLevel, (.=)
+    , getFeatureId
+    , setFeatureLevel, (.=), (..>>)
 -------------------------------------------------------------------------------
     , traceJmpIntra, traceJmpInter
     , traceCallNear, traceCallIntra, traceCallInter
     , traceRetIntra, traceRetInter
     , traceInterrupt, traceRetInterrupt
-    , traceLogIP, traceLogString
+    , traceLogString
 ) where
 
 import Data.Array (Array, array, (//))
@@ -38,6 +40,10 @@ import Prism.Cpu
 -------------------------------------------------------------------------------
 
 showFeatures = show logFeatureTree
+
+getFeatureId feature = fid
+    where
+        LogFeature fid = logFeatureTree ..>> feature
 
 -------------------------------------------------------------------------------
 
@@ -131,16 +137,15 @@ traceLogString siVal diVal regVal regVal2 msg = do
                                    ++ ",cx=" ++ (show cxVal)
                                    ++ " " ++ msg
 
-traceLogIP :: (CpuMonad m) => String -> m ()
-traceLogIP msg = do
-    cpuDebugActionT Trace CpuStrings $ do
+cpuLogIP level feature msg = do
+    cpuDebugActionT Trace feature $ do
         csVal <- readOp cs
         ipVal <- readOp ip
         let offset = regsToOffset csVal ipVal
-        cpuLogT Trace CpuStrings $ "0x" ++ (showHex offset "")
-                                   ++ "(cs=0x" ++ (showHex csVal "")
-                                   ++ ",ip=0x" ++ (showHex ipVal "")
-                                   ++ "): " ++ msg
+        cpuLogT level feature $ "0x" ++ (showHex offset "")
+                                ++ "(cs=0x" ++ (showHex csVal "")
+                                ++ ",ip=0x" ++ (showHex ipVal "")
+                                ++ "): " ++ msg
 
 -------------------------------------------------------------------------------
 
@@ -154,15 +159,11 @@ traceInterrupt int =
             mem2 = MemPhy16 $ offset + 2
         ipVal <- readOp mem
         csVal <- readOp mem2
-    --cpuLogT Trace CpuInt $ "Interrupt = 0x" ++ showHex int ""
         traceJmp CpuInt ipValFrom csValFrom ipVal csVal $ "Interrupt = 0x" ++ showHex int ""
-        when (int == 0x21) $ do
+        when (int == 0x21) $ do -- BIOS interrupts
             ahVal <- readOp ah
             cpuLogT Trace CpuInt $ "AH = 0x" ++ showHex ahVal ""
         return ()
-
---traceRetInterrupt :: (CpuMonad m) => m ()
---traceRetInterrupt = cpuLogT Trace CpuInt "Reti"
 
 traceRetInterrupt :: (CpuMonad m) => Uint16 -> Uint16 -> Uint16 -> Uint16 -> m ()
 traceRetInterrupt csValFrom ipValFrom csVal ipVal =
@@ -243,6 +244,7 @@ mkLevel feature bm = do
     b <- bm
     return $ LFeaturePair (LFeatureLevel feature b (LogFeature n)) ()
 
+data PrismCommon = PrismCommon deriving (Show)
 data PrismCommand = PrismCommand deriving (Show)
 data PrismRun = PrismRun deriving (Show)
 data PrismPc = PrismPc deriving (Show)
@@ -262,6 +264,7 @@ data BiosDisk = BiosDisk deriving (Show)
 data BiosKeyboard = BiosKeyboard deriving (Show)
 
 logFeatures = runState (
+                        mkLeaf PrismCommon .>>>
                         mkLeaf PrismCommand .>>>
                         mkLeaf PrismRun .>>>
                         mkLeaf PrismPc .>>>

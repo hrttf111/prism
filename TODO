@@ -67,15 +67,18 @@
             - readOp/writeOp may be used to create corresponding asm lines
                 - what to do with reg-reg ops?
         - Results will be written to output memory
-    - Cleanup
-        - Remove commented lines
-        - Remove halt printing from hlt command
-        - Create correct features for logging
     - Peripherals
         - Remove local/remote from infra
             - Separation will be handled inside of peripherals impl
         - Use CpuMonad for peripherals actions
             - Or at least simplify it
+    - New decoder and command system
+        - Implement readOp/writeOp for flags
+    - Cleanup
+        - Remove halt printing from hlt command
+        - Create correct features for logging
+        - Remove commented lines
+        - Update lib versions
     - Release
         - Cleanup
         - README

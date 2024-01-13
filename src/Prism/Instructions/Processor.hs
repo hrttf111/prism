@@ -35,8 +35,7 @@ sti = setFlag IF True
 
 hlt :: (CpuMonad m) => FuncImplicit m
 hlt = do
-    Log.cpuLogT Error Log.CpuInt "HALT!!!"
-    Log.traceLogIP "HALT!!!"
+    Log.cpuLogIP Debug Log.CpuInt "HALT"
     ifOn <- getFlag IF
     when (not ifOn) cpuHalt
 
@@ -55,7 +54,7 @@ int :: (CpuMonad m) => FuncImm1 Imm8 m
 int i = do
     Log.traceInterrupt i
     when (i == 0x24) $ do
-        Log.cpuLogT Error Log.CpuInt "  !!!! Int = 0x24"
+        Log.cpuLogIP Error Log.CpuInt "  !!!! Int = 0x24"
     raiseInterrupt . PrismInt $ i
 
 into :: (CpuMonad m) => FuncImplicit m

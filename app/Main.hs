@@ -21,6 +21,8 @@ import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import Data.Array (Array, (!), bounds)
 import System.IO (FilePath, Handle, openFile, hClose, hSetBuffering, BufferMode(..), hPutStrLn, hSeek, hFileSize, IOMode(..), SeekMode(..))
+import System.Exit (ExitCode(ExitFailure))
+import System.Posix.Process (exitImmediately)
 
 import Options.Applicative
 import Options.Applicative.Types
@@ -246,9 +248,9 @@ peekVideoRow console videoMem row =
         splitPairs res (a:(b:c)) = splitPairs (res ++ [(a,b)]) c
 
 
-peripheralThread :: Vty -> PrismCmdQueue -> TVar SharedKeyboardState -> TVar SharedVideoState -> IO ()
-peripheralThread vty (PrismCmdQueue queue) keyboard video = do
-    runP $ picForImage $ resize (videoConsoleColumns console) (videoConsoleRows console) emptyImage
+peripheralThread :: Vty -> PrismCmdQueue -> TVar Int -> TMVar SharedKeyboardState -> TMVar SharedVideoState -> DebugCtx -> IO ()
+peripheralThread vty (PrismCmdQueue queue) wdVar keyboard video debugCtx = do
+    runP (picForImage $ resize (videoConsoleColumns console) (videoConsoleRows console) emptyImage) 0 0
     where
         console = VideoConsole80x25
         drawVideoScreen :: Ptr Uint8 -> Int -> IO Image
@@ -264,7 +266,7 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
                     (valChar, valAttr) <- peekVideoChar console mem rowN columnN
                     return $ char (convertUint8ToAttr valAttr) (convertUint8ToChar $ filterChar valChar)
         execVideo pic VideoFullDraw = do
-            s <- atomically $ readTVar video
+            s <- atomically $ readTMVar video
             img <- drawVideoScreen (videoMemory s) (videoScrollPos s)
             let cursor = videoCursor s
                 pic' = picForImage img
@@ -272,7 +274,7 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
             update vty pic''
             return pic''
         execVideo pic (VideoDrawChar char attr cursor1) = do
-            s <- atomically $ readTVar video
+            s <- atomically $ readTMVar video
             let cursor = videoCursor s
                 c = convertUint8ToChar char
                 pic' = addToTop pic $ translate (videoCursorColumn cursor1) (videoCursorRow cursor1) $ string defAttr [c]
@@ -282,7 +284,7 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
             update vty pic''
             return pic''
         execVideo pic VideoUpdateCursor = do
-            s <- atomically $ readTVar video
+            s <- atomically $ readTMVar video
             let cursor = videoCursor s
                 pic' = pic { picCursor = (Cursor (videoCursorColumn cursor) (videoCursorRow cursor)) }
             update vty pic'
@@ -292,35 +294,68 @@ peripheralThread vty (PrismCmdQueue queue) keyboard video = do
             case event of
                 Just (EvKey (KChar 'c') [MCtrl]) -> do
                     atomically $ writeTQueue queue PCmdStop
+                    threadDelay 5000000 -- 5s
+                    doLog debugCtx Error "Forced exit"
+                    exitImmediately $ ExitFailure 1
                     return ()
                 Just (EvKey key mods) -> do
                     atomically $ do
-                        ks <- readTVar keyboard
+                        ks <- takeTMVar keyboard
                         let keyCode = convertKeyToKeycode key
                             keyAscii = convertKeyToAscii key
                             pcKey = PcKey keyAscii keyCode
                             ks' = SharedKeyboardState (sharedFlags ks) ((sharedKeys ks) ++ [pcKey])
-                        writeTVar keyboard ks'
+                        putTMVar keyboard ks'
                         writeTQueue queue $ PCmdInterruptUp (PrismIRQ 1)
                     return ()
                 _ -> return ()
-        runP pic = do
-            videoCommands <- atomically $ do
-                s <- readTVar video
+        getCommands =
+            atomically $ do
+                s <- takeTMVar video
                 let cmd = videoCommands s
-                writeTVar video $ s { videoCommands = [] }
+                putTMVar video $ s { videoCommands = [] }
                 return cmd
-            {-pic' <- if (length videoCommands) > 0 then
-                execVideo pic VideoFullDraw
-                else
-                    return pic-}
+        runP pic n k = do
+            doLog debugCtx Trace "Get commands"
+            videoCommands <- getCommands
+            doLog debugCtx Trace $ "Exec commands: " ++ (show $ length videoCommands)
             pic' <- if ((length videoCommands) > 3) || ((length $ picLayers pic) > 20) then
                 execVideo pic VideoFullDraw
                 else
                     foldM execVideo pic videoCommands
+            doLog debugCtx Trace "Read key"
             readKey
+            doLog debugCtx Trace "Delay"
             threadDelay 10000
-            runP pic'
+            atomically $ modifyTVar wdVar (+1)
+            when (n > 10) $ do
+                doLog debugCtx Info $ "Tick=" ++ show k
+                runP pic' 0 (k+1)
+            runP pic' (n+1) k
+
+-------------------------------------------------------------------------------
+
+doLog debugCtx level msg = do
+    let fid = Log.getFeatureId Log.PrismCommon
+    (debugCtxPrint debugCtx) (fromEnum level) fid $ msg
+
+watchdogExec :: TVar Int -> DebugCtx -> IO ()
+watchdogExec idPeripheral debugCtx =
+    doExec (0, 0) 0
+    where
+        doExec (idPeripheralLast, nLast) n = do
+            threadDelay 1000000 -- 1s
+            idCurrent <- atomically $ readTVar idPeripheral
+            if idCurrent > idPeripheralLast then
+                doExec (idCurrent, n) (n+1)
+                else if (n - nLast) > 3 then do
+                    doLog debugCtx Error "Forced exit WD"
+                    exitImmediately $ ExitFailure 1
+                    else do
+                        doLog debugCtx Warning  $ "Watchdog: n="
+                                                ++ (show n) ++ ", nL=" ++ (show nLast)
+                                                ++ ", var=" ++ (show idPeripheralLast)
+                        doExec (idCurrent, nLast) (n+1)
 
 -------------------------------------------------------------------------------
 
@@ -379,7 +414,7 @@ data AppOpts = AppOpts {
         externalLog :: !Bool
     }
 
-buildPC :: (MonadIO m) => AppOpts -> DebugCtx -> m (PC, IOCtx, [InterruptHandlerLocation], (TVar SharedKeyboardState, TVar SharedVideoState))
+buildPC :: (MonadIO m) => AppOpts -> DebugCtx -> m (PC, IOCtx, [InterruptHandlerLocation], (TMVar SharedKeyboardState, TMVar SharedVideoState))
 buildPC opts debugCtx = do
     queue <- liftIO $ createIOQueue
     disks <- liftIO $ if floppyMode opts then do
@@ -406,13 +441,14 @@ debugCtx logFile = DebugCtx (maybe debugPrint debugPrintToFile logFile) fEnable
     where
         featureArray =
             Log.BiosTimer .= Error
+            $ Log.PrismCommon .= Warning
             -- $ Log.CpuJmpIntra .= Trace
             -- $ Log.CpuCallIntra .= Trace
             -- $ Log.CpuHalt .= Debug
             -- $ Log.CpuJmpInter .= Trace
             -- $ Log.CpuCallInter .= Trace
             -- $ Log.CpuInt .= Trace
-            -- $ Log.BiosKeyboard .= Trace
+            $ Log.BiosKeyboard .= Warning
             $ Log.BiosVideo .= Info
             -- $ Log.BiosDisk .= Debug
             -- $ Log.PrismCommand .= Debug
@@ -469,7 +505,7 @@ runBinary opts = do
     memMain <- allocMemMain maxMemorySize
     let (MemMain ptrMem) = memMain
     (pc, ioCtx, intList, states) <- buildPC opts (debugCtx logFile)
-    vty <- startVtyThread (commCmdQueue comm) (fst states) (snd states)
+    vty <- startVtyThread (commCmdQueue comm) (fst states) (snd states) (debugCtx logFile)
     when (not $ floppyMode opts) $ do
         readCodeToPtr binPath_ ptrMem 0
         return ()
@@ -495,11 +531,16 @@ runBinary opts = do
     mapM_ hClose logFile
     where
         doRunVty = not $ disableVty opts
-        startVtyThread queue keyboard video =
+        startWd var debugCtx =
+            forkOS $ watchdogExec var debugCtx
+        startVtyThread queue keyboard video debugCtx =
             if doRunVty then do
                 cfg <- standardIOConfig
                 vty <- mkVty $ cfg { mouseMode = Just True, vmin = Just 1}
-                forkIO $ peripheralThread vty queue keyboard video
+                --forkIO $ peripheralThread vty queue keyboard video
+                var <- newTVarIO 0
+                forkOS $ peripheralThread vty queue var keyboard video debugCtx
+                startWd var debugCtx
                 return $ Just vty
                 else do
                     putStrLn "vty is disabled"

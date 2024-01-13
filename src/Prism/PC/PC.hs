@@ -7,7 +7,7 @@ module Prism.PC.PC where
 
 import Control.Monad.Trans (MonadIO, liftIO)
 import Control.Monad.State.Strict
-import Control.Concurrent.STM (TVar)
+import Control.Concurrent.STM (TVar, TMVar)
 
 import Data.Bits
 import qualified Data.Map.Strict as Map
@@ -472,7 +472,7 @@ rebootPc pc = do
     loadBootSector $ pcBios pc
     return ()
 
-getPcBiosSharedState :: PC -> (TVar SharedKeyboardState, TVar SharedVideoState)
+getPcBiosSharedState :: PC -> (TMVar SharedKeyboardState, TMVar SharedVideoState)
 getPcBiosSharedState pc = (pcKeyboardShared . pcBiosKeyboard . pcBios $ pc, pcVideoShared . pcVideoState . pcBios $ pc)
 
 -------------------------------------------------------------------------------

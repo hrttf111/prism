@@ -85,7 +85,7 @@ data SharedKeyboardState = SharedKeyboardState {
 } deriving (Show)
 
 data PcKeyboard = PcKeyboard {
-    pcKeyboardShared :: TVar SharedKeyboardState,
+    pcKeyboardShared :: TMVar SharedKeyboardState,
     pcKeyboardFlags :: PcKeyFlags,
     pcKeyboardList :: [PcKey]
 }
@@ -104,12 +104,12 @@ data VideoCursor = VideoCursor {
     videoCursorColumn :: Int, -- horizontal
     videoCursorRow :: Int, -- vertical
     videoCursorEnabled :: Bool
-} deriving (Show)
+} deriving (Show, Eq)
 
 data VideoCommand = VideoFullDraw
                   | VideoDrawChar Uint8 Uint8 VideoCursor
                   | VideoUpdateCursor
-                  deriving (Show)
+                  deriving (Show, Eq)
 
 data SharedVideoState = SharedVideoState {
     videoMemory :: Ptr Uint8,
@@ -125,7 +125,7 @@ getVideoCursorPos state = (scrollPos + videoCursorRow c, videoCursorColumn c)
         scrollPos = videoScrollPos state
 
 data PcVideo = PcVideo {
-    pcVideoShared :: TVar SharedVideoState
+    pcVideoShared :: TMVar SharedVideoState
 }
 
 instance Show PcVideo where
@@ -301,8 +301,8 @@ mkBios :: (MonadIO m) => m PcBios
 mkBios = do
     let memSize = 65536
     videoMem <- liftIO $ callocBytes memSize
-    keyboardState <- liftIO $ newTVarIO $ SharedKeyboardState emptyKeyFlags []
-    videoState <- liftIO $ newTVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0 []
+    keyboardState <- liftIO $ newTMVarIO $ SharedKeyboardState emptyKeyFlags []
+    videoState <- liftIO $ newTMVarIO $ SharedVideoState videoMem (VideoCursor 0 0 True) 0 []
     return $ PcBios (PcKeyboard keyboardState emptyKeyFlags []) (PcVideo videoState) emptyTimer Map.empty
 
 setBiosMemory :: PcBios -> PrismM ()
@@ -374,7 +374,7 @@ processBiosKeyboardISR bios = do
     let keyboard = pcBiosKeyboard bios
         shared = pcKeyboardShared keyboard
     res <- liftIO $ atomically $
-        swapTVar shared $ SharedKeyboardState emptyKeyFlags []
+        swapTMVar shared $ SharedKeyboardState emptyKeyFlags []
     let keys' = (pcKeyboardList keyboard) ++ (sharedKeys res)
         keys'' = drop ((length keys') - 16) keys'
         keyboard' = PcKeyboard shared (sharedFlags res) keys''
@@ -399,7 +399,7 @@ writeKeyboardToRam keyboard = do
 
 writeVideoToRam :: PcVideo -> PrismM ()
 writeVideoToRam video = do
-    cursor <- liftIO $ atomically $ videoCursor <$> readTVar (pcVideoShared video)
+    cursor <- liftIO $ atomically $ videoCursor <$> readTMVar (pcVideoShared video)
     writeOp (biosMem8 0x50) $ fromIntegral $ videoCursorColumn cursor  -- cursor pos X on page 0
     writeOp (biosMem8 0x51) $ fromIntegral $ videoCursorRow cursor -- cursor pos Y on page 0
     return ()
@@ -434,7 +434,8 @@ waitKey bios =
     if hasKey then
         return bios
         else
-            processBiosKeyboardISR bios >>= waitKey
+            --processBiosKeyboardISR bios >>= waitKey
+            processBiosKeyboardISR bios
     where
         hasKey = not . null . pcKeyboardList $ pcBiosKeyboard bios
 
@@ -444,9 +445,9 @@ processBiosKeyboard bios = do
     case valAh of
         0 -> do -- Get key
             -- suspend, wait for key
-            cpuLogT Trace BiosKeyboard "Wait key"
+            cpuLogT Debug BiosKeyboard "Wait key"
             bios' <- waitKey bios
-            cpuLogT Trace BiosKeyboard "Wait key END"
+            cpuLogT Debug BiosKeyboard "Wait key END"
             let keys' = uncons $ pcKeyboardList $ pcBiosKeyboard bios'
             case keys' of
                 Just (key, keyList') -> do
@@ -650,9 +651,9 @@ processBiosVideo bios = do
             let enableCursor = ((valCh .&. 0x10) /= 0) && ((valCl .&. 0x30) /= 0)
                 vs = pcVideoShared $ pcVideoState bios
             liftIO $ atomically $ do
-                s <- readTVar vs
+                s <- takeTMVar vs
                 let c = videoCursor s
-                writeTVar vs $ s { videoCursor = c { videoCursorEnabled = enableCursor } }
+                putTMVar vs $ s { videoCursor = c { videoCursorEnabled = enableCursor } }
         2 -> do -- Set cursor pos
             --pageNum <- readOp bh
             row <- (min (videoConsoleLastRow console)) <$> fromIntegral <$> readOp dh
@@ -660,15 +661,15 @@ processBiosVideo bios = do
             let vs = pcVideoShared $ pcVideoState bios
             cpuLogT Trace BiosVideo $ "Set cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
             liftIO $ atomically $ do
-                s <- readTVar vs
+                s <- takeTMVar vs
                 let c = videoCursor s
                     commands = (videoCommands s) ++ [VideoUpdateCursor]
-                writeTVar vs $ s { videoCursor = c { videoCursorColumn = column, videoCursorRow = row }, videoCommands = commands }
+                putTMVar vs $ addVideoCommands commands $ s { videoCursor = c { videoCursorColumn = column, videoCursorRow = row } }
             writeOp al 0
         3 -> do -- Get cursor pos
             --pageNum <- readOp bh
             let vs = pcVideoShared $ pcVideoState bios
-            cursor <- liftIO $ atomically $ videoCursor <$> readTVar vs
+            cursor <- liftIO $ atomically $ videoCursor <$> readTMVar vs
             --writeOp ch 0 -- starting cursor scan line
             --writeOp cl 0 -- ending cursor scan line
             writeOp cx 0x0607 -- todo: check if it is correct
@@ -685,7 +686,7 @@ processBiosVideo bios = do
             let vs = pcVideoShared $ pcVideoState bios
             (code, attr) <- liftIO $ do
                 (ptr, (row, column)) <- atomically $ do
-                    s <- readTVar vs
+                    s <- readTMVar vs
                     return (videoMemory s, getVideoCursorPos s)
                 peekVideoChar console ptr row column
             writeOp al code -- ASCII char
@@ -700,15 +701,15 @@ processBiosVideo bios = do
             cpuLogT Trace BiosVideo $ "Write char: 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "', repeat=" ++ show repeatCount
             liftIO $ do
                 (ptr, (row, column), c) <- atomically $ do
-                    s <- readTVar vs
+                    s <- readTMVar vs
                     return (videoMemory s, getVideoCursorPos s, videoCursor s)
                 if repeatCount > 1 then do
                     --todo: update cursor
                     cursorColumn <- pokeVideoCharLine console ptr repeatCount row column (charCode, charAttr)
-                    atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
+                    modifyVs vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
                     else do
                         pokeVideoChar console ptr row column (charCode, charAttr)
-                        atomically $ modifyTVar vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
+                        modifyVs vs $ addVideoCommands [VideoDrawChar charCode charAttr c]
         0xe -> do -- Write char and update cursor
             --pageNum <- readOp bh
             charCode <- readOp al
@@ -717,24 +718,24 @@ processBiosVideo bios = do
                 char = toEnum (fromIntegral charCode)
             cpuLogT Trace BiosVideo $ "Write char(S): 0x" ++ (showHex charCode "") ++ "/'" ++ [char] ++ "'"
             (row, column) <- liftIO $ atomically $ do
-                s <- readTVar vs
+                s <- readTMVar vs
                 return $ getVideoCursorPos s
             cpuLogT Trace BiosVideo $ "Cursor, row=" ++ (show row) ++ ", column=" ++ (show column)
             liftIO $ do
                 (ptr, (row, column), c, scrollLine) <- atomically $ do
-                    s <- readTVar vs
+                    s <- takeTMVar vs
                     let (c', scrollLine) = updateCursorPosition console (videoCursor s) char
-                    writeTVar vs $ s { videoCursor = c' }
+                    putTMVar vs $ s { videoCursor = c' }
                     return (videoMemory s, getVideoCursorPos s, videoCursor s, scrollLine)
                 if scrollLine then do
                     when (not $ isEolChar char) $ pokeVideoChar console ptr row column (charCode, charAttr)
                     scrollScreenFull console ptr 1 True 0
-                    atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
+                    modifyVs vs $ addVideoCommands [VideoFullDraw]
                     else if isEolChar char then
-                        atomically $ modifyTVar vs $ addVideoCommands [VideoUpdateCursor]
+                        modifyVs vs $ addVideoCommands [VideoUpdateCursor]
                         else do
                             pokeVideoChar console ptr row column (charCode, charAttr)
-                            atomically $ modifyTVar vs $ addVideoCommands [(VideoDrawChar charCode charAttr c), VideoUpdateCursor]
+                            modifyVs vs $ addVideoCommands [(VideoDrawChar charCode charAttr c), VideoUpdateCursor]
         0xf -> do -- Get video mode
             writeOp al 3 -- mode (CGA test)
             writeOp ah $ fromIntegral $ videoConsoleColumns console -- number of columns
@@ -744,10 +745,24 @@ processBiosVideo bios = do
     return bios
     where
         console = VideoConsole80x25
+        modifyVs vs fs = atomically $ do
+            s <- takeTMVar vs
+            putTMVar vs $ fs s
+            return ()
         addVideoCommands commands s =
             s { videoCommands = commands' }
             where
-                commands' = (videoCommands s) ++ commands
+                hasFullDraw = if not $ null oldCommands then
+                    (head oldCommands) == VideoFullDraw
+                    else
+                        False
+                oldCommands = videoCommands s
+                commands' = if length oldCommands > 20 then
+                    [VideoFullDraw, VideoUpdateCursor]
+                    else if hasFullDraw then
+                        oldCommands
+                        else
+                            oldCommands ++ commands
         doScroll doUp = do
             distance <- readOp al -- scroll distance in rows
             blankAttr <- readOp bh -- attr for blank lines
@@ -766,9 +781,9 @@ processBiosVideo bios = do
                 cpuLogT Debug BiosVideo $ "  Right column scroll window: " ++ show right
             liftIO $ do
                 let vs = pcVideoShared $ pcVideoState bios
-                ptr <- atomically $ videoMemory <$> readTVar vs
+                ptr <- atomically $ videoMemory <$> readTMVar vs
                 scrollScreen console ptr ss distance doUp blankAttr
-                atomically $ modifyTVar vs $ addVideoCommands [VideoFullDraw]
+                modifyVs vs $ addVideoCommands [VideoFullDraw]
             return ()
 
 processBiosClock :: PcBios -> PrismM PcBios
