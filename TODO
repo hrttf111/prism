@@ -85,9 +85,24 @@
         - LICENSE +
         - Move script to another dir +
         - Move sample ASM to another dir +
+        - Create script for bochs +
         - Cleanup
         - README
-        - Create script for bochs
+            - General description
+                - 16 bit emulation
+                - ASM tests
+            - Exmaple
+                - Run FreeDOS
+            - Debug
+                - GDB
+                - Logs
+            - Limitations
+                - Only floppy
+                - Only PC BIOS
+                - No graphics
+                - No sound
+                - No direct video memory writes
+                - Tested only on LE (need to check BE)
 
 -------------------------------------------------------
 
