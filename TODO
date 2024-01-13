@@ -82,11 +82,11 @@
         - Update lib versions +
         - Log updates +
     - Release
+        - LICENSE +
+        - Move script to another dir +
+        - Move sample ASM to another dir +
         - Cleanup
         - README
-        - LICENSE
-        - Move script to another dir
-        - Move sample ASM to another dir
         - Create script for bochs
 
 -------------------------------------------------------
