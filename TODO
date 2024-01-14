@@ -86,8 +86,7 @@
         - Move script to another dir +
         - Move sample ASM to another dir +
         - Create script for bochs +
-        - Cleanup
-        - README
+        - README +
             - General description
                 - 16 bit emulation
                 - ASM tests
